@@ -1,0 +1,28 @@
+# RedditWatch Backend Dependencies
+
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# Database
+sqlalchemy[asyncio]==2.0.35
+aiosqlite==0.20.0
+
+# Configuration
+pyyaml==6.0.2
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+
+# HTTP client (for LLM providers and Reddit collection)
+httpx==0.27.2
+
+# Scheduling
+apscheduler==3.10.4
+
+# Vector database for semantic search
+chromadb>=0.5.0
+
+# Utilities
+python-dateutil==2.9.0

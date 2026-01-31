@@ -1,0 +1,60 @@
+# RedditWatch Configuration
+# Copy to config.yaml and customize
+
+# Reddit API credentials
+# Create app at: https://www.reddit.com/prefs/apps
+# Or set via environment variables: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET
+reddit:
+  client_id: "${REDDIT_CLIENT_ID}"
+  client_secret: "${REDDIT_CLIENT_SECRET}"
+  user_agent: "RedditWatch/1.0 (self-hosted market research)"
+
+# LLM Configuration
+llm:
+  # Primary provider: "ollama" (local), "claude", or "openai"
+  provider: "ollama"
+
+  # Fallback order if primary unavailable
+  fallback_chain:
+    - "claude"
+    - "openai"
+
+  # Ollama settings (local - default)
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "llama3.1:8b"
+    timeout: 120
+
+  # Claude settings (requires ANTHROPIC_API_KEY env var)
+  claude:
+    model: "claude-sonnet-4-20250514"
+    max_tokens: 4096
+
+  # OpenAI settings (requires OPENAI_API_KEY env var)
+  openai:
+    model: "gpt-4o-mini"
+    max_tokens: 4096
+
+# Collection settings
+collection:
+  interval_minutes: 30
+  posts_per_subreddit: 25
+  include_comments: true
+  max_comments_per_post: 30
+  sort_by: "hot"  # hot, new, top, rising
+
+# Analysis settings
+analysis:
+  auto_analyze: true
+  batch_size: 5
+  min_score_threshold: 3  # Ignore posts with < 3 upvotes
+
+# Scoring weights (for combined theme score)
+scoring:
+  frequency_weight: 0.4
+  intensity_weight: 0.6
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  port: 8000
