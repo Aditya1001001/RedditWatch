@@ -1,0 +1,409 @@
+"""Reddit data collector using HTTP requests (no API key required)."""
+
+import asyncio
+import logging
+import random
+import re
+from datetime import datetime, timezone
+from typing import Optional
+from xml.etree import ElementTree
+
+import httpx
+
+from app.models import Comment, Post
+
+logger = logging.getLogger(__name__)
+
+# User agents to rotate (helps avoid rate limiting)
+USER_AGENTS = [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+]
+
+
+class RedditCollector:
+    """
+    Collects posts and comments from Reddit using HTTP requests.
+
+    Uses old.reddit.com JSON endpoints which don't require API authentication.
+    Falls back to RSS feeds or HTML scraping if rate limited.
+    """
+
+    def __init__(self):
+        self.base_url = "https://old.reddit.com"
+        self.timeout = 30.0
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_headers(self) -> dict:
+        """Get request headers with random user agent."""
+        return {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept": "application/json, text/html",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+            )
+        return self._client
+
+    async def close(self):
+        """Close the HTTP client."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    async def test_connection(self) -> dict:
+        """Test if we can reach Reddit."""
+        try:
+            client = await self._get_client()
+            response = await client.get(
+                f"{self.base_url}/r/test.json",
+                params={"limit": 1},
+                headers=self._get_headers(),
+            )
+
+            if response.status_code == 200:
+                return {"success": True, "message": "Reddit connection successful"}
+            elif response.status_code == 429:
+                return {"success": False, "message": "Rate limited - try again later"}
+            else:
+                return {"success": False, "message": f"HTTP {response.status_code}"}
+
+        except Exception as e:
+            return {"success": False, "message": f"Connection failed: {str(e)}"}
+
+    async def get_subreddit_info(self, subreddit_name: str) -> Optional[dict]:
+        """Get information about a subreddit."""
+        try:
+            client = await self._get_client()
+            response = await client.get(
+                f"{self.base_url}/r/{subreddit_name}/about.json",
+                headers=self._get_headers(),
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to get subreddit info: HTTP {response.status_code}")
+                return None
+
+            data = response.json()
+            sub_data = data.get("data", {})
+
+            return {
+                "name": sub_data.get("display_name", subreddit_name),
+                "display_name": f"r/{sub_data.get('display_name', subreddit_name)}",
+                "description": (sub_data.get("public_description") or "")[:500],
+                "subscribers": sub_data.get("subscribers", 0),
+                "created_utc": datetime.fromtimestamp(
+                    sub_data.get("created_utc", 0), tz=timezone.utc
+                ) if sub_data.get("created_utc") else None,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get subreddit info for r/{subreddit_name}: {e}")
+            return None
+
+    async def collect_posts(
+        self,
+        subreddit_name: str,
+        limit: int = 25,
+        sort: str = "hot",
+    ) -> list[Post]:
+        """
+        Collect posts from a subreddit using JSON endpoint.
+
+        Args:
+            subreddit_name: Name of subreddit (without r/)
+            limit: Number of posts to fetch (max 100)
+            sort: Sort method (hot, new, top, rising)
+
+        Returns:
+            List of Post model instances
+        """
+        posts = []
+
+        try:
+            # Try JSON endpoint first
+            posts = await self._collect_posts_json(subreddit_name, limit, sort)
+
+            if not posts:
+                # Fall back to RSS if JSON fails
+                logger.warning(f"JSON failed for r/{subreddit_name}, trying RSS")
+                posts = await self._collect_posts_rss(subreddit_name, limit)
+
+        except Exception as e:
+            logger.error(f"Failed to collect posts from r/{subreddit_name}: {e}")
+
+        return posts
+
+    async def _collect_posts_json(
+        self,
+        subreddit_name: str,
+        limit: int,
+        sort: str,
+    ) -> list[Post]:
+        """Collect posts using JSON endpoint."""
+        posts = []
+        client = await self._get_client()
+
+        # Map sort to URL path
+        sort_path = sort if sort in ["hot", "new", "top", "rising"] else "hot"
+        url = f"{self.base_url}/r/{subreddit_name}/{sort_path}.json"
+
+        params = {"limit": min(limit, 100)}
+        if sort == "top":
+            params["t"] = "week"  # top posts from past week
+
+        try:
+            response = await client.get(url, params=params, headers=self._get_headers())
+
+            if response.status_code == 429:
+                logger.warning(f"Rate limited on r/{subreddit_name}")
+                return []
+
+            if response.status_code != 200:
+                logger.error(f"HTTP {response.status_code} for r/{subreddit_name}")
+                return []
+
+            data = response.json()
+            children = data.get("data", {}).get("children", [])
+
+            for item in children:
+                if item.get("kind") != "t3":  # t3 = post
+                    continue
+
+                post_data = item.get("data", {})
+
+                # Skip stickied posts (usually mod announcements)
+                if post_data.get("stickied", False):
+                    continue
+
+                # Extract post fields
+                post = Post(
+                    id=post_data.get("id", ""),
+                    subreddit=subreddit_name.lower(),
+                    title=post_data.get("title", ""),
+                    body=post_data.get("selftext") if post_data.get("is_self") else None,
+                    author=post_data.get("author", "[deleted]"),
+                    score=post_data.get("score", 0),
+                    upvote_ratio=post_data.get("upvote_ratio"),
+                    num_comments=post_data.get("num_comments", 0),
+                    permalink=post_data.get("permalink", ""),
+                    url=post_data.get("url") if not post_data.get("is_self") else None,
+                    created_utc=datetime.fromtimestamp(
+                        post_data.get("created_utc", 0), tz=timezone.utc
+                    ),
+                )
+                posts.append(post)
+
+            logger.info(f"Collected {len(posts)} posts from r/{subreddit_name} (JSON)")
+
+        except Exception as e:
+            logger.error(f"JSON collection failed for r/{subreddit_name}: {e}")
+
+        return posts
+
+    async def _collect_posts_rss(
+        self,
+        subreddit_name: str,
+        limit: int,
+    ) -> list[Post]:
+        """Collect posts using RSS feed (fallback method)."""
+        posts = []
+        client = await self._get_client()
+
+        url = f"https://www.reddit.com/r/{subreddit_name}/.rss"
+
+        try:
+            response = await client.get(url, headers=self._get_headers())
+
+            if response.status_code != 200:
+                return []
+
+            # Parse Atom XML
+            root = ElementTree.fromstring(response.content)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+
+            entries = root.findall("atom:entry", ns)[:limit]
+
+            for entry in entries:
+                # Extract post ID from link
+                link = entry.find("atom:link", ns)
+                if link is None:
+                    continue
+
+                href = link.get("href", "")
+                # Extract ID from URL like /r/SaaS/comments/abc123/...
+                match = re.search(r"/comments/([a-z0-9]+)/", href)
+                post_id = match.group(1) if match else ""
+
+                if not post_id:
+                    continue
+
+                title_el = entry.find("atom:title", ns)
+                author_el = entry.find("atom:author/atom:name", ns)
+                updated_el = entry.find("atom:updated", ns)
+                content_el = entry.find("atom:content", ns)
+
+                # Parse date
+                created_utc = None
+                if updated_el is not None and updated_el.text:
+                    try:
+                        created_utc = datetime.fromisoformat(
+                            updated_el.text.replace("Z", "+00:00")
+                        )
+                    except ValueError:
+                        pass
+
+                # Extract body from HTML content (simplified)
+                body = None
+                if content_el is not None and content_el.text:
+                    # Strip HTML tags (basic)
+                    body = re.sub(r"<[^>]+>", "", content_el.text)[:5000]
+
+                post = Post(
+                    id=post_id,
+                    subreddit=subreddit_name.lower(),
+                    title=title_el.text if title_el is not None else "",
+                    body=body,
+                    author=(author_el.text or "[deleted]").replace("/u/", "") if author_el is not None else "[deleted]",
+                    score=0,  # RSS doesn't include scores
+                    num_comments=0,
+                    permalink=href.replace("https://www.reddit.com", ""),
+                    created_utc=created_utc,
+                )
+                posts.append(post)
+
+            logger.info(f"Collected {len(posts)} posts from r/{subreddit_name} (RSS)")
+
+        except Exception as e:
+            logger.error(f"RSS collection failed for r/{subreddit_name}: {e}")
+
+        return posts
+
+    async def collect_comments(
+        self,
+        post_id: str,
+        subreddit_name: str,
+        limit: int = 30,
+    ) -> list[Comment]:
+        """
+        Collect comments for a post.
+
+        Args:
+            post_id: Reddit post ID
+            subreddit_name: Name of subreddit
+            limit: Maximum number of comments to fetch
+
+        Returns:
+            List of Comment model instances
+        """
+        comments = []
+        client = await self._get_client()
+
+        url = f"{self.base_url}/r/{subreddit_name}/comments/{post_id}.json"
+        params = {"limit": limit, "sort": "top"}
+
+        try:
+            # Add a small delay to avoid rate limiting
+            await asyncio.sleep(0.5)
+
+            response = await client.get(url, params=params, headers=self._get_headers())
+
+            if response.status_code == 429:
+                logger.warning(f"Rate limited fetching comments for {post_id}")
+                return []
+
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+
+            # Response is an array: [post, comments]
+            if len(data) < 2:
+                return []
+
+            comment_listing = data[1].get("data", {}).get("children", [])
+
+            for item in comment_listing[:limit]:
+                if item.get("kind") != "t1":  # t1 = comment
+                    continue
+
+                comment_data = item.get("data", {})
+
+                # Skip deleted/removed comments
+                body = comment_data.get("body", "")
+                if body in ["[deleted]", "[removed]", ""]:
+                    continue
+
+                # Extract parent ID (remove prefix)
+                parent_id = comment_data.get("parent_id", "")
+                if parent_id.startswith("t1_"):
+                    parent_id = parent_id[3:]
+                elif parent_id.startswith("t3_"):
+                    parent_id = parent_id[3:]
+
+                comment = Comment(
+                    id=comment_data.get("id", ""),
+                    post_id=post_id,
+                    parent_id=parent_id,
+                    body=body,
+                    author=comment_data.get("author", "[deleted]"),
+                    score=comment_data.get("score", 0),
+                    created_utc=datetime.fromtimestamp(
+                        comment_data.get("created_utc", 0), tz=timezone.utc
+                    ),
+                )
+                comments.append(comment)
+
+            logger.debug(f"Collected {len(comments)} comments for post {post_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to collect comments for post {post_id}: {e}")
+
+        return comments
+
+    async def collect_with_delay(
+        self,
+        subreddit_name: str,
+        limit: int = 25,
+        sort: str = "hot",
+        include_comments: bool = True,
+        max_comments_per_post: int = 30,
+        delay_seconds: float = 2.0,
+    ) -> tuple[list[Post], list[Comment]]:
+        """
+        Collect posts and comments with rate limit protection.
+
+        Args:
+            subreddit_name: Name of subreddit
+            limit: Number of posts to fetch
+            sort: Sort method
+            include_comments: Whether to fetch comments
+            max_comments_per_post: Max comments per post
+            delay_seconds: Delay between requests
+
+        Returns:
+            Tuple of (posts, comments)
+        """
+        all_comments = []
+
+        # Collect posts
+        posts = await self.collect_posts(subreddit_name, limit, sort)
+
+        if include_comments and posts:
+            # Collect comments for each post with delay
+            for post in posts:
+                await asyncio.sleep(delay_seconds)
+                comments = await self.collect_comments(
+                    post.id, subreddit_name, max_comments_per_post
+                )
+                all_comments.extend(comments)
+
+        return posts, all_comments

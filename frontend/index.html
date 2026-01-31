@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedditWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div x-data="app()" x-init="init()" class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">RedditWatch</h1>
+            <p class="text-gray-400">Self-hosted Reddit market research tool</p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-700">
+            <nav class="flex space-x-4">
+                <button @click="tab = 'dashboard'"
+                        :class="tab === 'dashboard' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    Dashboard
+                </button>
+                <button @click="tab = 'subreddits'"
+                        :class="tab === 'subreddits' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    Subreddits
+                </button>
+                <button @click="tab = 'posts'"
+                        :class="tab === 'posts' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    Posts
+                </button>
+                <button @click="tab = 'insights'; loadInsights()"
+                        :class="tab === 'insights' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    Insights
+                </button>
+                <button @click="tab = 'llm'"
+                        :class="tab === 'llm' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    LLM
+                </button>
+            </nav>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div x-show="tab === 'dashboard'" class="space-y-6">
+            <!-- Status Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">System Status</h3>
+                    <div class="flex items-center">
+                        <div :class="health.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'"
+                             class="w-3 h-3 rounded-full mr-2"></div>
+                        <span class="text-xl font-semibold" x-text="health.status || 'checking...'"></span>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">LLM Provider</h3>
+                    <div class="text-xl font-semibold" x-text="llmStatus.active_provider || 'none'"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Total Posts</h3>
+                    <div class="text-xl font-semibold" x-text="postStats.total_posts || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Monitored Subreddits</h3>
+                    <div class="text-xl font-semibold" x-text="subreddits.length"></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+                <div class="flex space-x-4">
+                    <button @click="collectAll()"
+                            :disabled="collecting"
+                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                        <span x-show="!collecting">Collect All Posts</span>
+                        <span x-show="collecting">Collecting...</span>
+                    </button>
+                    <button @click="loadPostStats()"
+                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-medium">
+                        Refresh Stats
+                    </button>
+                </div>
+                <div x-show="collectResult" class="mt-4 p-4 bg-gray-700 rounded">
+                    <p class="text-green-400">Collection complete!</p>
+                    <p class="text-sm text-gray-300">
+                        <span x-text="collectResult.posts_new"></span> new posts,
+                        <span x-text="collectResult.comments_collected"></span> comments
+                    </p>
+                </div>
+            </div>
+
+            <!-- Posts by Subreddit -->
+            <div class="bg-gray-800 rounded-lg p-6" x-show="Object.keys(postStats.posts_by_subreddit || {}).length > 0">
+                <h2 class="text-xl font-semibold mb-4">Posts by Subreddit</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <template x-for="(count, sub) in postStats.posts_by_subreddit" :key="sub">
+                        <div class="bg-gray-700 rounded p-3">
+                            <div class="text-sm text-gray-400" x-text="'r/' + sub"></div>
+                            <div class="text-lg font-semibold" x-text="count"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subreddits Tab -->
+        <div x-show="tab === 'subreddits'" class="space-y-6">
+            <!-- Add Subreddit -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Add Subreddit</h2>
+                <div class="flex space-x-4">
+                    <input type="text"
+                           x-model="newSubreddit"
+                           @keyup.enter="addSubreddit()"
+                           class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                           placeholder="Enter subreddit name (e.g., SaaS)">
+                    <button @click="addSubreddit()"
+                            :disabled="!newSubreddit || addingSubreddit"
+                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                        Add
+                    </button>
+                </div>
+                <p x-show="addError" class="mt-2 text-red-400 text-sm" x-text="addError"></p>
+            </div>
+
+            <!-- Catalog Browser -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Subreddit Catalog</h2>
+                <p class="text-gray-400 text-sm mb-4">Browse curated subreddits for startup research</p>
+
+                <!-- Category Filter -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button @click="catalogFilter = null"
+                            :class="catalogFilter === null ? 'bg-blue-600' : 'bg-gray-700'"
+                            class="px-3 py-1 rounded text-sm">All</button>
+                    <template x-for="cat in catalogCategories" :key="cat">
+                        <button @click="catalogFilter = cat"
+                                :class="catalogFilter === cat ? 'bg-blue-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm" x-text="cat.replace('_', ' ')"></button>
+                    </template>
+                </div>
+
+                <!-- Catalog List -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                    <template x-for="sub in filteredCatalog" :key="sub.name">
+                        <div class="bg-gray-700 rounded p-3 flex justify-between items-start">
+                            <div>
+                                <div class="font-medium" x-text="sub.display_name"></div>
+                                <div class="text-xs text-gray-400" x-text="sub.best_for"></div>
+                                <div class="text-xs text-gray-500" x-text="(sub.subscribers || 0).toLocaleString() + ' subscribers'"></div>
+                            </div>
+                            <button @click="addSubredditFromCatalog(sub.name)"
+                                    :disabled="isMonitored(sub.name)"
+                                    :class="isMonitored(sub.name) ? 'bg-green-700 cursor-default' : 'bg-blue-600 hover:bg-blue-700'"
+                                    class="px-3 py-1 rounded text-sm">
+                                <span x-text="isMonitored(sub.name) ? 'Added' : 'Add'"></span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Monitored Subreddits -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Monitored Subreddits</h2>
+                <div x-show="subreddits.length === 0" class="text-gray-400">
+                    No subreddits being monitored. Add some above!
+                </div>
+                <div class="space-y-2">
+                    <template x-for="sub in subreddits" :key="sub.name">
+                        <div class="bg-gray-700 rounded p-3 flex justify-between items-center">
+                            <div>
+                                <div class="font-medium" x-text="sub.display_name || 'r/' + sub.name"></div>
+                                <div class="text-xs text-gray-400">
+                                    <span x-text="sub.post_count"></span> posts collected
+                                    <span x-show="sub.last_collected"> · Last: <span x-text="formatDate(sub.last_collected)"></span></span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button @click="collectSubreddit(sub.name)"
+                                        class="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm">
+                                    Collect
+                                </button>
+                                <button @click="removeSubreddit(sub.name)"
+                                        class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Posts Tab -->
+        <div x-show="tab === 'posts'" class="space-y-6">
+            <!-- Filters -->
+            <div class="bg-gray-800 rounded-lg p-4 flex flex-wrap gap-4">
+                <select x-model="postFilter.subreddit"
+                        @change="loadPosts()"
+                        class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                    <option value="">All Subreddits</option>
+                    <template x-for="sub in subreddits" :key="sub.name">
+                        <option :value="sub.name" x-text="'r/' + sub.name"></option>
+                    </template>
+                </select>
+                <select x-model="postFilter.analyzed"
+                        @change="loadPosts()"
+                        class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                    <option value="">All Posts</option>
+                    <option value="false">Not Analyzed</option>
+                    <option value="true">Analyzed</option>
+                </select>
+                <button @click="loadPosts()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Posts List -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Posts (<span x-text="postsData.total"></span>)</h2>
+                </div>
+
+                <div x-show="posts.length === 0" class="text-gray-400 text-center py-8">
+                    No posts yet. Add subreddits and collect posts to get started.
+                </div>
+
+                <div class="space-y-3">
+                    <template x-for="post in posts" :key="post.id">
+                        <div class="bg-gray-700 rounded p-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <a :href="post.reddit_url" target="_blank"
+                                       class="font-medium text-blue-400 hover:text-blue-300" x-text="post.title"></a>
+                                    <div class="text-sm text-gray-400 mt-1">
+                                        r/<span x-text="post.subreddit"></span> ·
+                                        <span x-text="post.score"></span> points ·
+                                        <span x-text="post.num_comments"></span> comments ·
+                                        <span x-text="formatDate(post.created_utc)"></span>
+                                    </div>
+                                    <p x-show="post.body" class="text-sm text-gray-300 mt-2 line-clamp-2" x-text="post.body"></p>
+                                </div>
+                                <div class="ml-4">
+                                    <span :class="post.analyzed ? 'bg-green-600' : 'bg-yellow-600'"
+                                          class="px-2 py-1 rounded text-xs" x-text="post.analyzed ? 'Analyzed' : 'Pending'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Pagination -->
+                <div x-show="postsData.total > 20" class="flex justify-center space-x-2 mt-4">
+                    <button @click="postFilter.page--; loadPosts()"
+                            :disabled="postFilter.page <= 1"
+                            class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-3 py-1 rounded">
+                        Previous
+                    </button>
+                    <span class="px-3 py-1">Page <span x-text="postFilter.page"></span></span>
+                    <button @click="postFilter.page++; loadPosts()"
+                            :disabled="!postsData.has_more"
+                            class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-3 py-1 rounded">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Tab -->
+        <div x-show="tab === 'insights'" class="space-y-6">
+            <!-- Search Bar -->
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="flex gap-4">
+                    <div class="flex-1 relative">
+                        <input type="text"
+                               x-model="searchQuery"
+                               @keyup.enter="performSearch()"
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 pr-10"
+                               placeholder="Search insights semantically (e.g., 'users struggling with onboarding')">
+                        <button @click="performSearch()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button @click="clearSearch()"
+                            x-show="searchResults.length > 0"
+                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm">
+                        Clear
+                    </button>
+                </div>
+                <!-- Search Results -->
+                <div x-show="searchResults.length > 0" class="mt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-sm text-gray-400">
+                            Found <span x-text="searchResults.length" class="text-white font-medium"></span> results for "<span x-text="lastSearchQuery" class="text-blue-400"></span>"
+                        </span>
+                    </div>
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                        <template x-for="result in searchResults" :key="result.insight_id">
+                            <div @click="selectInsightFromSearch(result.insight_id)"
+                                 class="bg-gray-700 rounded p-3 cursor-pointer hover:bg-gray-600 transition">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <span :class="{
+                                            'bg-red-600': result.type === 'pain_point',
+                                            'bg-yellow-600': result.type === 'solution_request',
+                                            'bg-green-600': result.type === 'opportunity',
+                                            'bg-purple-600': result.type === 'product_mention'
+                                        }" class="px-2 py-0.5 rounded text-xs mr-2" x-text="result.type?.replace('_', ' ')"></span>
+                                        <span class="text-sm" x-text="result.text.substring(0, 150) + '...'"></span>
+                                    </div>
+                                    <div class="ml-3 text-right">
+                                        <div class="text-xs text-gray-400">
+                                            <span x-text="(result.similarity * 100).toFixed(0)"></span>% match
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Stats & Actions -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Total Posts</h3>
+                    <div class="text-2xl font-semibold" x-text="analysisStatus.total_posts || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Analyzed</h3>
+                    <div class="text-2xl font-semibold text-green-400" x-text="analysisStatus.analyzed_posts || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Insights</h3>
+                    <div class="text-2xl font-semibold text-blue-400" x-text="analysisStatus.total_insights || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Themes</h3>
+                    <div class="text-2xl font-semibold text-purple-400" x-text="analysisStatus.total_themes || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Avg Analysis Time</h3>
+                    <div class="text-2xl font-semibold">
+                        <span x-text="analysisStatus.avg_analysis_duration_ms ? (analysisStatus.avg_analysis_duration_ms / 1000).toFixed(1) + 's' : '-'"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analyze Button -->
+            <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                    <span x-show="analysisStatus.unanalyzed_posts > 0" class="text-yellow-400">
+                        <span x-text="analysisStatus.unanalyzed_posts"></span> posts waiting for analysis
+                    </span>
+                    <span x-show="analysisStatus.unanalyzed_posts === 0" class="text-green-400">
+                        All posts analyzed
+                    </span>
+                </div>
+                <button @click="runAnalysis()"
+                        :disabled="analyzing || analysisStatus.unanalyzed_posts === 0"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                    <span x-show="!analyzing">Analyze Posts</span>
+                    <span x-show="analyzing">Analyzing...</span>
+                </button>
+            </div>
+
+            <!-- Analysis Result -->
+            <div x-show="analysisResult" class="bg-green-900/30 border border-green-700 rounded-lg p-4">
+                <p class="text-green-400 font-medium">Analysis complete!</p>
+                <p class="text-sm text-gray-300 mt-1">
+                    <span x-text="analysisResult?.posts_analyzed"></span> posts analyzed,
+                    <span x-text="analysisResult?.insights_extracted"></span> insights extracted
+                    (<span x-text="((analysisResult?.total_duration_ms || 0) / 1000).toFixed(1)"></span>s total)
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Top Themes -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top Themes</h2>
+                    <p class="text-sm text-gray-400 mb-4">Sorted by combined score (frequency × intensity)</p>
+
+                    <div x-show="themes.length === 0" class="text-gray-400 text-center py-4">
+                        No themes yet. Run analysis to extract insights.
+                    </div>
+
+                    <div class="space-y-3 max-h-96 overflow-y-auto">
+                        <template x-for="(theme, idx) in themes.slice(0, 15)" :key="theme.theme_key">
+                            <div @click="selectTheme(theme.theme_key)"
+                                 :class="selectedTheme === theme.theme_key ? 'ring-2 ring-blue-500' : ''"
+                                 class="bg-gray-700 rounded p-3 cursor-pointer hover:bg-gray-600 transition">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-medium" x-text="theme.theme_key.replace(/_/g, ' ')"></div>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            <span x-text="theme.count"></span> insights ·
+                                            avg intensity: <span x-text="theme.avg_intensity"></span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-bold text-blue-400" x-text="theme.combined_score"></div>
+                                        <div class="text-xs text-gray-500">score</div>
+                                    </div>
+                                </div>
+                                <!-- Type badges -->
+                                <div class="flex gap-1 mt-2">
+                                    <template x-for="type in theme.types" :key="type">
+                                        <span :class="{
+                                            'bg-red-600': type === 'pain_point',
+                                            'bg-yellow-600': type === 'solution_request',
+                                            'bg-green-600': type === 'opportunity',
+                                            'bg-purple-600': type === 'product_mention'
+                                        }" class="px-2 py-0.5 rounded text-xs" x-text="type.replace('_', ' ')"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Insight Type Distribution -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Insight Types</h2>
+
+                    <div class="space-y-3 mb-6">
+                        <template x-for="(count, type) in insightTypeCounts" :key="type">
+                            <div class="flex items-center">
+                                <div class="w-32 text-sm" x-text="type.replace('_', ' ')"></div>
+                                <div class="flex-1 bg-gray-700 rounded h-6 overflow-hidden">
+                                    <div :class="{
+                                        'bg-red-600': type === 'pain_point',
+                                        'bg-yellow-600': type === 'solution_request',
+                                        'bg-green-600': type === 'opportunity',
+                                        'bg-purple-600': type === 'product_mention'
+                                    }" class="h-full transition-all" :style="'width: ' + (count / maxTypeCount * 100) + '%'"></div>
+                                </div>
+                                <div class="w-12 text-right text-sm" x-text="count"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Filter by type -->
+                    <h3 class="font-medium mb-2">Filter by Type</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="insightTypeFilter = null; loadInsightsList()"
+                                :class="insightTypeFilter === null ? 'bg-blue-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm">All</button>
+                        <button @click="insightTypeFilter = 'pain_point'; loadInsightsList()"
+                                :class="insightTypeFilter === 'pain_point' ? 'bg-red-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm">Pain Points</button>
+                        <button @click="insightTypeFilter = 'solution_request'; loadInsightsList()"
+                                :class="insightTypeFilter === 'solution_request' ? 'bg-yellow-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm">Solution Requests</button>
+                        <button @click="insightTypeFilter = 'opportunity'; loadInsightsList()"
+                                :class="insightTypeFilter === 'opportunity' ? 'bg-green-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm">Opportunities</button>
+                        <button @click="insightTypeFilter = 'product_mention'; loadInsightsList()"
+                                :class="insightTypeFilter === 'product_mention' ? 'bg-purple-600' : 'bg-gray-700'"
+                                class="px-3 py-1 rounded text-sm">Product Mentions</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Theme Details / Insights List -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">
+                        <span x-show="selectedTheme">Theme: <span x-text="selectedTheme?.replace(/_/g, ' ')" class="text-blue-400"></span></span>
+                        <span x-show="!selectedTheme && insightTypeFilter">
+                            <span x-text="insightTypeFilter?.replace('_', ' ')" class="capitalize"></span>s
+                        </span>
+                        <span x-show="!selectedTheme && !insightTypeFilter">Recent Insights</span>
+                    </h2>
+                    <button x-show="selectedTheme || insightTypeFilter"
+                            @click="selectedTheme = null; insightTypeFilter = null; loadInsightsList()"
+                            class="text-sm text-gray-400 hover:text-white">
+                        Clear filter
+                    </button>
+                </div>
+
+                <div x-show="insightsList.length === 0" class="text-gray-400 text-center py-8">
+                    No insights yet. Run analysis on collected posts.
+                </div>
+
+                <div class="space-y-4">
+                    <template x-for="insight in insightsList" :key="insight.id">
+                        <div class="bg-gray-700 rounded p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span :class="{
+                                        'bg-red-600': insight.type === 'pain_point',
+                                        'bg-yellow-600': insight.type === 'solution_request',
+                                        'bg-green-600': insight.type === 'opportunity',
+                                        'bg-purple-600': insight.type === 'product_mention'
+                                    }" class="px-2 py-0.5 rounded text-xs mr-2" x-text="insight.type.replace('_', ' ')"></span>
+                                    <span class="font-medium" x-text="insight.title"></span>
+                                </div>
+                                <div x-show="insight.intensity_score" class="text-right">
+                                    <div :class="{
+                                        'text-green-400': insight.intensity_score < 40,
+                                        'text-yellow-400': insight.intensity_score >= 40 && insight.intensity_score < 70,
+                                        'text-red-400': insight.intensity_score >= 70
+                                    }" class="font-bold" x-text="insight.intensity_score"></div>
+                                    <div class="text-xs text-gray-500">intensity</div>
+                                </div>
+                            </div>
+
+                            <p class="text-sm text-gray-300 mb-3" x-text="insight.description"></p>
+
+                            <!-- Quote -->
+                            <div x-show="insight.quote" class="bg-gray-800 rounded p-3 border-l-4 border-blue-500">
+                                <p class="text-sm italic text-gray-300">"<span x-text="insight.quote"></span>"</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    — <span x-text="insight.quote_author || 'anonymous'"></span>
+                                </p>
+                            </div>
+
+                            <!-- Product mention extra info -->
+                            <div x-show="insight.product_name" class="mt-2 text-sm">
+                                <span class="text-gray-400">Product:</span>
+                                <span class="text-purple-400 font-medium" x-text="insight.product_name"></span>
+                                <span x-show="insight.sentiment" class="ml-2">
+                                    (<span :class="{
+                                        'text-green-400': insight.sentiment === 'positive',
+                                        'text-red-400': insight.sentiment === 'negative',
+                                        'text-gray-400': insight.sentiment === 'neutral',
+                                        'text-yellow-400': insight.sentiment === 'mixed'
+                                    }" x-text="insight.sentiment"></span>)
+                                </span>
+                            </div>
+
+                            <!-- Link to Reddit -->
+                            <div class="mt-3 flex justify-between items-center text-xs">
+                                <span class="text-gray-500" x-text="'Theme: ' + insight.theme_key.replace(/_/g, ' ')"></span>
+                                <a :href="'https://reddit.com' + insight.permalink" target="_blank"
+                                   class="text-blue-400 hover:text-blue-300">
+                                    View on Reddit →
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- LLM Tab -->
+        <div x-show="tab === 'llm'" class="space-y-6">
+            <!-- Provider Status -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Provider Status</h2>
+                <div class="space-y-3">
+                    <template x-for="(status, name) in llmStatus.providers" :key="name">
+                        <div class="flex items-center justify-between p-3 bg-gray-700 rounded">
+                            <div class="flex items-center">
+                                <div :class="status.available ? 'bg-green-500' : 'bg-gray-500'"
+                                     class="w-2 h-2 rounded-full mr-3"></div>
+                                <span class="font-medium" x-text="name"></span>
+                                <span x-show="status.is_primary" class="ml-2 text-xs bg-blue-600 px-2 py-0.5 rounded">primary</span>
+                            </div>
+                            <div class="text-sm text-gray-400">
+                                <span x-text="status.model"></span>
+                                <span x-show="!status.available" class="ml-2 text-yellow-500">(unavailable)</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- LLM Test -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Test LLM</h2>
+                <div class="mb-4">
+                    <input type="text"
+                           x-model="testPrompt"
+                           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                           placeholder="Enter a test prompt...">
+                </div>
+                <button @click="testLLM()"
+                        :disabled="testing"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                    <span x-show="!testing">Test LLM</span>
+                    <span x-show="testing">Testing...</span>
+                </button>
+                <div x-show="testResult" class="mt-4 p-4 bg-gray-700 rounded">
+                    <div class="flex items-center mb-2">
+                        <span :class="testResult.success ? 'text-green-400' : 'text-red-400'" class="font-medium">
+                            <span x-text="testResult.success ? 'Success' : 'Failed'"></span>
+                        </span>
+                        <span x-show="testResult.latency_ms" class="text-gray-400 text-sm ml-2">
+                            (<span x-text="testResult.latency_ms"></span>ms)
+                        </span>
+                    </div>
+                    <p class="text-gray-300" x-text="testResult.response || testResult.error || testResult.detail"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>RedditWatch v0.1.0 - Phase 5</p>
+        </footer>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                tab: 'dashboard',
+                health: {},
+                llmStatus: { providers: {} },
+                postStats: {},
+                subreddits: [],
+                catalog: [],
+                catalogCategories: [],
+                catalogFilter: null,
+                posts: [],
+                postsData: { total: 0, has_more: false },
+                postFilter: { subreddit: '', analyzed: '', page: 1 },
+                newSubreddit: '',
+                addingSubreddit: false,
+                addError: '',
+                collecting: false,
+                collectResult: null,
+                testPrompt: "What are three common pain points for SaaS founders?",
+                testResult: null,
+                testing: false,
+                // Insights tab
+                analysisStatus: {},
+                themes: [],
+                insightsList: [],
+                selectedTheme: null,
+                insightTypeFilter: null,
+                analyzing: false,
+                analysisResult: null,
+                // Search
+                searchQuery: '',
+                searchResults: [],
+                lastSearchQuery: '',
+                searchStats: {},
+
+                async init() {
+                    await Promise.all([
+                        this.checkHealth(),
+                        this.checkLLMStatus(),
+                        this.loadSubreddits(),
+                        this.loadCatalog(),
+                        this.loadPostStats(),
+                        this.loadPosts(),
+                    ]);
+                },
+
+                async checkHealth() {
+                    try {
+                        const res = await fetch('/api/health');
+                        this.health = await res.json();
+                    } catch (e) {
+                        this.health = { status: 'error' };
+                    }
+                },
+
+                async checkLLMStatus() {
+                    try {
+                        const res = await fetch('/api/llm/status');
+                        this.llmStatus = await res.json();
+                    } catch (e) {
+                        this.llmStatus = { providers: {} };
+                    }
+                },
+
+                async loadSubreddits() {
+                    try {
+                        const res = await fetch('/api/subreddits');
+                        this.subreddits = await res.json();
+                    } catch (e) {
+                        this.subreddits = [];
+                    }
+                },
+
+                async loadCatalog() {
+                    try {
+                        const [catalogRes, catRes] = await Promise.all([
+                            fetch('/api/subreddits/catalog'),
+                            fetch('/api/subreddits/catalog/categories'),
+                        ]);
+                        this.catalog = await catalogRes.json();
+                        const catData = await catRes.json();
+                        this.catalogCategories = catData.categories || [];
+                    } catch (e) {
+                        this.catalog = [];
+                    }
+                },
+
+                async loadPostStats() {
+                    try {
+                        const res = await fetch('/api/posts/stats');
+                        this.postStats = await res.json();
+                    } catch (e) {
+                        this.postStats = {};
+                    }
+                },
+
+                async loadPosts() {
+                    try {
+                        const params = new URLSearchParams();
+                        if (this.postFilter.subreddit) params.set('subreddit', this.postFilter.subreddit);
+                        if (this.postFilter.analyzed) params.set('analyzed', this.postFilter.analyzed);
+                        params.set('page', this.postFilter.page);
+                        const res = await fetch('/api/posts?' + params);
+                        const data = await res.json();
+                        this.posts = data.posts;
+                        this.postsData = data;
+                    } catch (e) {
+                        this.posts = [];
+                    }
+                },
+
+                async addSubreddit() {
+                    if (!this.newSubreddit) return;
+                    this.addingSubreddit = true;
+                    this.addError = '';
+                    try {
+                        const res = await fetch('/api/subreddits', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.newSubreddit })
+                        });
+                        if (res.ok) {
+                            this.newSubreddit = '';
+                            await this.loadSubreddits();
+                        } else {
+                            const data = await res.json();
+                            this.addError = data.detail || 'Failed to add subreddit';
+                        }
+                    } catch (e) {
+                        this.addError = e.message;
+                    }
+                    this.addingSubreddit = false;
+                },
+
+                async addSubredditFromCatalog(name) {
+                    this.newSubreddit = name;
+                    await this.addSubreddit();
+                },
+
+                async removeSubreddit(name) {
+                    if (!confirm(`Remove r/${name} from monitoring?`)) return;
+                    try {
+                        await fetch(`/api/subreddits/${name}`, { method: 'DELETE' });
+                        await this.loadSubreddits();
+                    } catch (e) {
+                        alert('Failed to remove subreddit');
+                    }
+                },
+
+                async collectSubreddit(name) {
+                    try {
+                        const res = await fetch(`/api/subreddits/${name}/collect`, { method: 'POST' });
+                        const data = await res.json();
+                        alert(`Collected ${data.posts_new} new posts from r/${name}`);
+                        await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                    } catch (e) {
+                        alert('Collection failed: ' + e.message);
+                    }
+                },
+
+                async collectAll() {
+                    this.collecting = true;
+                    this.collectResult = null;
+                    try {
+                        const res = await fetch('/api/collect', { method: 'POST' });
+                        this.collectResult = await res.json();
+                        await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                    } catch (e) {
+                        alert('Collection failed: ' + e.message);
+                    }
+                    this.collecting = false;
+                },
+
+                async testLLM() {
+                    this.testing = true;
+                    this.testResult = null;
+                    try {
+                        const res = await fetch('/api/llm/test', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: this.testPrompt })
+                        });
+                        this.testResult = await res.json();
+                        if (!res.ok) this.testResult.success = false;
+                    } catch (e) {
+                        this.testResult = { success: false, error: e.message };
+                    }
+                    this.testing = false;
+                },
+
+                get filteredCatalog() {
+                    if (!this.catalogFilter) return this.catalog;
+                    return this.catalog.filter(s => s.category === this.catalogFilter);
+                },
+
+                get insightTypeCounts() {
+                    const counts = {};
+                    this.insightsList.forEach(i => {
+                        counts[i.type] = (counts[i.type] || 0) + 1;
+                    });
+                    // Also count from all insights if we have themes
+                    if (this.themes.length > 0 && Object.keys(counts).length === 0) {
+                        this.themes.forEach(t => {
+                            t.types.forEach(type => {
+                                counts[type] = (counts[type] || 0) + t.count / t.types.length;
+                            });
+                        });
+                    }
+                    return counts;
+                },
+
+                get maxTypeCount() {
+                    return Math.max(...Object.values(this.insightTypeCounts), 1);
+                },
+
+                isMonitored(name) {
+                    return this.subreddits.some(s => s.name.toLowerCase() === name.toLowerCase());
+                },
+
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                },
+
+                // Insights methods
+                async loadInsights() {
+                    await Promise.all([
+                        this.loadAnalysisStatus(),
+                        this.loadThemes(),
+                        this.loadInsightsList(),
+                        this.loadSearchStats(),
+                    ]);
+                },
+
+                async loadAnalysisStatus() {
+                    try {
+                        const res = await fetch('/api/analyze/status');
+                        this.analysisStatus = await res.json();
+                    } catch (e) {
+                        this.analysisStatus = {};
+                    }
+                },
+
+                async loadThemes() {
+                    try {
+                        const res = await fetch('/api/analyze/themes');
+                        this.themes = await res.json();
+                    } catch (e) {
+                        this.themes = [];
+                    }
+                },
+
+                async loadInsightsList() {
+                    try {
+                        const params = new URLSearchParams();
+                        if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
+                        if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
+                        params.set('limit', '50');
+                        const res = await fetch('/api/analyze/insights?' + params);
+                        this.insightsList = await res.json();
+                    } catch (e) {
+                        this.insightsList = [];
+                    }
+                },
+
+                async selectTheme(themeKey) {
+                    this.selectedTheme = themeKey;
+                    this.insightTypeFilter = null;
+                    await this.loadInsightsList();
+                },
+
+                async runAnalysis() {
+                    this.analyzing = true;
+                    this.analysisResult = null;
+                    try {
+                        const res = await fetch('/api/analyze?limit=10&min_score=0', { method: 'POST' });
+                        this.analysisResult = await res.json();
+                        await this.loadInsights();
+                        // Reindex after new analysis
+                        await fetch('/api/search/reindex', { method: 'POST' });
+                    } catch (e) {
+                        alert('Analysis failed: ' + e.message);
+                    }
+                    this.analyzing = false;
+                },
+
+                // Search methods
+                async performSearch() {
+                    if (!this.searchQuery || this.searchQuery.length < 2) return;
+
+                    try {
+                        const params = new URLSearchParams({ q: this.searchQuery, limit: '20' });
+                        const res = await fetch('/api/search?' + params);
+                        const data = await res.json();
+                        this.searchResults = data.results;
+                        this.lastSearchQuery = this.searchQuery;
+                    } catch (e) {
+                        console.error('Search failed:', e);
+                        this.searchResults = [];
+                    }
+                },
+
+                clearSearch() {
+                    this.searchQuery = '';
+                    this.searchResults = [];
+                    this.lastSearchQuery = '';
+                },
+
+                async selectInsightFromSearch(insightId) {
+                    // Find the insight in the list or load it
+                    const insight = this.insightsList.find(i => i.id === insightId);
+                    if (insight) {
+                        // Scroll to or highlight the insight
+                        this.selectedTheme = insight.theme_key;
+                        await this.loadInsightsList();
+                    } else {
+                        // Load insights with this theme
+                        const result = this.searchResults.find(r => r.insight_id === insightId);
+                        if (result?.theme_key) {
+                            this.selectedTheme = result.theme_key;
+                            await this.loadInsightsList();
+                        }
+                    }
+                    this.clearSearch();
+                },
+
+                async loadSearchStats() {
+                    try {
+                        const res = await fetch('/api/search/stats');
+                        this.searchStats = await res.json();
+                    } catch (e) {
+                        this.searchStats = {};
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

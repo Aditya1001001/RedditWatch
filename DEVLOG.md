@@ -1,0 +1,1040 @@
+# RedditWatch Development Log
+
+## Project Overview
+
+**Goal**: Build a self-hosted alternative to GummySearch/PainOnSocial for Reddit market research.
+
+**Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
+
+**Status**: Phase 5 complete (Semantic Search with ChromaDB) | Next: Phase 6 (Export)
+
+---
+
+## 🚨 Critical Development: Reddit API Access (2026-01-30)
+
+### The Problem
+
+Reddit has effectively shut down API access for new applications:
+- New API key applications are being rejected (even for academics)
+- PRAW/asyncpraw requires OAuth credentials that are no longer obtainable
+- This blocks our original collection strategy
+
+### The Solution: API-Free Collection
+
+After investigation, we found **three working alternatives** that don't require API keys:
+
+#### 1. old.reddit.com JSON Endpoints (Primary Method)
+```bash
+# Works without authentication!
+curl "https://old.reddit.com/r/SaaS.json?limit=25"
+```
+- Returns full JSON with post metadata, scores, comments
+- Rate limited (~60-100 requests before 429 errors)
+- Best for structured data extraction
+
+#### 2. RSS Feeds (Backup Method)
+```bash
+curl "https://www.reddit.com/r/SaaS/.rss"
+```
+- Returns Atom XML with recent posts
+- Limited data (no scores, no comments)
+- Most reliable, unlikely to be blocked
+
+#### 3. old.reddit.com HTML Scraping (Fallback)
+```bash
+curl "https://old.reddit.com/r/SaaS/"
+```
+- Minimal HTML, easy to parse
+- Works when JSON endpoints are rate-limited
+- Most resilient long-term option
+
+### Implementation Changes
+
+**Before (PRAW-based)**:
+```python
+reddit = asyncpraw.Reddit(client_id=..., client_secret=...)
+subreddit = await reddit.subreddit("SaaS")
+async for post in subreddit.hot(limit=25):
+    # process post
+```
+
+**After (HTTP-based)**:
+```python
+async with httpx.AsyncClient() as client:
+    response = await client.get(
+        "https://old.reddit.com/r/SaaS.json",
+        params={"limit": 25},
+        headers={"User-Agent": "RedditWatch/1.0"}
+    )
+    data = response.json()
+    for post in data["data"]["children"]:
+        # process post["data"]
+```
+
+### Advantages of New Approach
+
+| Aspect | PRAW (Old) | HTTP JSON (New) |
+|--------|------------|-----------------|
+| API Keys Required | Yes | No |
+| Setup Complexity | High (OAuth) | Zero |
+| Rate Limits | Strict (600/10min) | Moderate (~100/session) |
+| Reliability | Depends on Reddit approval | Works now |
+| Comment Fetching | Easy | Requires separate request |
+| Future-Proof | No (API changes) | More resilient |
+
+### Rate Limit Mitigation
+
+To avoid 429 errors:
+1. **Delays between requests**: 2-3 seconds between subreddit fetches
+2. **Caching**: Don't re-fetch recently collected posts
+3. **Batch collection**: Collect once per hour, not continuously
+4. **Fallback chain**: JSON → RSS → HTML scraping
+5. **User-Agent rotation**: Vary the user agent string
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         User's Browser                               │
+│                    (Alpine.js + Tailwind CSS)                        │
+│     Tabs: Dashboard | Subreddits | Posts | Insights | LLM           │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         FastAPI Backend                              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │Posts API │ │Subreddits│ │ Analyze  │ │ Search   │ │  LLM     │  │
+│  │          │ │   API    │ │   API    │ │   API    │ │  API     │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+         │              │            │            │            │
+         ▼              ▼            ▼            ▼            ▼
+┌─────────────┐  ┌───────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│   SQLite    │  │ Subreddit │  │Analyzer │  │ChromaDB │  │  LLM    │
+│  Database   │  │  Catalog  │  │ Service │  │ Vector  │  │Providers│
+│ (posts,     │  │  (YAML)   │  │         │  │  Store  │  │         │
+│  insights)  │  │           │  │         │  │         │  │         │
+└─────────────┘  └───────────┘  └─────────┘  └─────────┘  └─────────┘
+                                     │                         │
+                                     └─────────────────────────┘
+                                              │
+                              ┌───────────────┼───────────────┐
+                              ▼               ▼               ▼
+                         ┌────────┐      ┌────────┐      ┌────────┐
+                         │ Ollama │      │ Claude │      │ OpenAI │
+                         │ (local)│      │  API   │      │  API   │
+                         └────────┘      └────────┘      └────────┘
+
+Data Flow:
+1. Reddit → Collector → SQLite (posts, comments)
+2. SQLite → Analyzer → LLM → SQLite (insights)
+3. SQLite → Search Service → ChromaDB (embeddings)
+4. User Query → ChromaDB → Semantic Results
+```
+
+---
+
+## Business Problems & Technical Solutions
+
+### Problem 1: Finding Startup Ideas in Reddit Noise
+
+**Business Need**: Entrepreneurs need to find pain points, product gaps, and market signals buried in millions of Reddit posts across dozens of subreddits.
+
+**Our Solution**:
+
+1. **Curated Subreddit Catalog** (`backend/app/data/subreddits.yaml`)
+   - Pre-selected 53 subreddits across 9 categories relevant to startup research
+   - Each entry includes subscriber count, description, and "best for" guidance
+   - Categories: startup, tech, product, marketing, remote work, finance, ecommerce, AI, verticals
+
+   ```yaml
+   startup_entrepreneurship:
+     - name: SaaS
+       subscribers: 95000
+       best_for: "SaaS pain points, pricing, churn"
+   ```
+
+2. **Targeted Collection** (`backend/app/collectors/reddit.py`)
+   - Uses old.reddit.com JSON endpoints (no API key required!)
+   - Fetches posts sorted by "hot" (engagement signals quality)
+   - Collects top comments (sorted by score = community validation)
+   - Falls back to RSS or HTML scraping if rate limited
+
+3. **Upcoming: LLM Classification** (Phase 3)
+   - Will categorize posts into: pain_point, solution_request, product_mention, opportunity
+   - Filters signal from noise automatically
+
+---
+
+### Problem 2: Privacy & Vendor Lock-in
+
+**Business Need**: Market research data is sensitive (reveals your startup ideas). SaaS tools can shut down (GummySearch did), raise prices, or leak data.
+
+**Our Solution**:
+
+1. **Local-First Architecture**
+   - SQLite database stored in `data/redditwatch.db`
+   - No cloud dependencies for core functionality
+   - All data stays on your machine
+
+2. **Flexible LLM Provider System** (`backend/app/llm/`)
+
+   ```
+   llm/
+   ├── base.py      # Abstract interface all providers implement
+   ├── ollama.py    # Local LLM (default, works offline)
+   ├── claude.py    # Anthropic API (optional, better quality)
+   ├── openai.py    # OpenAI API (optional, alternative)
+   └── factory.py   # Picks available provider with fallback chain
+   ```
+
+   **How it works**:
+   - User configures preferred provider in `config.yaml`
+   - Factory tries primary provider first
+   - If unavailable (Ollama not running, no API key), tries fallbacks
+   - All providers implement same interface, so analysis code is provider-agnostic
+
+   ```python
+   # All providers implement this interface
+   class BaseLLMProvider(ABC):
+       async def generate(self, prompt, system=None) -> LLMResponse
+       async def generate_json(self, prompt) -> dict  # For structured extraction
+       async def is_available(self) -> bool
+   ```
+
+3. **No API Keys Required for Reddit**
+   - Switched from PRAW (requires OAuth) to direct HTTP requests
+   - Works out of the box, no Reddit developer account needed
+   - More resilient to API policy changes
+
+---
+
+### Problem 3: Expensive API Costs
+
+**Business Need**: Cloud LLM APIs charge per token. Analyzing thousands of Reddit posts gets expensive fast.
+
+**Our Solution**:
+
+1. **Ollama as Default**
+   - Free, runs locally on M1 Mac
+   - llama3.1:8b is capable enough for classification/extraction
+   - No API costs, no rate limits
+
+2. **Efficient Prompts** (Phase 3)
+   - Single prompt extracts multiple insights from one post
+   - JSON output for reliable parsing (no re-prompting)
+   - Batch processing to amortize prompt overhead
+
+3. **Smart Collection**
+   - Only fetch posts above score threshold (default: 3 upvotes)
+   - Limit comments per post (top 30 by score)
+   - Deduplicate on collection (don't re-fetch known posts)
+
+---
+
+### Problem 4: Manual Reddit Browsing is Tedious
+
+**Business Need**: Manually reading r/SaaS, r/startups, etc. daily is time-consuming and easy to miss insights.
+
+**Our Solution**:
+
+1. **Automated Collection** (`backend/app/services/collector.py`)
+   - Add subreddits once, collect on-demand or scheduled
+   - Stores posts + comments in SQLite for later analysis
+   - Tracks last collection time per subreddit
+
+2. **Web UI for Browsing** (`frontend/index.html`)
+   - Dashboard shows stats at a glance
+   - Subreddits tab: browse catalog, add/remove, trigger collection
+   - Posts tab: filter by subreddit, pagination, link to Reddit
+
+3. **Upcoming: Scheduled Collection** (Phase 2.5)
+   - APScheduler will run collection every 30 minutes
+   - Auto-analyze new posts as they arrive
+
+---
+
+### Problem 5: Identifying Pain Point Severity
+
+**Business Need**: Not all complaints are equal. "Minor annoyance" vs "I'd pay anything to fix this" require different responses.
+
+**Our Solution** (Phase 3):
+
+1. **Intensity Scoring** (0-100)
+   - LLM analyzes emotional language, impact described, urgency
+   - Higher score = more severe pain point
+
+   ```
+   Scoring factors:
+   - Emotional language (frustration, anger, desperation)
+   - Impact described (time wasted, money lost, blocked)
+   - Urgency expressed ("need this now", "desperate")
+   ```
+
+2. **Theme Aggregation**
+   - Cluster similar pain points across posts
+   - Combined score = frequency × intensity (weighted)
+   - Rising themes = potential opportunities
+
+3. **Evidence Collection**
+   - Store exact quotes with Reddit permalinks
+   - Quote author and score (upvotes = validation)
+   - Verify insights by clicking through to source
+
+---
+
+### Problem 6: Reddit API Lockdown (NEW)
+
+**Business Need**: Reddit stopped approving new API applications, blocking PRAW-based collection.
+
+**Our Solution**:
+
+1. **old.reddit.com JSON Endpoint**
+   - No authentication required
+   - Full post data including scores, comments
+   - `https://old.reddit.com/r/{subreddit}.json?limit=25`
+
+2. **Fallback Chain**
+   - Primary: JSON endpoint (best data)
+   - Secondary: RSS feed (reliable, less data)
+   - Tertiary: HTML scraping (most resilient)
+
+3. **Rate Limit Handling**
+   - 2-3 second delays between requests
+   - Exponential backoff on 429 errors
+   - Caching to avoid re-fetching
+
+---
+
+## Technical Decisions & Rationale
+
+### Why SQLite (not Postgres)?
+
+- **Zero configuration**: No database server to run
+- **Portable**: Single file, easy to backup/move
+- **Sufficient scale**: Handles 100k+ posts easily
+- **FTS5 support**: Built-in full-text search for keyword queries
+
+### Why FastAPI (not Flask/Django)?
+
+- **Async native**: Reddit API + LLM calls benefit from async
+- **Auto-documentation**: OpenAPI/Swagger UI at `/docs`
+- **Pydantic integration**: Type-safe request/response models
+- **Modern Python**: Type hints, async/await throughout
+
+### Why Alpine.js (not React/Vue)?
+
+- **No build step**: Just HTML + script tag
+- **Lightweight**: 15kb minified
+- **Good enough**: CRUD UI doesn't need virtual DOM
+- **Fast iteration**: Edit HTML, refresh browser
+
+### Why Direct HTTP (not PRAW)?
+
+- **No API keys**: Works without Reddit developer account
+- **Future-proof**: Less dependent on Reddit's API policies
+- **Simpler setup**: No OAuth configuration needed
+- **More control**: Can implement custom rate limiting and fallbacks
+
+---
+
+## Data Models
+
+### Posts
+```
+Post
+├── id (Reddit post ID, e.g., "abc123")
+├── subreddit
+├── title, body, author
+├── score, upvote_ratio, num_comments
+├── permalink (for linking back)
+├── created_utc, collected_at
+├── analyzed (bool)
+└── category (set by LLM: pain_point, solution_request, etc.)
+```
+
+### Comments
+```
+Comment
+├── id (Reddit comment ID)
+├── post_id (FK)
+├── parent_id (for threading)
+├── body, author, score
+└── created_utc
+```
+
+### Insights (Phase 3)
+```
+Insight
+├── id
+├── post_id, comment_id (source)
+├── type (pain_point, product_mention, opportunity)
+├── title, description
+├── quote, quote_author, permalink
+├── intensity_score (0-100)
+├── product_name, sentiment (for product mentions)
+└── llm_provider, llm_model (for debugging)
+```
+
+### Themes (Phase 4)
+```
+Theme
+├── id
+├── title, description, category
+├── frequency (count of related insights)
+├── avg_intensity
+├── combined_score (frequency × intensity weighted)
+├── trend (rising, stable, declining)
+└── solutions (JSON, AI-generated in v1.1)
+```
+
+---
+
+## File Structure
+
+```
+RedditWatch/
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py              # FastAPI app, lifespan, routes
+│   │   ├── config.py            # YAML + env config loading
+│   │   ├── database.py          # SQLAlchemy async setup
+│   │   │
+│   │   ├── models/              # SQLAlchemy ORM models
+│   │   │   ├── post.py          # + analyzed_at, analysis_duration_ms
+│   │   │   ├── comment.py
+│   │   │   ├── insight.py       # + theme_key for grouping
+│   │   │   ├── theme.py
+│   │   │   └── subreddit.py
+│   │   │
+│   │   ├── llm/                 # LLM provider abstraction
+│   │   │   ├── base.py          # Interface + JSON parsing
+│   │   │   ├── ollama.py        # Local inference (default)
+│   │   │   ├── claude.py        # Anthropic API
+│   │   │   ├── openai.py        # OpenAI API
+│   │   │   └── factory.py       # Provider selection + fallback
+│   │   │
+│   │   ├── collectors/
+│   │   │   └── reddit.py        # HTTP-based collection (JSON/RSS/HTML)
+│   │   │
+│   │   ├── services/
+│   │   │   ├── collector.py     # Collection orchestration
+│   │   │   ├── analyzer.py      # LLM-based insight extraction
+│   │   │   └── search.py        # ChromaDB semantic search
+│   │   │
+│   │   ├── api/                 # FastAPI route handlers
+│   │   │   ├── posts.py
+│   │   │   ├── subreddits.py
+│   │   │   ├── collect.py
+│   │   │   ├── analysis.py      # Trigger analysis, get themes/insights
+│   │   │   ├── search.py        # Semantic search, similar, duplicates
+│   │   │   ├── llm.py
+│   │   │   └── export.py        # (Phase 6)
+│   │   │
+│   │   └── data/
+│   │       └── subreddits.yaml  # Curated catalog (53 subreddits)
+│   │
+│   ├── config.yaml              # App configuration
+│   └── requirements.txt
+│
+├── frontend/
+│   └── index.html               # SPA with 5 tabs (Alpine.js + Tailwind)
+│
+├── data/
+│   ├── redditwatch.db           # SQLite database (gitignored)
+│   └── chroma/                  # ChromaDB vector store (gitignored)
+│
+├── .env                         # Secrets (gitignored)
+├── .env.example                 # Template for secrets
+├── .gitignore
+├── project-context.md           # Full project plan
+└── DEVLOG.md                    # This file
+```
+
+---
+
+## API Reference
+
+### Health & System
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/llm/status` | GET | LLM provider availability |
+| `/api/llm/test` | POST | Test LLM with prompt |
+
+### Subreddits
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/subreddits` | GET | List monitored subreddits |
+| `/api/subreddits` | POST | Add subreddit `{"name": "SaaS"}` |
+| `/api/subreddits/{name}` | PUT | Toggle enable `{"enabled": false}` |
+| `/api/subreddits/{name}` | DELETE | Remove from monitoring |
+| `/api/subreddits/{name}/collect` | POST | Collect from one subreddit |
+| `/api/subreddits/catalog` | GET | Browse curated list |
+| `/api/subreddits/catalog/categories` | GET | List categories |
+
+### Posts
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/posts` | GET | List posts (filters: subreddit, analyzed, min_score) |
+| `/api/posts/stats` | GET | Aggregate statistics |
+| `/api/posts/{id}` | GET | Single post with comments |
+| `/api/posts/{id}` | DELETE | Delete post + related data |
+
+### Collection
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/collect` | POST | Collect from all enabled subreddits |
+| `/api/collect/status` | GET | Collection job status |
+| `/api/collect/test` | POST | Test Reddit connection |
+
+### Analysis (Phase 3+)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/analyze` | POST | Trigger LLM analysis `?limit=10&min_score=3` |
+| `/api/analyze/status` | GET | Analysis stats (posts, insights, themes, timing) |
+| `/api/analyze/themes` | GET | Aggregated themes sorted by combined score |
+| `/api/analyze/insights` | GET | List insights `?type=pain_point&theme_key=...` |
+
+### Search (Phase 5)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/search` | GET | Semantic search `?q=pricing%20issues&limit=20` |
+| `/api/search/similar/{id}` | GET | Find similar insights `?threshold=0.7` |
+| `/api/search/duplicates` | GET | Find potential duplicates `?threshold=0.9` |
+| `/api/search/stats` | GET | Index statistics (indexed count, sync status) |
+| `/api/search/reindex` | POST | Rebuild search index from database |
+
+---
+
+## Setup & Running
+
+### Prerequisites
+- Python 3.9+
+- Ollama with llama3.1:8b pulled
+- ~~Reddit API credentials~~ **NOT NEEDED ANYMORE!**
+
+### Quick Start
+```bash
+# 1. Setup
+cd RedditWatch
+python -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt
+
+# 2. Ensure Ollama is running
+ollama serve &
+ollama list  # Should show llama3.1:8b
+
+# 3. Run
+cd backend
+uvicorn app.main:app --reload --port 8000
+
+# 4. Open http://localhost:8000
+```
+
+**No Reddit API keys required!** The new collector uses public endpoints.
+
+---
+
+## Roadmap
+
+### ✅ Phase 1: Foundation
+- [x] Project structure
+- [x] Config system (YAML + env vars)
+- [x] SQLite + SQLAlchemy setup
+- [x] LLM provider abstraction (Ollama, Claude, OpenAI)
+- [x] Basic FastAPI app
+
+### ✅ Phase 2: Reddit Collection
+- [x] ~~PRAW integration~~ → HTTP-based collection (no API key!)
+- [x] Subreddit management API
+- [x] Post + comment collection
+- [x] Curated subreddit catalog (53 subreddits)
+- [x] Web UI with tabs
+
+### ✅ Phase 3: LLM Analysis
+- [x] Conversation categorizer (pain_point, solution_request, product_mention, opportunity, general)
+- [x] Pain point extractor with intensity scoring (0-100)
+- [x] Product mention analyzer with sentiment
+- [x] Opportunity detector
+- [x] Theme key extraction for grouping
+- [x] Insights API (GET /api/analyze/insights, /themes, /status)
+- [x] Analysis trigger API (POST /api/analyze)
+
+### ✅ Phase 4: Logging & Exploration UI
+- [x] **Logging**: Added `analyzed_at`, `analysis_duration_ms` to Post model
+- [x] **Analysis stats**: API returns timing metrics (avg duration, last analyzed)
+- [x] **Insights tab**: Full UI to view extracted insights
+- [x] **Themes view**: Cards showing themes sorted by combined score
+- [x] **Insight type distribution**: Visual bar chart (pain points, opportunities, etc.)
+- [x] **Drill-down**: Click theme → see related insights with quotes
+- [x] **Recent feed**: Latest insights with type badges and intensity scores
+- [x] **Filter by type**: Buttons to filter by pain_point, solution_request, etc.
+
+### ✅ Phase 5: Validation & Search
+- [x] **ChromaDB integration**: Semantic search and similarity detection
+- [x] **Search bar**: Semantic search across insights in UI
+- [x] **Search API**: `/api/search?q=...` with filters
+- [x] **Similar insights**: `/api/search/similar/{id}` finds related insights
+- [x] **Duplicate detection**: `/api/search/duplicates` finds potential duplicates
+- [x] **Auto-reindex**: Insights indexed after analysis
+- [x] **Evidence view**: Links back to source Reddit posts
+
+### 🔲 Phase 6: Export & Reports
+- [ ] **CSV export**: Bulk download of insights
+- [ ] **JSON export**: API-friendly format
+- [ ] **Markdown export**: For docs/reports
+- [ ] **Selective export**: Checkbox selection
+- [ ] **Quote cards**: Shareable formatted quotes
+
+### 🔲 Phase 6.5: Data Enrichment
+- [ ] **Nested comment fetching**: Recursively fetch reply threads (most valuable insights often buried)
+- [ ] **Conversation refresh**: Re-fetch comments for high-engagement posts periodically
+- [ ] **Engagement tracking**: Store score snapshots over time for trend analysis
+- [ ] **Upvotes in UI**: Display post scores, upvote ratios, comment engagement
+- [ ] **Weighted quotes**: Higher-scoring comments = more credible evidence
+- [ ] *Note: User karma skipped (requires separate API calls per user)*
+
+### 🔲 Phase 7: Performance & Polish
+- [ ] **Background job queue** - Analysis runs async, UI shows progress
+- [ ] **Cloud LLM toggle** - Option to use Claude/OpenAI for faster analysis
+- [ ] **Batch prompting** - Analyze multiple posts per LLM call
+- [ ] Docker Compose setup
+- [ ] Error handling improvements
+- [ ] Scheduled collection (APScheduler)
+- [ ] Rate limit handling improvements
+
+### 🔲 Phase 8: UI/UX Improvements & Graph Visualization
+- [ ] **UI polish**: Better spacing, responsive design, dark/light mode toggle
+- [ ] **Engagement trend charts**: Score/comments over time (D3.js or Chart.js)
+- [ ] **Theme popularity timeline**: When themes spike/decline
+- [ ] **Subreddit activity heatmap**: Which subreddits are most active when
+- [ ] **Theme network graph**: Nodes = themes, edges = co-occurrence
+- [ ] **Insight similarity graph**: Cluster similar insights visually (uses ChromaDB embeddings)
+- [ ] **Subreddit × Theme matrix**: Which themes appear where
+- [ ] **Product ecosystem map**: Competitive landscape from product mentions
+- [ ] Library options: D3.js, Chart.js, Cytoscape.js, or vis.js
+
+*Note: Graph views are most valuable with ChromaDB embeddings (Phase 5) enabling similarity-based edges.*
+
+---
+
+## Implementation Reasoning
+
+### Why LLM-extracted theme_key instead of free-text clustering?
+
+**Decision**: Have the LLM output a normalized `theme_key` (e.g., "pricing_confusion") during analysis.
+
+**Reasoning**:
+1. **Deterministic grouping** - Same theme_key = same group, no fuzzy matching needed
+2. **Human-readable** - Theme keys are meaningful labels, not cluster IDs
+3. **LLM does the work** - The model understands context and can normalize "pricing is confusing" and "can't understand the tiers" to the same key
+4. **Simpler MVP** - No embedding infrastructure needed initially
+5. **Controllable** - Can provide examples in prompt to guide theme naming
+
+**Tradeoff**: Less flexible than embedding-based clustering. Two genuinely similar pain points might get different keys if the LLM isn't consistent. We'll add ChromaDB in Phase 4 to catch these.
+
+### Why intensity scoring (0-100)?
+
+**Decision**: LLM assigns intensity_score based on emotional language and impact described.
+
+**Reasoning**:
+1. **Prioritization** - Not all pain points are equal. "Minor annoyance" vs "I'd pay anything to fix this"
+2. **Combined scoring** - frequency × intensity surfaces high-impact, recurring themes
+3. **PainOnSocial model** - Validated approach from a successful product in this space
+4. **Qualitative → Quantitative** - Makes fuzzy sentiment into sortable data
+
+**Scoring guide in prompt**:
+- 0-30: Mild annoyance, "would be nice"
+- 31-60: Moderate frustration, affects workflow
+- 61-80: Significant pain, actively seeking solutions
+- 81-100: Severe/urgent, "desperate", "blocking me"
+
+### Why store quotes with attribution?
+
+**Decision**: Extract verbatim quotes with author username and link to source.
+
+**Reasoning**:
+1. **Verification** - User can click through to Reddit to verify insight
+2. **Evidence** - Quotes are proof, not just LLM interpretation
+3. **Context** - Quote author's karma/history adds credibility signal
+4. **Export value** - Quotes are useful for pitch decks, landing pages, user research docs
+
+### Performance: Why is analysis slow?
+
+**Observation**: ~19 seconds per post with Ollama llama3.1:8b
+
+**Breakdown**:
+- LLM inference: ~19s (main bottleneck)
+- Reddit HTTP: ~1-2s
+- Database: <100ms
+
+**Root cause**: Local LLM inference is compute-intensive. llama3.1:8b processes ~30-50 tokens/second on typical hardware.
+
+**Improvement options for future phases**:
+
+| Approach | Speed Gain | Tradeoff |
+|----------|------------|----------|
+| Smaller model (llama3.2:3b) | 2-3x | Slightly lower quality |
+| Cloud LLM (Claude API) | 5-10x | Costs ~$0.01/post |
+| Batch prompts (5 posts/call) | 3-4x | Complex prompt engineering |
+| GPU acceleration | 2-5x | Requires CUDA/Metal setup |
+| Background queue | Perceived instant | Same actual time |
+
+**Recommended approach (Phase 7)**:
+1. Background job queue - user clicks Analyze, returns immediately
+2. Optional cloud LLM toggle for faster analysis
+3. Batch prompting for bulk operations
+
+**Model evaluation strategy**:
+1. Use large model (Claude Opus / GPT-4) to label ~100 posts as ground truth
+2. Manually verify and correct the labeled data
+3. Run smaller models (llama3.2:3b, mistral:7b, phi-3) on same posts
+4. Compare: accuracy vs ground truth, speed, cost
+5. Find optimal model for production use (best quality/speed ratio)
+
+---
+
+### Why batch analysis instead of real-time?
+
+**Decision**: Analyze posts on-demand via API call, not automatically on collection.
+
+**Reasoning**:
+1. **Cost control** - LLM calls have latency and (if using cloud) cost
+2. **User control** - User decides when to spend compute on analysis
+3. **Debugging** - Easier to troubleshoot when collection and analysis are separate
+4. **Flexibility** - Can re-analyze with different prompts without re-collecting
+
+---
+
+## Open Design Decisions
+
+### Clustering & Vector DB Approach
+
+**Problem**: How do we group similar insights into themes and deduplicate?
+
+**Options under consideration:**
+
+| Approach | Description | Tradeoffs |
+|----------|-------------|-----------|
+| **LLM-only** | Extract normalized `theme_key` during analysis, group by exact match | Simple but brittle, no semantic similarity |
+| **ChromaDB** | Store embeddings via Ollama's `nomic-embed-text`, cluster by similarity | Best UX, adds dependency |
+| **SQLite + embeddings** | Store embedding vectors as BLOBs, custom similarity code | No new DB, more code |
+| **Hybrid** | Start with LLM theme keys, add embeddings for search later | Incremental complexity |
+
+**Use cases enabled by embeddings:**
+- "Find pain points similar to 'pricing confusion'"
+- Automatic clustering of related complaints
+- Deduplication: "app crashes" ≈ "keeps crashing" ≈ "unstable app"
+- Semantic search across all collected data
+
+### Logging & Observability (Phase 4 requirement)
+
+Before building more analytics, we need better observability:
+
+**What to log**:
+- Extraction timestamp (when analysis ran)
+- Processing duration per post (LLM latency)
+- Token usage per analysis (cost tracking)
+- Success/failure rates
+- LLM provider used (for debugging quality differences)
+
+**Why this matters**:
+- Ollama on M1 Mac: ~30s per post is acceptable
+- Cloud APIs: Need to track costs
+- Quality debugging: "This insight seems wrong" → check which model generated it
+
+**Implementation options**:
+1. Add `analyzed_at`, `analysis_duration_ms` columns to Post model
+2. Create separate `AnalysisLog` table for detailed tracking
+3. Store in Insight model: `llm_latency_ms`, `token_count`
+
+---
+
+### Presentation & UX (Phase 5 planning)
+
+**Key question**: How do we present insights so they're easy to consume?
+
+**User personas**:
+1. **Founder exploring ideas** - Wants to browse pain points, find opportunities
+2. **Product manager** - Wants to validate specific hypotheses, export evidence
+3. **Marketer** - Wants quotes for landing pages, understanding of customer language
+
+**Presentation approaches to evaluate**:
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Theme-first** (group by theme_key) | Clear hierarchy, reduces noise | May miss cross-cutting insights |
+| **Pain-first** (sorted by intensity) | Surfaces urgent problems | Can be overwhelming, no context |
+| **Subreddit-first** | Good for niche research | Fragments themes across views |
+| **Timeline** (recent first) | Fresh data visible | Misses recurring patterns |
+| **Opportunity matrix** (frequency × intensity) | Data-driven prioritization | Requires enough data to be meaningful |
+
+**User priority (confirmed)**: Exploration → Validation → Export
+
+### Mode 1: Exploration (Primary)
+*Goal: Browse and discover patterns*
+
+- **Themes overview**: Cards showing top themes by combined score
+- **Visual distribution**: Chart showing insight types (pain points vs opportunities vs product mentions)
+- **Intensity heatmap**: Which themes have the most severe pain?
+- **Recent activity**: Latest insights feed
+- **Serendipity**: "Random high-intensity insight" feature
+
+### Mode 2: Validation (Secondary)
+*Goal: Test specific hypotheses*
+
+- **Search**: Full-text search across insights and quotes
+- **Filters**: By type, theme, subreddit, intensity range, date
+- **Drill-down**: Click theme → see all related insights with quotes
+- **Compare**: Side-by-side theme comparison
+- **Evidence view**: Show source posts with Reddit links
+
+### Mode 3: Export (Tertiary)
+*Goal: Get data out for other uses*
+
+- **Bulk export**: CSV, JSON, Markdown
+- **Selective export**: Checkbox to select specific insights
+- **Quote cards**: Formatted quotes for presentations
+- **Report generation**: Summary with key themes and evidence
+
+---
+
+### Data Collection Depth & Enrichment (Open Questions)
+
+**Date**: 2026-01-31
+
+**Questions raised during review**:
+1. How much historical data are we collecting?
+2. How much can we collect?
+3. Are we getting all nested comments?
+4. How can we use comments to enrich analysis?
+5. Are we updating existing conversations with newer data?
+6. Should upvotes and karma be visible in the UI?
+
+#### Current Collection Status
+
+| Aspect | Current Implementation | Limitation |
+|--------|----------------------|-------------|
+| **Posts per collection** | 25 per subreddit (configurable) | Max 100 per Reddit API call |
+| **Historical depth** | "hot" or "new" sorted posts | No deep historical backfill possible |
+| **Comments** | Top 30 per post, **top-level only** | Nested reply threads are **not** fetched |
+| **Score updates** | ✅ Posts get `score`/`num_comments` updated on re-collection | — |
+| **Comment updates** | ❌ Only fetched for NEW posts | Existing post comments never refreshed |
+| **User karma** | ❌ Not collected | Would require separate API call per user |
+
+#### Data We Collect but Don't Surface
+
+Currently stored but not prominently displayed in UI:
+- `Post.score` (upvotes)
+- `Post.upvote_ratio` (e.g., 0.92 = 92% upvoted)
+- `Comment.score` (upvotes on individual comments)
+- `Post.num_comments` (engagement signal)
+
+#### Gap: Nested Comments
+
+**Problem**: Reddit conversations often have the most valuable insights buried in reply threads. Our current collector only gets top-level comments.
+
+**Technical reason**: Reddit's comment endpoint returns a tree structure with `replies` nested inside each comment. We currently only process the first level.
+
+**Example of what we miss**:
+```
+Post: "What's the hardest part of building a SaaS?"
+├── Comment A: "Marketing" (score: 45) ← WE GET THIS
+│   ├── Reply A1: "Specifically, finding your first 10 customers" ← WE MISS THIS
+│   └── Reply A2: "I'd pay $500/month for a tool that does this" ← VALUABLE, MISSED
+├── Comment B: "Pricing" (score: 32) ← WE GET THIS
+```
+
+#### Gap: Conversation Freshness
+
+**Problem**: High-engagement posts continue getting new comments and upvotes after initial collection. We never re-fetch this data.
+
+**Impact**:
+- Miss late replies that often contain solutions/recommendations
+- Score data becomes stale (can't track engagement trends)
+- No way to identify "rising" discussions
+
+#### Options for Future Enhancement
+
+**Option 1: Nested Comment Fetching**
+```python
+# Recursively process replies
+def extract_comments(comment_data, depth=0, max_depth=3):
+    comments = [Comment(...)]
+    if depth < max_depth and 'replies' in comment_data:
+        for reply in comment_data['replies']['data']['children']:
+            comments.extend(extract_comments(reply['data'], depth+1))
+    return comments
+```
+- Pros: Captures full conversations, finds buried gold
+- Cons: More API calls, larger database, longer collection time
+
+**Option 2: Conversation Refresh**
+```python
+# Periodically re-fetch comments for high-engagement posts
+async def refresh_hot_conversations(min_score=50, max_age_days=7):
+    posts = await get_posts(min_score=min_score, age_lt=7days)
+    for post in posts:
+        await collect_comments(post.id)  # Re-fetch all comments
+```
+- Pros: Keeps data fresh, catches late insights
+- Cons: More API calls, need to handle comment deduplication
+
+**Option 3: Engagement Tracking**
+```python
+# Store score snapshots over time
+class ScoreSnapshot(Base):
+    post_id: str
+    score: int
+    num_comments: int
+    timestamp: datetime
+```
+- Pros: Enables trend analysis, "rising" detection
+- Cons: More storage, needs scheduled job
+
+**Option 4: Upvotes in UI**
+- Show `upvote_ratio` as engagement signal on posts
+- Weight quotes by comment score in theme aggregation
+- Color-code insights by source engagement level
+- Pros: Quick win, data already exists
+- Cons: Upvotes ≠ quality (but decent proxy)
+
+**Decision**: Skip user karma (requires per-user API calls). Consider implementing nested comments and UI enhancements in Phase 6.5 (Data Enrichment).
+
+---
+
+**Decision: Hybrid approach** ✅
+- **Phase 3**: LLM extracts normalized `theme_key` during analysis, group by exact match
+- **Phase 4**: Add ChromaDB + `nomic-embed-text` for semantic clustering/deduplication
+- This lets us ship analysis quickly, then enhance with embeddings
+
+Phase 3 implementation:
+```python
+# LLM outputs structured data including theme_key
+{
+    "type": "pain_point",
+    "theme_key": "pricing_confusion",  # normalized, lowercase, underscore
+    "title": "Unclear pricing tiers",
+    "intensity_score": 75,
+    "quote": "I spent 20 minutes trying to figure out..."
+}
+```
+
+Phase 4 enhancement:
+```python
+# Add embeddings for similarity
+import chromadb
+collection.add(
+    documents=[insight.description],
+    ids=[insight.id],
+    metadatas=[{"theme_key": insight.theme_key}]
+)
+# Find similar: collection.query(query_texts=["pricing issues"], n_results=10)
+
+---
+
+## Changelog
+
+### 2026-01-31: Phase 5 Complete (Semantic Search)
+- Added **ChromaDB** for vector storage and semantic search
+- Created `services/search.py` with:
+  - Insight embedding and indexing
+  - Semantic search with filters
+  - Similar insight detection
+  - Duplicate finding
+- Created `api/search.py` with endpoints:
+  - `GET /api/search?q=...` - Semantic search
+  - `GET /api/search/similar/{id}` - Find similar insights
+  - `GET /api/search/duplicates` - Find potential duplicates
+  - `POST /api/search/reindex` - Rebuild search index
+  - `GET /api/search/stats` - Index statistics
+- Added **search bar** to Insights tab in UI
+- Uses ChromaDB's built-in sentence-transformers embeddings
+- Auto-reindex after running analysis
+- Fixed ChromaDB/numpy 2.0 compatibility (requires chromadb>=0.5.0)
+
+### 2026-01-30: Phase 4 Complete (Logging & Exploration UI)
+- Added analysis timing tracking:
+  - `analyzed_at` timestamp on Post model
+  - `analysis_duration_ms` per post
+  - Stats API returns avg duration and last analyzed time
+- Built **Insights tab** in frontend with:
+  - Analysis stats cards (posts, insights, themes, avg time)
+  - Top themes list sorted by combined score (frequency × intensity)
+  - Insight type distribution bar chart
+  - Filter buttons (pain points, solution requests, opportunities, product mentions)
+  - Click theme → drill-down to related insights
+  - Quote cards with author attribution and Reddit links
+  - Intensity score badges (color-coded: green < 40 < yellow < 70 < red)
+- Analyze button triggers LLM analysis from UI
+- Analysis results show duration and extraction count
+
+### 2026-01-30: Phase 3 Complete (LLM Analysis)
+
+**Note: No UI at this point (prior to Phase 4)** - All testing done via curl/API calls. Web UI only has Dashboard, Subreddits, Posts tabs. Insights/Themes are API-only until Phase 5.
+
+- Created `services/analyzer.py` for LLM-based insight extraction
+- Implemented analysis prompts that extract:
+  - Post category (pain_point, solution_request, product_mention, opportunity, general)
+  - Theme key for grouping (e.g., "onboarding_friction", "pricing_confusion")
+  - Intensity score (0-100) based on emotional language and impact
+  - Verbatim quotes with author attribution
+  - Product mentions with sentiment analysis
+- Updated `api/analysis.py` with endpoints:
+  - `POST /api/analyze` - Trigger analysis on unanalyzed posts
+  - `GET /api/analyze/themes` - Get aggregated themes sorted by combined score
+  - `GET /api/analyze/insights` - Get individual insights with filters
+  - `GET /api/analyze/status` - Get analysis statistics
+- Added `theme_key` column to Insight model
+- Tested end-to-end: 23 posts → 80 insights extracted
+- Top extracted themes:
+  1. `onboarding_friction` (7 occurrences, combined score 41.7)
+  2. `low_quality_content` (2 occurrences, intensity 71)
+  3. `customer_retention` (2 occurrences, intensity 66)
+
+### 2026-01-30: Phase 2 Testing Complete
+- Successfully tested HTTP-based Reddit collection
+- Added r/SaaS subreddit → fetched info (548,661 subscribers)
+- Collected 23 posts and 167 comments from r/SaaS
+- All endpoints verified working:
+  - Health check ✅
+  - Reddit connection test ✅
+  - Add subreddit ✅
+  - Collect posts/comments ✅
+  - List posts with pagination ✅
+- Removed PRAW/asyncpraw from dependencies (no longer needed)
+- Updated aiosqlite to latest version (conflict was with asyncpraw)
+
+### 2026-01-30: Reddit API Pivot
+- **BREAKING**: Discovered Reddit no longer approves new API applications
+- **SOLUTION**: Switched from PRAW to direct HTTP requests
+- Tested three working alternatives:
+  1. `old.reddit.com/r/{sub}.json` - Full JSON data, no auth needed
+  2. `reddit.com/r/{sub}/.rss` - RSS feed, reliable fallback
+  3. `old.reddit.com/r/{sub}/` - HTML scraping, most resilient
+- Updated collector to use JSON endpoint as primary method
+- Removed Reddit API key requirement from setup
+- This is actually **better** - simpler setup, more resilient!
+
+### 2026-01-30: Phase 2 Complete
+- Added Reddit collector with asyncpraw
+- Created curated subreddit catalog (53 subreddits in 9 categories)
+- Built subreddit management API (CRUD + catalog browsing)
+- Built posts API with filtering and pagination
+- Updated web UI with Dashboard, Subreddits, Posts, LLM tabs
+- Tested end-to-end: health, LLM status, catalog endpoints
+
+### 2026-01-30: Phase 1 Complete
+- Set up project structure
+- Implemented config system with YAML + env var support
+- Created SQLAlchemy models for Post, Comment, Insight, Theme, Subreddit
+- Built LLM provider abstraction with Ollama, Claude, OpenAI support
+- Implemented provider factory with fallback chain
+- Basic FastAPI app with health and LLM test endpoints
+- Verified Ollama integration working (5.2s response, JSON parsing)

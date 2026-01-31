@@ -1,0 +1,329 @@
+# Curated Subreddit Catalog for RedditWatch
+# Organized by category for easy browsing
+
+startup_entrepreneurship:
+  - name: startups
+    display_name: "r/startups"
+    description: "Pair up, teknically, marketing, sales discussions for startups"
+    subscribers: 1200000
+    best_for: "Early-stage ideas, founder problems"
+
+  - name: Entrepreneur
+    display_name: "r/Entrepreneur"
+    description: "Pair pair pair for entrepreneurs and small business owners"
+    subscribers: 3500000
+    best_for: "Business models, growth tactics"
+
+  - name: SaaS
+    display_name: "r/SaaS"
+    description: "SaaS founders discussing growth, churn, pricing, and tools"
+    subscribers: 95000
+    best_for: "SaaS pain points, pricing, churn"
+
+  - name: indiehackers
+    display_name: "r/indiehackers"
+    description: "Solo founders building profitable internet businesses"
+    subscribers: 45000
+    best_for: "Bootstrapped product ideas"
+
+  - name: smallbusiness
+    display_name: "r/smallbusiness"
+    description: "Questions and answers about running a small business"
+    subscribers: 1800000
+    best_for: "SMB problems, local business"
+
+  - name: EntrepreneurRideAlong
+    display_name: "r/EntrepreneurRideAlong"
+    description: "Follow along as entrepreneurs build businesses in real-time"
+    subscribers: 180000
+    best_for: "Real-time founder journeys"
+
+tech_development:
+  - name: webdev
+    display_name: "r/webdev"
+    description: "Web development news, discussion, and help"
+    subscribers: 2100000
+    best_for: "Developer tools, frameworks"
+
+  - name: programming
+    display_name: "r/programming"
+    description: "Computer programming discussion and news"
+    subscribers: 6500000
+    best_for: "Dev workflow pain points"
+
+  - name: devops
+    display_name: "r/devops"
+    description: "DevOps, CI/CD, infrastructure automation"
+    subscribers: 320000
+    best_for: "Infrastructure, CI/CD tools"
+
+  - name: selfhosted
+    display_name: "r/selfhosted"
+    description: "Self-hosting software and services"
+    subscribers: 350000
+    best_for: "Privacy tools, open source"
+
+  - name: sysadmin
+    display_name: "r/sysadmin"
+    description: "System administration and IT infrastructure"
+    subscribers: 850000
+    best_for: "IT infrastructure problems"
+
+  - name: node
+    display_name: "r/node"
+    description: "Node.js and JavaScript server-side development"
+    subscribers: 220000
+    best_for: "JavaScript ecosystem"
+
+  - name: reactjs
+    display_name: "r/reactjs"
+    description: "React.js discussion and help"
+    subscribers: 380000
+    best_for: "Frontend tools"
+
+  - name: Python
+    display_name: "r/Python"
+    description: "Python programming language discussion"
+    subscribers: 1300000
+    best_for: "Python tools, libraries"
+
+product_design:
+  - name: ProductManagement
+    display_name: "r/ProductManagement"
+    description: "Product management discussion and resources"
+    subscribers: 95000
+    best_for: "PM tools, roadmap problems"
+
+  - name: UXDesign
+    display_name: "r/UXDesign"
+    description: "User experience design discussion"
+    subscribers: 180000
+    best_for: "Design tool pain points"
+
+  - name: userexperience
+    display_name: "r/userexperience"
+    description: "User experience professionals and enthusiasts"
+    subscribers: 220000
+    best_for: "UX research insights"
+
+  - name: web_design
+    display_name: "r/web_design"
+    description: "Web design trends, tools, and discussion"
+    subscribers: 680000
+    best_for: "Design workflow issues"
+
+marketing_growth:
+  - name: marketing
+    display_name: "r/marketing"
+    description: "Marketing strategies and discussion"
+    subscribers: 520000
+    best_for: "Marketing tool gaps"
+
+  - name: digital_marketing
+    display_name: "r/digital_marketing"
+    description: "Digital marketing strategies and tools"
+    subscribers: 180000
+    best_for: "Ads, analytics problems"
+
+  - name: SEO
+    display_name: "r/SEO"
+    description: "Search engine optimization discussion"
+    subscribers: 280000
+    best_for: "SEO tool opportunities"
+
+  - name: content_marketing
+    display_name: "r/content_marketing"
+    description: "Content marketing strategies"
+    subscribers: 85000
+    best_for: "Content tool needs"
+
+  - name: socialmedia
+    display_name: "r/socialmedia"
+    description: "Social media marketing and management"
+    subscribers: 420000
+    best_for: "Social tool pain points"
+
+  - name: PPC
+    display_name: "r/PPC"
+    description: "Pay-per-click advertising discussion"
+    subscribers: 65000
+    best_for: "Ad platform frustrations"
+
+  - name: emailmarketing
+    display_name: "r/emailmarketing"
+    description: "Email marketing strategies and tools"
+    subscribers: 45000
+    best_for: "Email tool problems"
+
+  - name: Affiliatemarketing
+    display_name: "r/Affiliatemarketing"
+    description: "Affiliate marketing discussion"
+    subscribers: 180000
+    best_for: "Affiliate tool needs"
+
+remote_productivity:
+  - name: remotework
+    display_name: "r/remotework"
+    description: "Remote work tips and discussion"
+    subscribers: 85000
+    best_for: "Remote tool gaps"
+
+  - name: digitalnomad
+    display_name: "r/digitalnomad"
+    description: "Location-independent lifestyle and work"
+    subscribers: 2800000
+    best_for: "Location-independent tools"
+
+  - name: productivity
+    display_name: "r/productivity"
+    description: "Personal and professional productivity"
+    subscribers: 1500000
+    best_for: "Productivity app ideas"
+
+  - name: WorkOnline
+    display_name: "r/WorkOnline"
+    description: "Making money online and remote work"
+    subscribers: 580000
+    best_for: "Freelance tool needs"
+
+  - name: freelance
+    display_name: "r/freelance"
+    description: "Freelancing tips and discussion"
+    subscribers: 280000
+    best_for: "Freelancer pain points"
+
+finance_business:
+  - name: accounting
+    display_name: "r/accounting"
+    description: "Accounting professionals discussion"
+    subscribers: 380000
+    best_for: "Accounting software gaps"
+
+  - name: Bookkeeping
+    display_name: "r/Bookkeeping"
+    description: "Bookkeeping questions and discussion"
+    subscribers: 65000
+    best_for: "Financial tool needs"
+
+  - name: personalfinance
+    display_name: "r/personalfinance"
+    description: "Personal finance discussion and advice"
+    subscribers: 19000000
+    best_for: "Fintech opportunities"
+
+  - name: fatFIRE
+    display_name: "r/fatFIRE"
+    description: "High-income FIRE community"
+    subscribers: 520000
+    best_for: "Premium tool market"
+
+  - name: financialindependence
+    display_name: "r/financialindependence"
+    description: "Financial independence and early retirement"
+    subscribers: 2100000
+    best_for: "Investment tool needs"
+
+ecommerce:
+  - name: ecommerce
+    display_name: "r/ecommerce"
+    description: "E-commerce business discussion"
+    subscribers: 180000
+    best_for: "E-comm tool pain points"
+
+  - name: shopify
+    display_name: "r/shopify"
+    description: "Shopify merchants and developers"
+    subscribers: 220000
+    best_for: "Shopify app opportunities"
+
+  - name: FulfillmentByAmazon
+    display_name: "r/FulfillmentByAmazon"
+    description: "Amazon FBA sellers community"
+    subscribers: 120000
+    best_for: "Amazon seller tools"
+
+  - name: dropship
+    display_name: "r/dropship"
+    description: "Dropshipping business discussion"
+    subscribers: 180000
+    best_for: "Dropship tool needs"
+
+  - name: Etsy
+    display_name: "r/Etsy"
+    description: "Etsy sellers and buyers"
+    subscribers: 280000
+    best_for: "Etsy seller problems"
+
+ai_automation:
+  - name: artificial
+    display_name: "r/artificial"
+    description: "Artificial intelligence discussion"
+    subscribers: 950000
+    best_for: "AI tool opportunities"
+
+  - name: MachineLearning
+    display_name: "r/MachineLearning"
+    description: "Machine learning research and practice"
+    subscribers: 2800000
+    best_for: "ML tooling gaps"
+
+  - name: ChatGPT
+    display_name: "r/ChatGPT"
+    description: "ChatGPT users and enthusiasts"
+    subscribers: 5200000
+    best_for: "AI app ideas"
+
+  - name: LocalLLaMA
+    display_name: "r/LocalLLaMA"
+    description: "Running LLMs locally"
+    subscribers: 180000
+    best_for: "Local AI tool needs"
+
+  - name: automation
+    display_name: "r/automation"
+    description: "Automation tools and workflows"
+    subscribers: 85000
+    best_for: "Automation tool gaps"
+
+industry_verticals:
+  - name: realtors
+    display_name: "r/realtors"
+    description: "Real estate agents discussion"
+    subscribers: 85000
+    best_for: "Real estate tech"
+
+  - name: LawFirm
+    display_name: "r/LawFirm"
+    description: "Law firm management and practice"
+    subscribers: 35000
+    best_for: "Legal tech opportunities"
+
+  - name: dentistry
+    display_name: "r/dentistry"
+    description: "Dental professionals discussion"
+    subscribers: 45000
+    best_for: "Dental practice software"
+
+  - name: pharmacy
+    display_name: "r/pharmacy"
+    description: "Pharmacists and pharmacy discussion"
+    subscribers: 85000
+    best_for: "Healthcare tech"
+
+  - name: restaurateur
+    display_name: "r/restaurateur"
+    description: "Restaurant owners and managers"
+    subscribers: 25000
+    best_for: "Restaurant tech"
+
+  - name: Construction
+    display_name: "r/Construction"
+    description: "Construction industry discussion"
+    subscribers: 180000
+    best_for: "Construction software"
+
+  - name: HVAC
+    display_name: "r/HVAC"
+    description: "HVAC professionals community"
+    subscribers: 120000
+    best_for: "Trade business software"

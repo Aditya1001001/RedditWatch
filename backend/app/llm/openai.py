@@ -1,0 +1,104 @@
+"""OpenAI LLM provider."""
+
+import os
+import time
+from typing import Optional
+
+import httpx
+
+from app.config import Config
+from app.llm.base import BaseLLMProvider, LLMProviderError, LLMResponse
+
+
+class OpenAIProvider(BaseLLMProvider):
+    """
+    OpenAI API provider.
+
+    Requires OPENAI_API_KEY environment variable.
+    """
+
+    API_URL = "https://api.openai.com/v1/chat/completions"
+
+    def __init__(self, config: Config):
+        self.api_key = os.getenv("OPENAI_API_KEY", "")
+        self.model = config.llm.openai.model
+        self.max_tokens = config.llm.openai.max_tokens
+
+    @property
+    def name(self) -> str:
+        return "openai"
+
+    @property
+    def model_name(self) -> str:
+        return self.model
+
+    async def is_available(self) -> bool:
+        """Check if API key is configured."""
+        return bool(self.api_key and self.api_key.startswith("sk-"))
+
+    async def generate(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 2048,
+    ) -> LLMResponse:
+        """Generate a response using OpenAI API."""
+        if not await self.is_available():
+            raise LLMProviderError("OpenAI API key not configured")
+
+        start_time = time.time()
+
+        # Build messages
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": min(max_tokens, self.max_tokens),
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    self.API_URL,
+                    json=payload,
+                    headers=headers,
+                )
+
+                if response.status_code != 200:
+                    error_data = response.json() if response.content else {}
+                    error_msg = error_data.get("error", {}).get("message", response.text)
+                    raise LLMProviderError(f"OpenAI API error ({response.status_code}): {error_msg}")
+
+                data = response.json()
+                latency_ms = int((time.time() - start_time) * 1000)
+
+                # Extract content
+                content = data["choices"][0]["message"]["content"]
+
+                # Calculate tokens used
+                usage = data.get("usage", {})
+                tokens_used = usage.get("total_tokens", 0)
+
+                return LLMResponse(
+                    content=content,
+                    model=self.model,
+                    provider=self.name,
+                    tokens_used=tokens_used,
+                    latency_ms=latency_ms,
+                )
+
+        except httpx.TimeoutException:
+            raise LLMProviderError("OpenAI API request timed out")
+        except httpx.RequestError as e:
+            raise LLMProviderError(f"OpenAI API request failed: {e}")
