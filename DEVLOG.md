@@ -12,6 +12,55 @@
 
 ## Changelog
 
+### 2026-02-13: Large-Scale Collection (Paginated Multi-Sort + Scheduler)
+
+Scaled collection from ~25 posts/subreddit to 1,000+ via paginated multi-sort scraping, concurrent collection, and scheduled jobs.
+
+**Sprint 1: Paginated Multi-Sort Collection + Seed Mode**
+
+- **Paginated collection** (`collectors/reddit.py`):
+  - New `collect_posts_paginated()` follows Reddit's `after` cursor across multiple pages (default 10 pages, up to 1,000 posts per sort/time combo)
+  - Adaptive rate limiting: 1s base delay with exponential backoff on 429 errors
+  - Configurable `time_filter` parameter (was hardcoded to `"week"`)
+- **Deep collection** (`collectors/reddit.py`):
+  - New `collect_posts_deep()` runs multiple sort/time combos (`hot`, `new`, `top/week`, `top/month`, `top/year`) and deduplicates results by post ID
+  - Expected yield: ~1,000-1,500 unique posts per subreddit
+- **Concurrent collection** (`services/collector.py`):
+  - Replaced sequential `for subreddit in subreddits` with `asyncio.Semaphore`-bounded concurrency (default 3 concurrent subreddits)
+  - New `collect_subreddit_deep()` for multi-sort collection with deduplication
+  - New `seed_collection()` for one-time deep scrape of all monitored subreddits
+  - **Selective comment fetching**: Only fetches comments for posts above `comment_min_score` threshold (default 5), avoiding hours of low-value comment collection
+- **Seed endpoint** (`api/collect.py`):
+  - `POST /api/collect/seed` triggers deep scrape of all monitored subreddits, returns task_id
+  - Added `mode` query param to `POST /api/collect` (`regular` vs `deep`)
+- **Config** (`config.py`, `config.yaml`):
+  - `sort_modes`: configurable list of sort/time combos for deep collection
+  - `max_pages_per_sort`: max pagination depth (default 10)
+  - `deep_collect_enabled`, `concurrent_subreddits`, `rate_limit_delay`, `comment_min_score`
+  - `auto_schedule`: toggle for scheduler (Sprint 2)
+
+**Sprint 2: Scheduled Collection**
+
+- **Scheduler service** (`services/scheduler.py`):
+  - APScheduler `AsyncIOScheduler` with three jobs:
+    - Regular collection every 30 min (hot + new, single page)
+    - Deep collection daily at 3 AM (all sort/time combos with pagination)
+    - Comment refresh every 2 hours (re-fetch comments for high-engagement posts)
+  - Config toggle: `collection.auto_schedule`
+- **Scheduler API** (`api/scheduler.py`):
+  - `GET /api/scheduler/status` — all jobs, next run times, last results
+  - `POST /api/scheduler/start` / `POST /api/scheduler/stop`
+  - `POST /api/scheduler/trigger/{job_id}` — manually trigger a specific job
+- **Lifespan integration** (`main.py`): Scheduler starts/stops with the app when `auto_schedule` is enabled
+- **Collection status** (`api/collect.py`): `GET /api/collect/status` now shows real scheduler state
+
+**Expected data volume**:
+| Timeframe | Posts | How |
+|-----------|-------|-----|
+| After seed (Day 1) | ~50,000 | 50 subs x ~1,000 unique posts from 5 sort combos |
+| End of Week 1 | ~70,000 | Seed + incremental (48 runs x ~400 new/run) |
+| End of Month 1 | ~150,000+ | Continuous accumulation, deduped by Reddit ID |
+
 ### 2026-02-13: Phases 0-4 Implementation Complete
 
 Implemented the full roadmap from codebase review through open-source release:
@@ -482,14 +531,16 @@ RedditWatch/
 │   │   │   └── reddit.py        # HTTP-based collection (JSON/RSS/HTML)
 │   │   │
 │   │   ├── services/
-│   │   │   ├── collector.py     # Collection orchestration
+│   │   │   ├── collector.py     # Collection orchestration (concurrent, seed mode)
+│   │   │   ├── scheduler.py     # APScheduler for automated collection
 │   │   │   ├── analyzer.py      # LLM-based insight extraction
 │   │   │   └── search.py        # ChromaDB semantic search
 │   │   │
 │   │   ├── api/                 # FastAPI route handlers
 │   │   │   ├── posts.py
 │   │   │   ├── subreddits.py
-│   │   │   ├── collect.py
+│   │   │   ├── collect.py       # Collection + seed endpoints
+│   │   │   ├── scheduler.py     # Scheduler management endpoints
 │   │   │   ├── analysis.py      # Trigger analysis, get themes/insights
 │   │   │   ├── search.py        # Semantic search, similar, duplicates
 │   │   │   ├── llm.py
@@ -548,11 +599,20 @@ RedditWatch/
 ### Collection
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/collect` | POST | Collect from all enabled subreddits |
-| `/api/collect/status` | GET | Collection job status |
+| `/api/collect` | POST | Collect from all enabled subreddits `?mode=regular|deep` |
+| `/api/collect/seed` | POST | Deep scrape all subreddits (one-time initial population) |
+| `/api/collect/status` | GET | Collection job status (includes scheduler state) |
 | `/api/collect/test` | POST | Test Reddit connection |
 | `/api/collect/refresh` | POST | Refresh comments for hot posts `?min_score=10&limit=10` |
 | `/api/collect/refresh/{post_id}` | POST | Refresh comments for specific post |
+
+### Scheduler
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/scheduler/status` | GET | Show all jobs, next run times, last results |
+| `/api/scheduler/start` | POST | Start the scheduler |
+| `/api/scheduler/stop` | POST | Stop the scheduler |
+| `/api/scheduler/trigger/{job_id}` | POST | Manually trigger a specific job |
 
 ### Analysis (Phase 3+)
 | Endpoint | Method | Description |
@@ -674,15 +734,22 @@ uvicorn app.main:app --reload --port 8000
 - [x] *Note: User karma skipped (requires separate API calls per user)*
 - [x] *Note: Score snapshots for trend analysis deferred to Phase 8 (graphs)*
 
-### 🔲 Phase 7: Performance & Polish (Deferred)
-*Note: Deferred to focus on UI/UX first. Will revisit after Phase 8.*
+### ✅ Phase 7a: Large-Scale Collection
+- [x] **Paginated collection** - Follow Reddit `after` cursor across multiple pages (up to 1,000 posts/sort)
+- [x] **Multi-sort deep collection** - Collect from hot, new, top/week, top/month, top/year and deduplicate
+- [x] **Concurrent collection** - asyncio.Semaphore-bounded parallel subreddit collection (3 concurrent)
+- [x] **Seed mode** - One-time deep scrape endpoint (`POST /api/collect/seed`) for initial data population
+- [x] **Selective comment fetching** - Only fetch comments for posts above `comment_min_score` threshold
+- [x] **Scheduled collection** - APScheduler with regular (30min), deep (daily 3AM), and comment refresh (2hr) jobs
+- [x] **Scheduler API** - Start/stop/status/trigger endpoints under `/api/scheduler`
+- [x] **Rate limit hardening** - Exponential backoff on 429 errors with configurable base delay
+
+### 🔲 Phase 7b: Performance & Polish (Deferred)
 - [ ] **Background job queue** - Analysis runs async, UI shows progress
 - [ ] **Cloud LLM toggle** - Option to use Claude/OpenAI for faster analysis
 - [ ] **Batch prompting** - Analyze multiple posts per LLM call
 - [ ] Docker Compose setup
 - [ ] Error handling improvements
-- [ ] Scheduled collection (APScheduler)
-- [ ] Rate limit handling improvements
 
 ### ✅ Phase 8: Analytics & Visualization
 - [x] **Chart.js integration**: Added Chart.js 4.4.1 CDN for visualizations

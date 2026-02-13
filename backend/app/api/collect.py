@@ -1,6 +1,8 @@
 """Collection API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from enum import Enum
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -12,6 +14,11 @@ from app.services.tasks import get_task_tracker
 router = APIRouter()
 
 
+class CollectionMode(str, Enum):
+    REGULAR = "regular"
+    DEEP = "deep"
+
+
 class CollectionStatus(BaseModel):
     """Collection status response."""
     status: str
@@ -20,6 +27,8 @@ class CollectionStatus(BaseModel):
     task_id: Optional[str] = None
     progress: int = 0
     total: int = 0
+    scheduler_running: bool = False
+    scheduler_jobs: list = []
 
 
 class CollectionResult(BaseModel):
@@ -41,25 +50,51 @@ class RefreshResult(BaseModel):
 
 @router.get("/status")
 async def get_collection_status():
-    """Get the current collection status."""
+    """Get the current collection status, including scheduler state."""
     tracker = get_task_tracker()
     active = tracker.get_active_task("collection")
     if active:
-        return active.to_dict()
+        result = active.to_dict()
+        result.update(_get_scheduler_info())
+        return result
 
     # Check most recent completed task
     tasks = tracker.get_tasks_by_type("collection")
     if tasks:
         latest = max(tasks, key=lambda t: t.created_at)
-        return latest.to_dict()
+        result = latest.to_dict()
+        result.update(_get_scheduler_info())
+        return result
 
-    return CollectionStatus(status="idle").model_dump()
+    status = CollectionStatus(status="idle", **_get_scheduler_info())
+    return status.model_dump()
+
+
+def _get_scheduler_info() -> dict:
+    """Get scheduler status info for inclusion in collection status."""
+    try:
+        from app.services.scheduler import get_scheduler
+        scheduler = get_scheduler()
+        return {
+            "scheduler_running": scheduler.running,
+            "scheduler_jobs": scheduler.get_job_summaries(),
+        }
+    except Exception:
+        return {"scheduler_running": False, "scheduler_jobs": []}
 
 
 @router.post("")
-async def trigger_collection():
+async def trigger_collection(
+    mode: CollectionMode = Query(
+        default=CollectionMode.REGULAR,
+        description="Collection mode: 'regular' (single sort/page) or 'deep' (multi-sort with pagination)",
+    ),
+):
     """
     Trigger collection from all enabled subreddits.
+
+    Args:
+        mode: 'regular' for single sort/page, 'deep' for multi-sort with pagination
 
     Returns immediately with a task_id. Poll /status or /task/{task_id}
     for progress.
@@ -75,9 +110,40 @@ async def trigger_collection():
     collector = get_collector()
 
     async def _run_collection():
-        return await collector.collect_all()
+        return await collector.collect_all(deep=(mode == CollectionMode.DEEP))
 
     tracker.run_background(task_info, _run_collection())
+    return task_info.to_dict()
+
+
+@router.post("/seed")
+async def trigger_seed_collection():
+    """
+    Trigger a one-time deep scrape of all monitored subreddits.
+
+    Uses all configured sort modes with pagination to build the initial dataset.
+    This can take a long time (~3.5 hours for 50 subreddits).
+
+    Returns immediately with a task_id. Poll /status or /task/{task_id}
+    for progress.
+    """
+    tracker = get_task_tracker()
+
+    # Don't start if any collection is already running
+    active = tracker.get_active_task("collection")
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A collection task is already running (task_id: {active.task_id})",
+        )
+
+    task_info = tracker.create_task("collection")
+    collector = get_collector()
+
+    async def _run_seed():
+        return await collector.seed_collection()
+
+    tracker.run_background(task_info, _run_seed())
     return task_info.to_dict()
 
 

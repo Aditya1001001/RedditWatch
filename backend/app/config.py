@@ -49,6 +49,13 @@ class LLMConfig(BaseModel):
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
 
 
+class SortModeConfig(BaseModel):
+    """A single sort mode configuration."""
+
+    sort: str = "hot"
+    t: Optional[str] = None  # Time filter for "top" sort (hour, day, week, month, year, all)
+
+
 class CollectionConfig(BaseModel):
     """Reddit collection settings."""
 
@@ -58,6 +65,23 @@ class CollectionConfig(BaseModel):
     max_comments_per_post: int = 50
     max_comment_depth: int = 5  # Max depth for nested replies (0 = top-level only)
     sort_by: str = "hot"
+
+    # Multi-sort / deep collection
+    sort_modes: list[dict] = Field(default_factory=lambda: [
+        {"sort": "hot"},
+        {"sort": "new"},
+        {"sort": "top", "t": "week"},
+        {"sort": "top", "t": "month"},
+        {"sort": "top", "t": "year"},
+    ])
+    max_pages_per_sort: int = 10
+    deep_collect_enabled: bool = False
+    concurrent_subreddits: int = 3
+    rate_limit_delay: float = 1.0  # Base delay between requests (seconds)
+    comment_min_score: int = 5  # Only fetch comments for posts above this score
+
+    # Scheduling
+    auto_schedule: bool = False
 
 
 class AnalysisConfig(BaseModel):

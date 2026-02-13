@@ -114,14 +114,16 @@ class RedditCollector:
         subreddit_name: str,
         limit: int = 25,
         sort: str = "hot",
+        time_filter: Optional[str] = None,
     ) -> list[Post]:
         """
-        Collect posts from a subreddit using JSON endpoint.
+        Collect posts from a subreddit using JSON endpoint (single page).
 
         Args:
             subreddit_name: Name of subreddit (without r/)
             limit: Number of posts to fetch (max 100)
             sort: Sort method (hot, new, top, rising)
+            time_filter: Time filter for "top" sort (hour, day, week, month, year, all)
 
         Returns:
             List of Post model instances
@@ -130,7 +132,7 @@ class RedditCollector:
 
         try:
             # Try JSON endpoint first
-            posts = await self._collect_posts_json(subreddit_name, limit, sort)
+            posts = await self._collect_posts_json(subreddit_name, limit, sort, time_filter)
 
             if not posts:
                 # Fall back to RSS if JSON fails
@@ -142,13 +144,40 @@ class RedditCollector:
 
         return posts
 
+    def _parse_post(self, post_data: dict, subreddit_name: str) -> Optional[Post]:
+        """Parse a single post from Reddit JSON data. Returns None if post should be skipped."""
+        # Skip stickied posts (usually mod announcements)
+        if post_data.get("stickied", False):
+            return None
+
+        post_id = post_data.get("id", "")
+        if not post_id:
+            return None
+
+        return Post(
+            id=post_id,
+            subreddit=subreddit_name.lower(),
+            title=post_data.get("title", ""),
+            body=post_data.get("selftext") if post_data.get("is_self") else None,
+            author=post_data.get("author", "[deleted]"),
+            score=post_data.get("score", 0),
+            upvote_ratio=post_data.get("upvote_ratio"),
+            num_comments=post_data.get("num_comments", 0),
+            permalink=post_data.get("permalink", ""),
+            url=post_data.get("url") if not post_data.get("is_self") else None,
+            created_utc=datetime.fromtimestamp(
+                post_data.get("created_utc", 0), tz=timezone.utc
+            ),
+        )
+
     async def _collect_posts_json(
         self,
         subreddit_name: str,
         limit: int,
         sort: str,
+        time_filter: Optional[str] = None,
     ) -> list[Post]:
-        """Collect posts using JSON endpoint."""
+        """Collect posts using JSON endpoint (single page)."""
         posts = []
         client = await self._get_client()
 
@@ -158,7 +187,7 @@ class RedditCollector:
 
         params = {"limit": min(limit, 100)}
         if sort == "top":
-            params["t"] = "week"  # top posts from past week
+            params["t"] = time_filter or "week"
 
         try:
             response = await client.get(url, params=params, headers=self._get_headers())
@@ -177,30 +206,9 @@ class RedditCollector:
             for item in children:
                 if item.get("kind") != "t3":  # t3 = post
                     continue
-
-                post_data = item.get("data", {})
-
-                # Skip stickied posts (usually mod announcements)
-                if post_data.get("stickied", False):
-                    continue
-
-                # Extract post fields
-                post = Post(
-                    id=post_data.get("id", ""),
-                    subreddit=subreddit_name.lower(),
-                    title=post_data.get("title", ""),
-                    body=post_data.get("selftext") if post_data.get("is_self") else None,
-                    author=post_data.get("author", "[deleted]"),
-                    score=post_data.get("score", 0),
-                    upvote_ratio=post_data.get("upvote_ratio"),
-                    num_comments=post_data.get("num_comments", 0),
-                    permalink=post_data.get("permalink", ""),
-                    url=post_data.get("url") if not post_data.get("is_self") else None,
-                    created_utc=datetime.fromtimestamp(
-                        post_data.get("created_utc", 0), tz=timezone.utc
-                    ),
-                )
-                posts.append(post)
+                post = self._parse_post(item.get("data", {}), subreddit_name)
+                if post:
+                    posts.append(post)
 
             logger.info(f"Collected {len(posts)} posts from r/{subreddit_name} (JSON)")
 
@@ -208,6 +216,172 @@ class RedditCollector:
             logger.error(f"JSON collection failed for r/{subreddit_name}: {e}")
 
         return posts
+
+    async def collect_posts_paginated(
+        self,
+        subreddit_name: str,
+        sort: str = "hot",
+        time_filter: Optional[str] = None,
+        max_pages: int = 10,
+        per_page: int = 100,
+        rate_limit_delay: float = 1.0,
+    ) -> list[Post]:
+        """
+        Collect posts with pagination, following Reddit's `after` cursor.
+
+        Args:
+            subreddit_name: Name of subreddit (without r/)
+            sort: Sort method (hot, new, top, rising)
+            time_filter: Time filter for "top" sort
+            max_pages: Maximum number of pages to fetch
+            per_page: Posts per page (max 100)
+            rate_limit_delay: Base delay between requests (seconds)
+
+        Returns:
+            List of Post model instances (up to max_pages * per_page)
+        """
+        all_posts = []
+        after_cursor = None
+        client = await self._get_client()
+        delay = rate_limit_delay
+
+        sort_path = sort if sort in ["hot", "new", "top", "rising"] else "hot"
+        url = f"{self.base_url}/r/{subreddit_name}/{sort_path}.json"
+
+        for page in range(max_pages):
+            params = {"limit": min(per_page, 100)}
+            if sort == "top" and time_filter:
+                params["t"] = time_filter
+            if after_cursor:
+                params["after"] = after_cursor
+
+            try:
+                if page > 0:
+                    await asyncio.sleep(delay)
+
+                response = await client.get(url, params=params, headers=self._get_headers())
+
+                if response.status_code == 429:
+                    logger.warning(
+                        f"Rate limited on r/{subreddit_name} page {page + 1}, "
+                        f"backing off {delay * 2:.1f}s"
+                    )
+                    delay = min(delay * 2, 30.0)  # Exponential backoff, cap at 30s
+                    await asyncio.sleep(delay)
+                    # Retry this page once
+                    response = await client.get(url, params=params, headers=self._get_headers())
+                    if response.status_code != 200:
+                        logger.error(f"Still rate limited after backoff on r/{subreddit_name}")
+                        break
+
+                if response.status_code != 200:
+                    logger.error(
+                        f"HTTP {response.status_code} for r/{subreddit_name} page {page + 1}"
+                    )
+                    break
+
+                data = response.json()
+                listing = data.get("data", {})
+                children = listing.get("children", [])
+                after_cursor = listing.get("after")
+
+                page_posts = []
+                for item in children:
+                    if item.get("kind") != "t3":
+                        continue
+                    post = self._parse_post(item.get("data", {}), subreddit_name)
+                    if post:
+                        page_posts.append(post)
+
+                all_posts.extend(page_posts)
+
+                # No more pages
+                if not after_cursor or not page_posts:
+                    break
+
+                # Reset delay on success
+                delay = rate_limit_delay
+
+            except Exception as e:
+                logger.error(
+                    f"Pagination failed for r/{subreddit_name} page {page + 1}: {e}"
+                )
+                break
+
+        logger.info(
+            f"Paginated collection: {len(all_posts)} posts from "
+            f"r/{subreddit_name}/{sort_path} ({page + 1} pages)"
+        )
+        return all_posts
+
+    async def collect_posts_deep(
+        self,
+        subreddit_name: str,
+        sort_configs: Optional[list[dict]] = None,
+        max_pages: int = 10,
+        per_page: int = 100,
+        rate_limit_delay: float = 1.0,
+    ) -> list[Post]:
+        """
+        Collect posts using multiple sort/time combos, deduplicated by post ID.
+
+        Args:
+            subreddit_name: Name of subreddit (without r/)
+            sort_configs: List of dicts with 'sort' and optional 't' keys.
+                Defaults to hot, new, top/week, top/month, top/year.
+            max_pages: Max pages per sort/time combo
+            per_page: Posts per page
+            rate_limit_delay: Base delay between requests
+
+        Returns:
+            Deduplicated list of Post model instances
+        """
+        if sort_configs is None:
+            sort_configs = [
+                {"sort": "hot"},
+                {"sort": "new"},
+                {"sort": "top", "t": "week"},
+                {"sort": "top", "t": "month"},
+                {"sort": "top", "t": "year"},
+            ]
+
+        seen_ids: set[str] = set()
+        unique_posts: list[Post] = []
+
+        for config in sort_configs:
+            sort_mode = config.get("sort", "hot")
+            time_filter = config.get("t")
+
+            posts = await self.collect_posts_paginated(
+                subreddit_name,
+                sort=sort_mode,
+                time_filter=time_filter,
+                max_pages=max_pages,
+                per_page=per_page,
+                rate_limit_delay=rate_limit_delay,
+            )
+
+            new_count = 0
+            for post in posts:
+                if post.id not in seen_ids:
+                    seen_ids.add(post.id)
+                    unique_posts.append(post)
+                    new_count += 1
+
+            label = f"{sort_mode}/{time_filter}" if time_filter else sort_mode
+            logger.info(
+                f"Deep collect r/{subreddit_name} [{label}]: "
+                f"{len(posts)} total, {new_count} new unique"
+            )
+
+            # Small delay between sort modes
+            await asyncio.sleep(rate_limit_delay)
+
+        logger.info(
+            f"Deep collection complete for r/{subreddit_name}: "
+            f"{len(unique_posts)} unique posts from {len(sort_configs)} sort modes"
+        )
+        return unique_posts
 
     async def _collect_posts_rss(
         self,
@@ -466,9 +640,11 @@ class RedditCollector:
         subreddit_name: str,
         limit: int = 25,
         sort: str = "hot",
+        time_filter: Optional[str] = None,
         include_comments: bool = True,
         max_comments_per_post: int = 30,
         delay_seconds: float = 2.0,
+        comment_min_score: int = 0,
     ) -> tuple[list[Post], list[Comment]]:
         """
         Collect posts and comments with rate limit protection.
@@ -477,9 +653,11 @@ class RedditCollector:
             subreddit_name: Name of subreddit
             limit: Number of posts to fetch
             sort: Sort method
+            time_filter: Time filter for "top" sort
             include_comments: Whether to fetch comments
             max_comments_per_post: Max comments per post
             delay_seconds: Delay between requests
+            comment_min_score: Only fetch comments for posts above this score
 
         Returns:
             Tuple of (posts, comments)
@@ -487,11 +665,13 @@ class RedditCollector:
         all_comments = []
 
         # Collect posts
-        posts = await self.collect_posts(subreddit_name, limit, sort)
+        posts = await self.collect_posts(subreddit_name, limit, sort, time_filter)
 
         if include_comments and posts:
-            # Collect comments for each post with delay
+            # Collect comments for each post with delay (only high-scoring posts)
             for post in posts:
+                if post.score < comment_min_score:
+                    continue
                 await asyncio.sleep(delay_seconds)
                 comments = await self.collect_comments(
                     post.id, subreddit_name, max_comments_per_post

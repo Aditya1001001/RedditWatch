@@ -13,6 +13,7 @@ from app.api import api_router
 from app.config import get_config
 from app.database import init_db
 from app.services.collector import shutdown_collector
+from app.services.scheduler import get_scheduler, shutdown_scheduler
 
 # Configure logging
 logging.basicConfig(
@@ -36,10 +37,17 @@ async def lifespan(app: FastAPI):
     config = get_config()
     logger.info(f"LLM provider: {config.llm.provider}")
 
+    # Start scheduler if auto_schedule is enabled
+    if config.collection.auto_schedule:
+        scheduler = get_scheduler()
+        scheduler.start()
+        logger.info("Collection scheduler started (auto_schedule=true)")
+
     yield
 
     # Shutdown
     logger.info("Shutting down RedditWatch...")
+    await shutdown_scheduler()
     await shutdown_collector()
     logger.info("Cleanup complete")
 

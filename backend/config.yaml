@@ -43,6 +43,25 @@ collection:
   max_comments_per_post: 30
   sort_by: "hot"  # hot, new, top, rising
 
+  # Multi-sort / deep collection settings
+  sort_modes:
+    - sort: "hot"
+    - sort: "new"
+    - sort: "top"
+      t: "week"
+    - sort: "top"
+      t: "month"
+    - sort: "top"
+      t: "year"
+  max_pages_per_sort: 10
+  deep_collect_enabled: false
+  concurrent_subreddits: 3
+  rate_limit_delay: 1.0  # Base delay between requests (seconds)
+  comment_min_score: 5   # Only fetch comments for posts above this score
+
+  # Scheduling
+  auto_schedule: false
+
 # Analysis settings
 analysis:
   auto_analyze: true

@@ -1,5 +1,6 @@
 """Collection orchestration service."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -149,14 +150,15 @@ class CollectorService:
         result = await session.execute(query)
         return list(result.scalars().all())
 
-    async def collect_subreddit(
+    async def _save_posts_to_db(
         self,
         session: AsyncSession,
         subreddit_name: str,
+        posts: list[Post],
         include_comments: bool = True,
     ) -> dict:
         """
-        Collect posts (and optionally comments) from a subreddit.
+        Save a list of posts to the database, deduplicating and optionally fetching comments.
 
         Returns collection statistics.
         """
@@ -167,34 +169,25 @@ class CollectorService:
             "comments_collected": 0,
         }
 
-        # Collect posts
-        posts = await self.reddit.collect_posts(
-            subreddit_name,
-            limit=self.config.collection.posts_per_subreddit,
-            sort=self.config.collection.sort_by,
-        )
-
-        # If no posts returned, likely rate-limited - don't update last_collected
-        if not posts:
-            logger.warning(f"No posts returned for r/{subreddit_name} - possible rate limit")
-            return stats
+        comment_min_score = self.config.collection.comment_min_score
 
         for post in posts:
-            # Check if post already exists
             existing = await session.get(Post, post.id)
             if existing:
-                # Update score and comment count
                 existing.score = post.score
                 existing.num_comments = post.num_comments
                 stats["posts_collected"] += 1
             else:
-                # New post
                 session.add(post)
                 stats["posts_collected"] += 1
                 stats["posts_new"] += 1
 
-                # Collect comments for new posts (including nested replies)
-                if include_comments and self.config.collection.include_comments:
+                # Only fetch comments for posts above the min score threshold
+                if (
+                    include_comments
+                    and self.config.collection.include_comments
+                    and post.score >= comment_min_score
+                ):
                     comments = await self.reddit.collect_comments(
                         post.id,
                         subreddit_name,
@@ -208,24 +201,94 @@ class CollectorService:
                             session.add(comment)
                             stats["comments_collected"] += 1
 
-        # Only update last_collected if we actually got posts
+        # Update subreddit metadata
         subreddit = await session.get(MonitoredSubreddit, subreddit_name)
         if subreddit:
             subreddit.last_collected = datetime.now(timezone.utc)
             subreddit.post_count += stats["posts_new"]
 
         await session.flush()
+        return stats
+
+    async def collect_subreddit(
+        self,
+        session: AsyncSession,
+        subreddit_name: str,
+        include_comments: bool = True,
+    ) -> dict:
+        """
+        Collect posts (and optionally comments) from a subreddit (single sort, single page).
+
+        Returns collection statistics.
+        """
+        posts = await self.reddit.collect_posts(
+            subreddit_name,
+            limit=self.config.collection.posts_per_subreddit,
+            sort=self.config.collection.sort_by,
+        )
+
+        if not posts:
+            logger.warning(f"No posts returned for r/{subreddit_name} - possible rate limit")
+            return {
+                "subreddit": subreddit_name,
+                "posts_collected": 0,
+                "posts_new": 0,
+                "comments_collected": 0,
+            }
+
+        stats = await self._save_posts_to_db(
+            session, subreddit_name, posts, include_comments
+        )
 
         logger.info(
             f"Collected from r/{subreddit_name}: "
             f"{stats['posts_new']} new posts, {stats['comments_collected']} comments"
         )
-
         return stats
 
-    async def collect_all(self) -> dict:
+    async def collect_subreddit_deep(
+        self,
+        session: AsyncSession,
+        subreddit_name: str,
+        include_comments: bool = True,
+    ) -> dict:
         """
-        Collect from all enabled subreddits.
+        Deep collect from a subreddit using multiple sort/time combos with pagination.
+
+        Returns collection statistics.
+        """
+        posts = await self.reddit.collect_posts_deep(
+            subreddit_name,
+            sort_configs=self.config.collection.sort_modes,
+            max_pages=self.config.collection.max_pages_per_sort,
+            rate_limit_delay=self.config.collection.rate_limit_delay,
+        )
+
+        if not posts:
+            logger.warning(f"No posts returned for deep collect r/{subreddit_name}")
+            return {
+                "subreddit": subreddit_name,
+                "posts_collected": 0,
+                "posts_new": 0,
+                "comments_collected": 0,
+            }
+
+        stats = await self._save_posts_to_db(
+            session, subreddit_name, posts, include_comments
+        )
+
+        logger.info(
+            f"Deep collected from r/{subreddit_name}: "
+            f"{stats['posts_new']} new posts, {stats['comments_collected']} comments"
+        )
+        return stats
+
+    async def collect_all(self, deep: bool = False) -> dict:
+        """
+        Collect from all enabled subreddits with bounded concurrency.
+
+        Args:
+            deep: If True, use multi-sort paginated collection
 
         Returns aggregate statistics.
         """
@@ -237,28 +300,49 @@ class CollectorService:
             "errors": [],
         }
 
+        semaphore = asyncio.Semaphore(self.config.collection.concurrent_subreddits)
+
+        async def _collect_one(subreddit_name: str) -> Optional[dict]:
+            async with semaphore:
+                try:
+                    async with async_session_maker() as session:
+                        if deep:
+                            stats = await self.collect_subreddit_deep(
+                                session,
+                                subreddit_name,
+                                include_comments=self.config.collection.include_comments,
+                            )
+                        else:
+                            stats = await self.collect_subreddit(
+                                session,
+                                subreddit_name,
+                                include_comments=self.config.collection.include_comments,
+                            )
+                        await session.commit()
+                        return stats
+                except Exception as e:
+                    logger.error(f"Error collecting from r/{subreddit_name}: {e}")
+                    return {"error": subreddit_name, "message": str(e)}
+
         async with async_session_maker() as session:
             subreddits = await self.get_monitored_subreddits(session, enabled_only=True)
 
-            for subreddit in subreddits:
-                try:
-                    stats = await self.collect_subreddit(
-                        session,
-                        subreddit.name,
-                        include_comments=self.config.collection.include_comments,
-                    )
-                    total_stats["subreddits_processed"] += 1
-                    total_stats["posts_collected"] += stats["posts_collected"]
-                    total_stats["posts_new"] += stats["posts_new"]
-                    total_stats["comments_collected"] += stats["comments_collected"]
-                except Exception as e:
-                    logger.error(f"Error collecting from r/{subreddit.name}: {e}")
-                    total_stats["errors"].append({
-                        "subreddit": subreddit.name,
-                        "error": str(e),
-                    })
+        tasks = [_collect_one(sub.name) for sub in subreddits]
+        results = await asyncio.gather(*tasks)
 
-            await session.commit()
+        for result in results:
+            if result is None:
+                continue
+            if "error" in result:
+                total_stats["errors"].append({
+                    "subreddit": result["error"],
+                    "error": result["message"],
+                })
+            else:
+                total_stats["subreddits_processed"] += 1
+                total_stats["posts_collected"] += result["posts_collected"]
+                total_stats["posts_new"] += result["posts_new"]
+                total_stats["comments_collected"] += result["comments_collected"]
 
         logger.info(
             f"Collection complete: {total_stats['subreddits_processed']} subreddits, "
@@ -266,6 +350,16 @@ class CollectorService:
         )
 
         return total_stats
+
+    async def seed_collection(self) -> dict:
+        """
+        One-time deep scrape of all monitored subreddits.
+
+        Uses all configured sort modes with pagination to build initial dataset.
+        Returns aggregate statistics.
+        """
+        logger.info("Starting seed collection (deep scrape of all subreddits)...")
+        return await self.collect_all(deep=True)
 
     async def refresh_comments(
         self,
