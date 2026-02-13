@@ -174,6 +174,11 @@ class CollectorService:
             sort=self.config.collection.sort_by,
         )
 
+        # If no posts returned, likely rate-limited - don't update last_collected
+        if not posts:
+            logger.warning(f"No posts returned for r/{subreddit_name} - possible rate limit")
+            return stats
+
         for post in posts:
             # Check if post already exists
             existing = await session.get(Post, post.id)
@@ -188,12 +193,14 @@ class CollectorService:
                 stats["posts_collected"] += 1
                 stats["posts_new"] += 1
 
-                # Collect comments for new posts
+                # Collect comments for new posts (including nested replies)
                 if include_comments and self.config.collection.include_comments:
                     comments = await self.reddit.collect_comments(
                         post.id,
                         subreddit_name,
                         limit=self.config.collection.max_comments_per_post,
+                        max_depth=self.config.collection.max_comment_depth,
+                        include_nested=True,
                     )
                     for comment in comments:
                         existing_comment = await session.get(Comment, comment.id)
@@ -201,7 +208,7 @@ class CollectorService:
                             session.add(comment)
                             stats["comments_collected"] += 1
 
-        # Update subreddit stats
+        # Only update last_collected if we actually got posts
         subreddit = await session.get(MonitoredSubreddit, subreddit_name)
         if subreddit:
             subreddit.last_collected = datetime.now(timezone.utc)
@@ -256,6 +263,124 @@ class CollectorService:
         logger.info(
             f"Collection complete: {total_stats['subreddits_processed']} subreddits, "
             f"{total_stats['posts_new']} new posts"
+        )
+
+        return total_stats
+
+    async def refresh_comments(
+        self,
+        session: AsyncSession,
+        post_id: str,
+        subreddit_name: str,
+    ) -> dict:
+        """
+        Refresh comments for an existing post.
+
+        Re-fetches all comments including nested replies, updates existing
+        comments' scores, and adds any new comments.
+
+        Returns refresh statistics.
+        """
+        stats = {
+            "post_id": post_id,
+            "comments_updated": 0,
+            "comments_new": 0,
+            "comments_total": 0,
+        }
+
+        # Fetch fresh comments from Reddit
+        comments = await self.reddit.collect_comments(
+            post_id,
+            subreddit_name,
+            limit=self.config.collection.max_comments_per_post,
+            max_depth=self.config.collection.max_comment_depth,
+            include_nested=True,
+        )
+
+        stats["comments_total"] = len(comments)
+
+        for comment in comments:
+            existing = await session.get(Comment, comment.id)
+            if existing:
+                # Update score (engagement may have changed)
+                if existing.score != comment.score:
+                    existing.score = comment.score
+                    stats["comments_updated"] += 1
+            else:
+                # New comment
+                session.add(comment)
+                stats["comments_new"] += 1
+
+        await session.flush()
+
+        logger.info(
+            f"Refreshed comments for post {post_id}: "
+            f"{stats['comments_new']} new, {stats['comments_updated']} updated"
+        )
+
+        return stats
+
+    async def refresh_hot_conversations(
+        self,
+        min_score: int = 10,
+        min_comments: int = 5,
+        limit: int = 10,
+    ) -> dict:
+        """
+        Refresh comments for high-engagement posts.
+
+        Targets posts with high scores/comment counts that may have
+        valuable new replies since initial collection.
+
+        Args:
+            min_score: Minimum post score to consider
+            min_comments: Minimum comment count to consider
+            limit: Maximum number of posts to refresh
+
+        Returns:
+            Aggregate refresh statistics
+        """
+        total_stats = {
+            "posts_refreshed": 0,
+            "comments_new": 0,
+            "comments_updated": 0,
+            "errors": [],
+        }
+
+        async with async_session_maker() as session:
+            # Find high-engagement posts
+            query = (
+                select(Post)
+                .where(Post.score >= min_score)
+                .where(Post.num_comments >= min_comments)
+                .order_by(Post.score.desc())
+                .limit(limit)
+            )
+            result = await session.execute(query)
+            posts = result.scalars().all()
+
+            for post in posts:
+                try:
+                    stats = await self.refresh_comments(
+                        session,
+                        post.id,
+                        post.subreddit,
+                    )
+                    total_stats["posts_refreshed"] += 1
+                    total_stats["comments_new"] += stats["comments_new"]
+                    total_stats["comments_updated"] += stats["comments_updated"]
+                except Exception as e:
+                    logger.error(f"Error refreshing comments for {post.id}: {e}")
+                    total_stats["errors"].append({
+                        "post_id": post.id,
+                        "error": str(e),
+                    })
+
+            await session.commit()
+
+        logger.info(
+            f"Refreshed {total_stats['posts_refreshed']} hot conversations: "
+            f"{total_stats['comments_new']} new comments"
         )
 
         return total_stats

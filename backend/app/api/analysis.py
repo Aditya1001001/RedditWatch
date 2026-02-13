@@ -2,12 +2,13 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.services.analyzer import get_analyzer
+from app.services.tasks import get_task_tracker
 
 router = APIRouter()
 
@@ -46,12 +47,12 @@ class InsightResponse(BaseModel):
     product_name: Optional[str] = None
     sentiment: Optional[str] = None
     created_at: Optional[str] = None
+    subreddit: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-@router.post("", response_model=AnalysisResult)
+@router.post("")
 async def trigger_analysis(
     limit: int = Query(default=10, ge=1, le=50),
     min_score: int = Query(default=3, ge=0),
@@ -59,26 +60,36 @@ async def trigger_analysis(
     """
     Trigger LLM analysis on unanalyzed posts.
 
-    Args:
-        limit: Maximum number of posts to analyze (1-50)
-        min_score: Minimum post score to consider for analysis
-
-    Returns:
-        Statistics about the analysis run
+    Returns immediately with a task_id. Poll /status for progress.
     """
-    analyzer = get_analyzer()
-    stats = await analyzer.analyze_unanalyzed_posts(
-        limit=limit,
-        min_score=min_score,
-    )
+    tracker = get_task_tracker()
 
-    return AnalysisResult(
-        posts_analyzed=stats["posts_analyzed"],
-        insights_extracted=stats["insights_extracted"],
-        total_duration_ms=stats["total_duration_ms"],
-        avg_duration_ms=stats["avg_duration_ms"],
-        errors=stats["errors"],
-    )
+    # Don't start if one is already running
+    active = tracker.get_active_task("analysis")
+    if active:
+        return active.to_dict()
+
+    task_info = tracker.create_task("analysis")
+    analyzer = get_analyzer()
+
+    async def _run_analysis():
+        return await analyzer.analyze_unanalyzed_posts(
+            limit=limit,
+            min_score=min_score,
+        )
+
+    tracker.run_background(task_info, _run_analysis())
+    return task_info.to_dict()
+
+
+@router.get("/task/{task_id}")
+async def get_analysis_task(task_id: str):
+    """Get status of a specific analysis task."""
+    tracker = get_task_tracker()
+    task = tracker.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    return task.to_dict()
 
 
 @router.get("/themes", response_model=list[ThemeSummary])
@@ -88,7 +99,7 @@ async def get_themes(
     """
     Get aggregated theme summary.
 
-    Returns themes sorted by combined score (frequency × intensity).
+    Returns themes sorted by combined score (frequency x intensity).
     """
     analyzer = get_analyzer()
     themes = await analyzer.get_theme_summary(session)
@@ -110,16 +121,12 @@ async def get_themes(
 async def get_insights(
     theme_key: Optional[str] = None,
     type: Optional[str] = Query(default=None, alias="type"),
+    sort: Optional[str] = Query(default=None, description="Sort by: intensity, date"),
     limit: int = Query(default=50, ge=1, le=200),
     session: AsyncSession = Depends(get_session),
 ):
     """
     Get extracted insights with optional filters.
-
-    Args:
-        theme_key: Filter by theme key
-        type: Filter by insight type (pain_point, solution_request, product_mention, opportunity)
-        limit: Maximum number of insights to return
     """
     analyzer = get_analyzer()
     insights = await analyzer.get_insights_by_theme(
@@ -127,6 +134,7 @@ async def get_insights(
         theme_key=theme_key,
         insight_type=type,
         limit=limit,
+        sort_by=sort,
     )
 
     return [
@@ -144,6 +152,7 @@ async def get_insights(
             product_name=i.product_name,
             sentiment=i.sentiment,
             created_at=i.created_at.isoformat() if i.created_at else None,
+            subreddit=i.post.subreddit if i.post else None,
         )
         for i in insights
     ]
@@ -153,7 +162,7 @@ async def get_insights(
 async def get_analysis_status(
     session: AsyncSession = Depends(get_session),
 ):
-    """Get analysis statistics including timing metrics."""
+    """Get analysis statistics including timing metrics and active task status."""
     from sqlalchemy import select, func
     from app.models import Post, Insight
 
@@ -187,13 +196,27 @@ async def get_analysis_status(
     )
     themes = theme_count.scalar() or 0
 
+    # Count by insight type
+    type_query = (
+        select(Insight.type, func.count(Insight.id))
+        .group_by(Insight.type)
+    )
+    type_result = await session.execute(type_query)
+    insights_by_type = {row[0]: row[1] for row in type_result}
+
+    # Check for active analysis task
+    tracker = get_task_tracker()
+    active_task = tracker.get_active_task("analysis")
+
     return {
         "total_posts": total,
         "analyzed_posts": analyzed,
         "unanalyzed_posts": total - analyzed,
         "total_insights": insights,
         "total_themes": themes,
+        "insights_by_type": insights_by_type,
         "avg_analysis_duration_ms": int(avg_ms) if avg_ms else None,
         "last_analyzed_at": last_at.isoformat() if last_at else None,
-        "status": "idle",
+        "status": active_task.status.value if active_task else "idle",
+        "active_task": active_task.to_dict() if active_task else None,
     }

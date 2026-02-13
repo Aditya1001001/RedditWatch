@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RedditWatch</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -43,6 +44,11 @@
                         class="py-2 px-1 border-b-2 font-medium">
                     LLM
                 </button>
+                <button @click="tab = 'analytics'; loadAnalytics()"
+                        :class="tab === 'analytics' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                        class="py-2 px-1 border-b-2 font-medium">
+                    Analytics
+                </button>
             </nav>
         </div>
 
@@ -75,23 +81,40 @@
             <!-- Quick Actions -->
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
-                <div class="flex space-x-4">
+                <div class="flex flex-wrap gap-3">
                     <button @click="collectAll()"
                             :disabled="collecting"
                             class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
                         <span x-show="!collecting">Collect All Posts</span>
                         <span x-show="collecting">Collecting...</span>
                     </button>
+                    <button @click="refreshHotConversations()"
+                            :disabled="refreshing"
+                            class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                        <span x-show="!refreshing">Refresh Hot Conversations</span>
+                        <span x-show="refreshing">Refreshing...</span>
+                    </button>
                     <button @click="loadPostStats()"
                             class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-medium">
                         Refresh Stats
                     </button>
                 </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    "Refresh Hot Conversations" re-fetches comments (including nested replies) for high-engagement posts.
+                </p>
                 <div x-show="collectResult" class="mt-4 p-4 bg-gray-700 rounded">
                     <p class="text-green-400">Collection complete!</p>
                     <p class="text-sm text-gray-300">
                         <span x-text="collectResult.posts_new"></span> new posts,
                         <span x-text="collectResult.comments_collected"></span> comments
+                    </p>
+                </div>
+                <div x-show="refreshResult" class="mt-4 p-4 bg-gray-700 rounded">
+                    <p class="text-purple-400">Refresh complete!</p>
+                    <p class="text-sm text-gray-300">
+                        <span x-text="refreshResult.posts_refreshed"></span> posts refreshed,
+                        <span x-text="refreshResult.comments_new"></span> new comments,
+                        <span x-text="refreshResult.comments_updated"></span> updated
                     </p>
                 </div>
             </div>
@@ -240,17 +263,39 @@
                                 <div class="flex-1">
                                     <a :href="post.reddit_url" target="_blank"
                                        class="font-medium text-blue-400 hover:text-blue-300" x-text="post.title"></a>
-                                    <div class="text-sm text-gray-400 mt-1">
-                                        r/<span x-text="post.subreddit"></span> ·
-                                        <span x-text="post.score"></span> points ·
-                                        <span x-text="post.num_comments"></span> comments ·
+                                    <div class="text-sm text-gray-400 mt-1 flex flex-wrap items-center gap-x-2">
+                                        <span>r/<span x-text="post.subreddit"></span></span>
+                                        <span class="text-gray-500">·</span>
+                                        <span :class="{
+                                            'text-green-400': post.score >= 50,
+                                            'text-yellow-400': post.score >= 10 && post.score < 50,
+                                            'text-gray-400': post.score < 10
+                                        }">
+                                            <span x-text="post.score"></span> pts
+                                        </span>
+                                        <span class="text-gray-500">·</span>
+                                        <span x-text="post.num_comments"></span> comments
+                                        <span x-show="post.upvote_ratio" class="text-gray-500">·</span>
+                                        <span x-show="post.upvote_ratio" :class="{
+                                            'text-green-400': post.upvote_ratio >= 0.8,
+                                            'text-yellow-400': post.upvote_ratio >= 0.6 && post.upvote_ratio < 0.8,
+                                            'text-red-400': post.upvote_ratio < 0.6
+                                        }">
+                                            <span x-text="Math.round(post.upvote_ratio * 100)"></span>% upvoted
+                                        </span>
+                                        <span class="text-gray-500">·</span>
                                         <span x-text="formatDate(post.created_utc)"></span>
                                     </div>
                                     <p x-show="post.body" class="text-sm text-gray-300 mt-2 line-clamp-2" x-text="post.body"></p>
                                 </div>
-                                <div class="ml-4">
+                                <div class="ml-4 flex flex-col items-end gap-2">
                                     <span :class="post.analyzed ? 'bg-green-600' : 'bg-yellow-600'"
                                           class="px-2 py-1 rounded text-xs" x-text="post.analyzed ? 'Analyzed' : 'Pending'"></span>
+                                    <button @click="refreshPostComments(post.id)"
+                                            class="text-xs text-gray-500 hover:text-gray-300"
+                                            title="Refresh comments">
+                                        ↻ Refresh
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -383,6 +428,33 @@
                     <span x-text="analysisResult?.insights_extracted"></span> insights extracted
                     (<span x-text="((analysisResult?.total_duration_ms || 0) / 1000).toFixed(1)"></span>s total)
                 </p>
+            </div>
+
+            <!-- Export Controls -->
+            <div class="bg-gray-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400 text-sm">Export:</span>
+                    <button @click="exportInsights('csv')"
+                            :disabled="analysisStatus.total_insights === 0"
+                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
+                        CSV
+                    </button>
+                    <button @click="exportInsights('json')"
+                            :disabled="analysisStatus.total_insights === 0"
+                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
+                        JSON
+                    </button>
+                    <button @click="exportInsights('md')"
+                            :disabled="analysisStatus.total_insights === 0"
+                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
+                        Markdown
+                    </button>
+                </div>
+                <button @click="generateReport()"
+                        :disabled="analysisStatus.total_insights === 0"
+                        class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-1.5 rounded text-sm font-medium">
+                    Generate Full Report
+                </button>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -606,9 +678,126 @@
             </div>
         </div>
 
+        <!-- Analytics Tab -->
+        <div x-show="tab === 'analytics'" class="space-y-6">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Total Insights</h3>
+                    <div class="text-2xl font-semibold text-blue-400" x-text="analyticsData.totalInsights || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Active Themes</h3>
+                    <div class="text-2xl font-semibold text-purple-400" x-text="analyticsData.totalThemes || 0"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Avg Intensity</h3>
+                    <div class="text-2xl font-semibold text-yellow-400" x-text="analyticsData.avgIntensity || '-'"></div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h3 class="text-sm text-gray-400 mb-1">Top Subreddit</h3>
+                    <div class="text-xl font-semibold text-green-400" x-text="analyticsData.topSubreddit || '-'"></div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Insight Type Distribution -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Insight Type Distribution</h2>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="insightTypeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Themes by Score -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top Themes by Score</h2>
+                    <div class="h-64">
+                        <canvas id="topThemesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Subreddit Activity -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Posts by Subreddit</h2>
+                    <div class="h-64">
+                        <canvas id="subredditActivityChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Theme × Type Heatmap -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Theme Intensity Distribution</h2>
+                    <div class="h-64">
+                        <canvas id="themeIntensityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 3 -->
+            <div class="grid grid-cols-1 gap-6">
+                <!-- Collection Timeline -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Collection Timeline</h2>
+                    <div class="h-64">
+                        <canvas id="collectionTimelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Insights Table -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Highest Intensity Insights</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-gray-400 border-b border-gray-700">
+                                <th class="text-left py-2 px-3">Type</th>
+                                <th class="text-left py-2 px-3">Theme</th>
+                                <th class="text-left py-2 px-3">Title</th>
+                                <th class="text-left py-2 px-3">Subreddit</th>
+                                <th class="text-right py-2 px-3">Intensity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="insight in topIntensityInsights" :key="insight.id">
+                                <tr class="border-b border-gray-700/50 hover:bg-gray-700/50">
+                                    <td class="py-2 px-3">
+                                        <span :class="{
+                                            'bg-red-600': insight.type === 'pain_point',
+                                            'bg-yellow-600': insight.type === 'solution_request',
+                                            'bg-green-600': insight.type === 'opportunity',
+                                            'bg-purple-600': insight.type === 'product_mention'
+                                        }" class="px-2 py-0.5 rounded text-xs" x-text="insight.type?.replace('_', ' ')"></span>
+                                    </td>
+                                    <td class="py-2 px-3 text-gray-300" x-text="insight.theme_key?.replace(/_/g, ' ')"></td>
+                                    <td class="py-2 px-3 text-gray-100 max-w-xs truncate" x-text="insight.title"></td>
+                                    <td class="py-2 px-3 text-gray-400" x-text="'r/' + insight.subreddit"></td>
+                                    <td class="py-2 px-3 text-right">
+                                        <span :class="{
+                                            'text-green-400': insight.intensity_score < 40,
+                                            'text-yellow-400': insight.intensity_score >= 40 && insight.intensity_score < 70,
+                                            'text-red-400': insight.intensity_score >= 70
+                                        }" class="font-bold" x-text="insight.intensity_score"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p x-show="topIntensityInsights.length === 0" class="text-gray-500 text-center py-4">
+                    No insights yet. Run analysis to generate data.
+                </p>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="mt-8 text-center text-gray-500 text-sm">
-            <p>RedditWatch v0.1.0 - Phase 5</p>
+            <p>RedditWatch v0.1.0 - Phase 8</p>
         </footer>
     </div>
 
@@ -631,6 +820,8 @@
                 addError: '',
                 collecting: false,
                 collectResult: null,
+                refreshing: false,
+                refreshResult: null,
                 testPrompt: "What are three common pain points for SaaS founders?",
                 testResult: null,
                 testing: false,
@@ -647,6 +838,10 @@
                 searchResults: [],
                 lastSearchQuery: '',
                 searchStats: {},
+                // Analytics
+                analyticsData: {},
+                topIntensityInsights: [],
+                charts: {},
 
                 async init() {
                     await Promise.all([
@@ -778,12 +973,44 @@
                     this.collectResult = null;
                     try {
                         const res = await fetch('/api/collect', { method: 'POST' });
-                        this.collectResult = await res.json();
-                        await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                        const task = await res.json();
+                        if (task.task_id) {
+                            await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
+                                this.collectResult = result;
+                                this.collecting = false;
+                                Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                            });
+                        } else {
+                            this.collectResult = task;
+                            this.collecting = false;
+                        }
                     } catch (e) {
                         alert('Collection failed: ' + e.message);
+                        this.collecting = false;
                     }
-                    this.collecting = false;
+                },
+
+                async refreshHotConversations() {
+                    this.refreshing = true;
+                    this.refreshResult = null;
+                    try {
+                        const res = await fetch('/api/collect/refresh?min_score=5&min_comments=3&limit=15', { method: 'POST' });
+                        this.refreshResult = await res.json();
+                        await this.loadPostStats();
+                    } catch (e) {
+                        alert('Refresh failed: ' + e.message);
+                    }
+                    this.refreshing = false;
+                },
+
+                async refreshPostComments(postId) {
+                    try {
+                        const res = await fetch(`/api/collect/refresh/${postId}`, { method: 'POST' });
+                        const data = await res.json();
+                        alert(`Refreshed: ${data.comments_new} new, ${data.comments_updated} updated`);
+                    } catch (e) {
+                        alert('Refresh failed: ' + e.message);
+                    }
                 },
 
                 async testLLM() {
@@ -890,14 +1117,44 @@
                     this.analysisResult = null;
                     try {
                         const res = await fetch('/api/analyze?limit=10&min_score=0', { method: 'POST' });
-                        this.analysisResult = await res.json();
-                        await this.loadInsights();
-                        // Reindex after new analysis
-                        await fetch('/api/search/reindex', { method: 'POST' });
+                        const task = await res.json();
+                        if (task.task_id) {
+                            await this.pollTask(task.task_id, '/api/analyze/task/', (result) => {
+                                this.analysisResult = result;
+                                this.analyzing = false;
+                                this.loadInsights();
+                                fetch('/api/search/reindex', { method: 'POST' });
+                            });
+                        } else {
+                            this.analysisResult = task;
+                            this.analyzing = false;
+                        }
                     } catch (e) {
                         alert('Analysis failed: ' + e.message);
+                        this.analyzing = false;
                     }
-                    this.analyzing = false;
+                },
+
+                // Task polling
+                async pollTask(taskId, baseUrl, onComplete) {
+                    const poll = async () => {
+                        try {
+                            const res = await fetch(baseUrl + taskId);
+                            const task = await res.json();
+                            if (task.status === 'completed') {
+                                onComplete(task.result || task);
+                            } else if (task.status === 'failed') {
+                                alert('Task failed: ' + (task.error || 'Unknown error'));
+                                onComplete(null);
+                            } else {
+                                setTimeout(poll, 2000);
+                            }
+                        } catch (e) {
+                            console.error('Poll failed:', e);
+                            setTimeout(poll, 3000);
+                        }
+                    };
+                    setTimeout(poll, 1000);
                 },
 
                 // Search methods
@@ -947,6 +1204,345 @@
                     } catch (e) {
                         this.searchStats = {};
                     }
+                },
+
+                // Export methods
+                exportInsights(format) {
+                    const params = new URLSearchParams({ format, limit: '500' });
+                    if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
+                    if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
+                    window.open('/api/export/insights?' + params, '_blank');
+                },
+
+                generateReport() {
+                    window.open('/api/export/report', '_blank');
+                },
+
+                // Analytics methods
+                async loadAnalytics() {
+                    await Promise.all([
+                        this.loadAnalyticsData(),
+                        this.loadTopIntensityInsights(),
+                    ]);
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => this.renderCharts(), 100);
+                },
+
+                async loadAnalyticsData() {
+                    try {
+                        const [statusRes, themesRes, statsRes] = await Promise.all([
+                            fetch('/api/analyze/status'),
+                            fetch('/api/analyze/themes'),
+                            fetch('/api/posts/stats'),
+                        ]);
+                        const status = await statusRes.json();
+                        const themes = await themesRes.json();
+                        const stats = await statsRes.json();
+
+                        // Calculate analytics summary
+                        const avgIntensity = themes.length > 0
+                            ? (themes.reduce((sum, t) => sum + parseFloat(t.avg_intensity), 0) / themes.length).toFixed(1)
+                            : '-';
+
+                        const topSub = stats.posts_by_subreddit
+                            ? Object.entries(stats.posts_by_subreddit).sort((a, b) => b[1] - a[1])[0]
+                            : null;
+
+                        this.analyticsData = {
+                            totalInsights: status.total_insights || 0,
+                            totalThemes: status.total_themes || 0,
+                            avgIntensity: avgIntensity,
+                            topSubreddit: topSub ? 'r/' + topSub[0] : '-',
+                            themes: themes,
+                            postsBySubreddit: stats.posts_by_subreddit || {},
+                            insightsByType: status.insights_by_type || {},
+                            postsByDate: stats.posts_by_date || {},
+                        };
+                    } catch (e) {
+                        console.error('Failed to load analytics:', e);
+                        this.analyticsData = {};
+                    }
+                },
+
+                async loadTopIntensityInsights() {
+                    try {
+                        const res = await fetch('/api/analyze/insights?limit=10&sort=intensity');
+                        const insights = await res.json();
+                        // Sort by intensity if not already sorted
+                        this.topIntensityInsights = insights
+                            .filter(i => i.intensity_score)
+                            .sort((a, b) => b.intensity_score - a.intensity_score)
+                            .slice(0, 10);
+                    } catch (e) {
+                        this.topIntensityInsights = [];
+                    }
+                },
+
+                renderCharts() {
+                    // Destroy existing charts
+                    Object.values(this.charts).forEach(chart => chart?.destroy());
+                    this.charts = {};
+
+                    this.renderInsightTypeChart();
+                    this.renderTopThemesChart();
+                    this.renderSubredditActivityChart();
+                    this.renderThemeIntensityChart();
+                    this.renderCollectionTimelineChart();
+                },
+
+                renderInsightTypeChart() {
+                    const ctx = document.getElementById('insightTypeChart');
+                    if (!ctx) return;
+
+                    const typeData = this.analyticsData.insightsByType || {};
+                    const labels = Object.keys(typeData).map(t => t.replace('_', ' '));
+                    const data = Object.values(typeData);
+                    const colors = {
+                        'pain_point': '#ef4444',
+                        'solution_request': '#eab308',
+                        'opportunity': '#22c55e',
+                        'product_mention': '#a855f7',
+                    };
+                    const bgColors = Object.keys(typeData).map(t => colors[t] || '#6b7280');
+
+                    this.charts.insightType = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: bgColors,
+                                borderColor: '#1f2937',
+                                borderWidth: 2,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: { color: '#9ca3af', padding: 15 }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                renderTopThemesChart() {
+                    const ctx = document.getElementById('topThemesChart');
+                    if (!ctx) return;
+
+                    const themes = (this.analyticsData.themes || []).slice(0, 8);
+                    const labels = themes.map(t => t.theme_key.replace(/_/g, ' '));
+                    const scores = themes.map(t => t.combined_score);
+
+                    this.charts.topThemes = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Combined Score',
+                                data: scores,
+                                backgroundColor: '#3b82f6',
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' }
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: { color: '#9ca3af' }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                renderSubredditActivityChart() {
+                    const ctx = document.getElementById('subredditActivityChart');
+                    if (!ctx) return;
+
+                    const subs = this.analyticsData.postsBySubreddit || {};
+                    const sorted = Object.entries(subs).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                    const labels = sorted.map(s => 'r/' + s[0]);
+                    const data = sorted.map(s => s[1]);
+
+                    this.charts.subredditActivity = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Posts',
+                                data: data,
+                                backgroundColor: '#22c55e',
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#9ca3af' }
+                                },
+                                y: {
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                renderThemeIntensityChart() {
+                    const ctx = document.getElementById('themeIntensityChart');
+                    if (!ctx) return;
+
+                    const themes = (this.analyticsData.themes || []).slice(0, 10);
+                    const labels = themes.map(t => t.theme_key.replace(/_/g, ' '));
+                    const intensities = themes.map(t => parseFloat(t.avg_intensity));
+                    const counts = themes.map(t => t.count);
+
+                    this.charts.themeIntensity = new Chart(ctx, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [{
+                                label: 'Themes',
+                                data: themes.map((t, i) => ({
+                                    x: t.count,
+                                    y: parseFloat(t.avg_intensity),
+                                    label: t.theme_key.replace(/_/g, ' ')
+                                })),
+                                backgroundColor: themes.map(t => {
+                                    const intensity = parseFloat(t.avg_intensity);
+                                    if (intensity >= 70) return '#ef4444';
+                                    if (intensity >= 40) return '#eab308';
+                                    return '#22c55e';
+                                }),
+                                pointRadius: themes.map(t => Math.min(Math.max(t.count * 3, 6), 20)),
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => {
+                                            const point = ctx.raw;
+                                            return `${point.label}: ${point.x} insights, ${point.y.toFixed(1)} intensity`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Insight Count', color: '#9ca3af' },
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Avg Intensity', color: '#9ca3af' },
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' },
+                                    min: 0,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                },
+
+                renderCollectionTimelineChart() {
+                    const ctx = document.getElementById('collectionTimelineChart');
+                    if (!ctx) return;
+
+                    const dateData = this.analyticsData.postsByDate || {};
+                    const sorted = Object.entries(dateData).sort((a, b) => a[0].localeCompare(b[0]));
+                    const labels = sorted.map(d => d[0]);
+                    const data = sorted.map(d => d[1]);
+
+                    // Calculate cumulative
+                    let cumulative = 0;
+                    const cumulativeData = data.map(d => cumulative += d);
+
+                    this.charts.collectionTimeline = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Posts per Day',
+                                    data: data,
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    fill: true,
+                                    tension: 0.3,
+                                    yAxisID: 'y',
+                                },
+                                {
+                                    label: 'Cumulative Posts',
+                                    data: cumulativeData,
+                                    borderColor: '#22c55e',
+                                    backgroundColor: 'transparent',
+                                    borderDash: [5, 5],
+                                    tension: 0.3,
+                                    yAxisID: 'y1',
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: { color: '#9ca3af' }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    grid: { color: '#374151' },
+                                    ticks: { color: '#9ca3af' },
+                                    title: { display: true, text: 'Daily Posts', color: '#9ca3af' }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    grid: { drawOnChartArea: false },
+                                    ticks: { color: '#22c55e' },
+                                    title: { display: true, text: 'Total Posts', color: '#22c55e' }
+                                }
+                            }
+                        }
+                    });
                 }
             };
         }

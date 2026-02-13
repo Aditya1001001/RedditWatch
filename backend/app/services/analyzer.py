@@ -1,11 +1,13 @@
 """LLM-based analysis service for extracting insights from Reddit posts."""
 
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, and_
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_maker
@@ -13,6 +15,11 @@ from app.llm.factory import get_llm_provider
 from app.models import Comment, Insight, Post
 
 logger = logging.getLogger(__name__)
+
+# Valid insight types
+VALID_INSIGHT_TYPES = {"pain_point", "solution_request", "product_mention", "opportunity"}
+VALID_CATEGORIES = {"pain_point", "solution_request", "product_mention", "opportunity", "general"}
+VALID_SENTIMENTS = {"positive", "negative", "neutral", "mixed"}
 
 # System prompt for post analysis
 ANALYSIS_SYSTEM_PROMPT = """You are an expert market researcher analyzing Reddit posts to find business opportunities.
@@ -67,6 +74,81 @@ Rules:
 Return ONLY valid JSON, no other text."""
 
 
+# --- Pydantic models for LLM output validation ---
+
+class InsightData(BaseModel):
+    """Validated insight data from LLM output."""
+    type: str
+    theme_key: str = "unknown"
+    title: str = ""
+    description: str = ""
+    quote: Optional[str] = None
+    quote_author: Optional[str] = None
+    intensity_score: int = Field(default=50, ge=0, le=100)
+    product_name: Optional[str] = None
+    sentiment: Optional[str] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        v = v.lower().strip()
+        if v not in VALID_INSIGHT_TYPES:
+            return "pain_point"  # Default fallback
+        return v
+
+    @field_validator("theme_key")
+    @classmethod
+    def normalize_theme_key(cls, v: str) -> str:
+        # Normalize: lowercase, replace spaces/hyphens with underscores, strip non-alnum
+        v = v.lower().strip()
+        v = re.sub(r"[\s\-]+", "_", v)
+        v = re.sub(r"[^a-z0-9_]", "", v)
+        return v[:100] if v else "unknown"
+
+    @field_validator("intensity_score", mode="before")
+    @classmethod
+    def clamp_intensity(cls, v) -> int:
+        try:
+            v = int(v)
+        except (ValueError, TypeError):
+            return 50
+        return max(0, min(100, v))
+
+    @field_validator("sentiment")
+    @classmethod
+    def validate_sentiment(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.lower().strip()
+        return v if v in VALID_SENTIMENTS else None
+
+
+class AnalysisOutput(BaseModel):
+    """Validated LLM analysis output."""
+    category: str = "general"
+    insights: list[InsightData] = Field(default_factory=list)
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, v: str) -> str:
+        v = v.lower().strip()
+        return v if v in VALID_CATEGORIES else "general"
+
+    @field_validator("insights")
+    @classmethod
+    def limit_insights(cls, v: list[InsightData]) -> list[InsightData]:
+        return v[:5]  # Max 5 per post
+
+
+def validate_llm_output(raw: dict) -> AnalysisOutput:
+    """Validate and normalize LLM JSON output using Pydantic."""
+    try:
+        return AnalysisOutput(**raw)
+    except Exception as e:
+        logger.warning(f"LLM output validation failed, returning empty: {e}")
+        return AnalysisOutput()
+
+
 class AnalyzerService:
     """Analyzes Reddit posts using LLM to extract insights."""
 
@@ -88,13 +170,8 @@ class AnalyzerService:
         """
         Analyze a single post and extract insights.
 
-        Args:
-            session: Database session
-            post: Post to analyze
-            include_comments: Whether to include comments in analysis
-
-        Returns:
-            List of extracted Insight objects
+        Uses savepoints for isolation so one post failure doesn't
+        rollback the entire batch.
         """
         insights = []
 
@@ -127,34 +204,60 @@ class AnalyzerService:
 
             # Track analysis timing
             start_time = time.time()
-            result = await llm.generate_json(prompt, system=ANALYSIS_SYSTEM_PROMPT)
+            raw_result = await llm.generate_json(prompt, system=ANALYSIS_SYSTEM_PROMPT)
             duration_ms = int((time.time() - start_time) * 1000)
 
+            # Validate LLM output
+            validated = validate_llm_output(raw_result)
+
             # Update post with analysis metadata
-            post.category = result.get("category", "general")
+            post.category = validated.category
             post.analyzed = True
             post.analyzed_at = datetime.now(timezone.utc)
             post.analysis_duration_ms = duration_ms
 
-            # Extract insights
-            for item in result.get("insights", []):
+            # Extract insights from validated output
+            for item in validated.insights:
                 insight = Insight(
                     post_id=post.id,
-                    type=item.get("type", "pain_point"),
-                    theme_key=item.get("theme_key", "unknown"),
-                    title=item.get("title", ""),
-                    description=item.get("description", ""),
-                    quote=item.get("quote"),
-                    quote_author=item.get("quote_author"),
+                    type=item.type,
+                    theme_key=item.theme_key,
+                    title=item.title,
+                    description=item.description,
+                    quote=item.quote,
+                    quote_author=item.quote_author,
                     permalink=post.permalink,
-                    intensity_score=item.get("intensity_score", 50),
-                    product_name=item.get("product_name"),
-                    sentiment=item.get("sentiment"),
+                    intensity_score=item.intensity_score,
+                    product_name=item.product_name,
+                    sentiment=item.sentiment,
                     llm_provider=llm.name,
                     llm_model=llm.model_name,
                 )
                 session.add(insight)
                 insights.append(insight)
+
+            # Auto-index new insights in ChromaDB
+            if insights:
+                try:
+                    from app.services.search import get_search_service
+                    search = get_search_service()
+                    batch = []
+                    for ins in insights:
+                        text = f"{ins.title}. {ins.description or ''}"
+                        if ins.quote:
+                            text += f' "{ins.quote}"'
+                        batch.append({
+                            "id": ins.id if ins.id else hash(ins.title),
+                            "text": text,
+                            "type": ins.type,
+                            "theme_key": ins.theme_key,
+                            "intensity_score": ins.intensity_score or 0,
+                            "post_id": ins.post_id,
+                        })
+                    if batch:
+                        search.add_insights_batch(batch)
+                except Exception as idx_err:
+                    logger.warning(f"Failed to auto-index insights: {idx_err}")
 
             logger.info(
                 f"Analyzed post {post.id}: category={post.category}, "
@@ -175,12 +278,7 @@ class AnalyzerService:
         """
         Analyze posts that haven't been analyzed yet.
 
-        Args:
-            limit: Maximum number of posts to analyze
-            min_score: Minimum post score to consider
-
-        Returns:
-            Statistics about the analysis run
+        Uses savepoints per post so a single failure doesn't lose progress.
         """
         stats = {
             "posts_analyzed": 0,
@@ -209,11 +307,13 @@ class AnalyzerService:
 
             for post in posts:
                 try:
-                    insights = await self.analyze_post(session, post)
-                    stats["posts_analyzed"] += 1
-                    stats["insights_extracted"] += len(insights)
-                    if post.analysis_duration_ms:
-                        stats["total_duration_ms"] += post.analysis_duration_ms
+                    # Use savepoint per post for isolation
+                    async with session.begin_nested():
+                        insights = await self.analyze_post(session, post)
+                        stats["posts_analyzed"] += 1
+                        stats["insights_extracted"] += len(insights)
+                        if post.analysis_duration_ms:
+                            stats["total_duration_ms"] += post.analysis_duration_ms
                 except Exception as e:
                     logger.error(f"Error analyzing post {post.id}: {e}")
                     stats["errors"].append({
@@ -243,9 +343,20 @@ class AnalyzerService:
         theme_key: Optional[str] = None,
         insight_type: Optional[str] = None,
         limit: int = 50,
+        sort_by: Optional[str] = None,
     ) -> list[Insight]:
         """Get insights grouped by theme."""
-        query = select(Insight).order_by(Insight.intensity_score.desc())
+        from sqlalchemy.orm import joinedload
+
+        query = select(Insight).options(joinedload(Insight.post))
+
+        # Apply sorting
+        if sort_by == "intensity":
+            query = query.order_by(Insight.intensity_score.desc().nullslast())
+        elif sort_by == "date":
+            query = query.order_by(Insight.created_at.desc())
+        else:
+            query = query.order_by(Insight.intensity_score.desc().nullslast())
 
         if theme_key:
             query = query.where(Insight.theme_key == theme_key)
@@ -255,47 +366,69 @@ class AnalyzerService:
         query = query.limit(limit)
 
         result = await session.execute(query)
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
 
     async def get_theme_summary(self, session: AsyncSession) -> list[dict]:
-        """Get aggregated theme statistics."""
-        # Get all insights
-        result = await session.execute(select(Insight))
-        insights = result.scalars().all()
+        """Get aggregated theme statistics using SQL GROUP BY."""
+        from sqlalchemy import case, literal_column
 
-        # Aggregate by theme_key
-        themes = {}
-        for insight in insights:
-            key = insight.theme_key
-            if key not in themes:
-                themes[key] = {
-                    "theme_key": key,
-                    "count": 0,
-                    "total_intensity": 0,
-                    "types": set(),
-                    "top_quotes": [],
-                }
-            themes[key]["count"] += 1
-            themes[key]["total_intensity"] += insight.intensity_score or 0
-            themes[key]["types"].add(insight.type)
-            if insight.quote and len(themes[key]["top_quotes"]) < 3:
-                themes[key]["top_quotes"].append({
-                    "quote": insight.quote[:200],
-                    "author": insight.quote_author,
-                    "score": insight.intensity_score,
+        # Use SQL aggregation instead of loading all insights into Python
+        theme_query = (
+            select(
+                Insight.theme_key,
+                func.count(Insight.id).label("count"),
+                func.avg(Insight.intensity_score).label("avg_intensity"),
+            )
+            .group_by(Insight.theme_key)
+            .order_by(func.count(Insight.id).desc())
+        )
+        theme_result = await session.execute(theme_query)
+        theme_rows = theme_result.all()
+
+        # Get types per theme
+        type_query = (
+            select(Insight.theme_key, Insight.type)
+            .distinct()
+        )
+        type_result = await session.execute(type_query)
+        theme_types: dict[str, set[str]] = {}
+        for row in type_result:
+            theme_types.setdefault(row[0], set()).add(row[1])
+
+        # Get top quotes per theme (limit 3 per theme)
+        quote_query = (
+            select(Insight.theme_key, Insight.quote, Insight.quote_author, Insight.intensity_score)
+            .where(Insight.quote.isnot(None))
+            .order_by(Insight.intensity_score.desc().nullslast())
+        )
+        quote_result = await session.execute(quote_query)
+        theme_quotes: dict[str, list[dict]] = {}
+        for row in quote_result:
+            key = row[0]
+            if key not in theme_quotes:
+                theme_quotes[key] = []
+            if len(theme_quotes[key]) < 3:
+                theme_quotes[key].append({
+                    "quote": row[1][:200] if row[1] else "",
+                    "author": row[2],
+                    "score": row[3],
                 })
 
-        # Calculate averages and format
+        # Build summary
         summary = []
-        for key, data in themes.items():
-            avg_intensity = data["total_intensity"] / data["count"] if data["count"] > 0 else 0
+        for row in theme_rows:
+            key = row[0]
+            count = row[1]
+            avg_intensity = float(row[2] or 0)
+            combined_score = round(count * avg_intensity / 10, 1)
+
             summary.append({
                 "theme_key": key,
-                "count": data["count"],
+                "count": count,
                 "avg_intensity": round(avg_intensity, 1),
-                "combined_score": round(data["count"] * avg_intensity / 10, 1),
-                "types": list(data["types"]),
-                "top_quotes": data["top_quotes"],
+                "combined_score": combined_score,
+                "types": list(theme_types.get(key, set())),
+                "top_quotes": theme_quotes.get(key, []),
             })
 
         # Sort by combined score

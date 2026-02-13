@@ -35,6 +35,9 @@ class Comment(Base):
     # Engagement
     score: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Thread depth (0 = top-level reply to post, 1 = reply to comment, etc.)
+    depth: Mapped[int] = mapped_column(Integer, default=0)
+
     # Timestamps
     created_utc: Mapped[Optional[datetime]] = mapped_column(DateTime)
     collected_at: Mapped[datetime] = mapped_column(

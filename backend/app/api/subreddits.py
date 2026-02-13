@@ -1,13 +1,16 @@
 """Subreddit management API endpoints."""
 
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.services.collector import get_collector
+
+SUBREDDIT_PATTERN = re.compile(r"^[a-zA-Z0-9_]{2,21}$")
 
 router = APIRouter()
 
@@ -16,6 +19,17 @@ class SubredditCreate(BaseModel):
     """Request to add a subreddit."""
     name: str
     category: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip().lower().replace("r/", "")
+        if not SUBREDDIT_PATTERN.match(v):
+            raise ValueError(
+                "Invalid subreddit name. Must be 2-21 characters, "
+                "alphanumeric and underscores only."
+            )
+        return v
 
 
 class SubredditResponse(BaseModel):
@@ -30,8 +44,7 @@ class SubredditResponse(BaseModel):
     insight_count: int = 0
     last_collected: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class SubredditToggle(BaseModel):

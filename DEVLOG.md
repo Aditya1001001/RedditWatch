@@ -6,7 +6,67 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 5 complete (Semantic Search with ChromaDB) | Next: Phase 6 (Export)
+**Status**: Phase 9 in progress (Roadmap & Hardening) | Phases 1-8 complete
+
+---
+
+## Changelog
+
+### 2026-02-13: Phases 0-4 Implementation Complete
+
+Implemented the full roadmap from codebase review through open-source release:
+
+**Phase 0: Git Hygiene**
+- Added `key.txt`, `key.txt.pub`, `GIT_SETUP.md` to `.gitignore`
+- Cleaned secrets from tracking
+
+**Phase 1: Security & Critical Bugs**
+- **CORS**: Made configurable via `config.yaml` (was hardcoded `allow_origins=["*"]`)
+- **Background tasks**: Collection and analysis now run async with task polling (`services/tasks.py`)
+- **LLM validation**: Pydantic models validate all LLM output (type, intensity 0-100, theme_key normalization)
+- **Rate limits**: Don't update `last_collected` when Reddit returns 0 posts
+- **O(N^2) fix**: Theme aggregation rewritten with SQL GROUP BY (was loading all insights into Python)
+- **Session safety**: `session.begin_nested()` savepoints isolate per-post analysis failures
+- **Error types**: Fixed endpoints returning dicts instead of proper HTTPException(404)
+
+**Phase 2: Input Validation & Data Integrity**
+- Subreddit name validation: regex `^[a-zA-Z0-9_]{2,21}$`, strips `r/` prefix
+- ChromaDB sync on delete: removing a post also removes its insights from vector store
+- Auto-index after analysis: new insights immediately searchable (was requiring manual reindex)
+
+**Phase 3: Testing Foundation**
+- 48 tests across 4 test files (test_analyzer, test_tasks, test_subreddits, test_endpoints)
+- pytest + pytest-asyncio with in-memory SQLite fixtures
+- GitHub Actions CI on push/PR (Python 3.9, 3.11, 3.12 matrix)
+- Fixed Pydantic v2 deprecations (`class Config` → `model_config`, `regex` → `pattern`)
+
+**Phase 4: Open-Source Release**
+- MIT License, Dockerfile, docker-compose.yml (+ Ollama override)
+- `scripts/setup.sh` and `scripts/run.sh` for local install
+- Overhauled README with Docker quickstart, badges, full API table
+- CONTRIBUTING.md with dev setup, coding standards, PR process
+- Implemented insights.py and themes.py (were stubs)
+
+### 2026-02-13: Codebase Review & Development Roadmap
+
+Comprehensive codebase review completed. Key findings:
+
+- **13 critical/high issues identified** across security, performance, and data integrity
+- **Security**: Exposed secrets (key.txt tracked in git), `allow_origins=["*"]` with credentials
+- **Performance**: Blocking endpoints (collection/analysis block event loop, O(N^2) theme aggregation)
+- **Data integrity**: Silent rate limit failures update `last_collected`, no LLM output validation, ChromaDB not synced on delete
+- **Missing infrastructure**: No tests, no Docker, no CI/CD, placeholder API endpoints still in router
+
+**Decision**: Balanced roadmap prioritizing security fixes and open-source release, then SaaS foundation.
+
+**Roadmap phases**:
+- Phase 0: Git hygiene & secrets cleanup
+- Phase 1: Security & critical bug fixes (CORS, background tasks, validation)
+- Phase 2: Input validation & data integrity
+- Phase 3: Testing foundation (pytest, CI)
+- Phase 4: Open-source release (Docker, LICENSE, README)
+- Phase 5-7: Scheduler, performance, deployment hardening
+- Phase 8-9: SaaS foundation (auth, billing) - future
 
 ---
 
@@ -98,8 +158,8 @@ To avoid 429 errors:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         User's Browser                               │
-│                    (Alpine.js + Tailwind CSS)                        │
-│     Tabs: Dashboard | Subreddits | Posts | Insights | LLM           │
+│                    (Alpine.js + Tailwind CSS + Chart.js)             │
+│   Tabs: Dashboard | Subreddits | Posts | Insights | LLM | Analytics │
 └─────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼
@@ -442,7 +502,7 @@ RedditWatch/
 │   └── requirements.txt
 │
 ├── frontend/
-│   └── index.html               # SPA with 5 tabs (Alpine.js + Tailwind)
+│   └── index.html               # SPA with 6 tabs (Alpine.js + Tailwind + Chart.js)
 │
 ├── data/
 │   ├── redditwatch.db           # SQLite database (gitignored)
@@ -481,7 +541,7 @@ RedditWatch/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/posts` | GET | List posts (filters: subreddit, analyzed, min_score) |
-| `/api/posts/stats` | GET | Aggregate statistics |
+| `/api/posts/stats` | GET | Aggregate statistics (includes `posts_by_date` for charts) |
 | `/api/posts/{id}` | GET | Single post with comments |
 | `/api/posts/{id}` | DELETE | Delete post + related data |
 
@@ -491,14 +551,16 @@ RedditWatch/
 | `/api/collect` | POST | Collect from all enabled subreddits |
 | `/api/collect/status` | GET | Collection job status |
 | `/api/collect/test` | POST | Test Reddit connection |
+| `/api/collect/refresh` | POST | Refresh comments for hot posts `?min_score=10&limit=10` |
+| `/api/collect/refresh/{post_id}` | POST | Refresh comments for specific post |
 
 ### Analysis (Phase 3+)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/analyze` | POST | Trigger LLM analysis `?limit=10&min_score=3` |
-| `/api/analyze/status` | GET | Analysis stats (posts, insights, themes, timing) |
+| `/api/analyze/status` | GET | Analysis stats (posts, insights, themes, timing, `insights_by_type`) |
 | `/api/analyze/themes` | GET | Aggregated themes sorted by combined score |
-| `/api/analyze/insights` | GET | List insights `?type=pain_point&theme_key=...` |
+| `/api/analyze/insights` | GET | List insights `?type=pain_point&theme_key=...&sort=intensity` |
 
 ### Search (Phase 5)
 | Endpoint | Method | Description |
@@ -508,6 +570,15 @@ RedditWatch/
 | `/api/search/duplicates` | GET | Find potential duplicates `?threshold=0.9` |
 | `/api/search/stats` | GET | Index statistics (indexed count, sync status) |
 | `/api/search/reindex` | POST | Rebuild search index from database |
+
+### Export (Phase 6)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/export/insights` | GET | Export insights `?format=csv|json|md&type=pain_point&theme_key=...` |
+| `/api/export/insights/selected` | POST | Export specific insights `{"ids": [1,2,3]}` |
+| `/api/export/insights/{id}/quote-card` | GET | Generate shareable quote card |
+| `/api/export/themes` | GET | Export themes `?format=csv|json|md` |
+| `/api/export/report` | GET | Generate full Markdown research report |
 
 ---
 
@@ -585,22 +656,26 @@ uvicorn app.main:app --reload --port 8000
 - [x] **Auto-reindex**: Insights indexed after analysis
 - [x] **Evidence view**: Links back to source Reddit posts
 
-### 🔲 Phase 6: Export & Reports
-- [ ] **CSV export**: Bulk download of insights
-- [ ] **JSON export**: API-friendly format
-- [ ] **Markdown export**: For docs/reports
-- [ ] **Selective export**: Checkbox selection
-- [ ] **Quote cards**: Shareable formatted quotes
+### ✅ Phase 6: Export & Reports
+- [x] **CSV export**: Bulk download of insights with filters
+- [x] **JSON export**: API-friendly format with metadata
+- [x] **Markdown export**: Formatted reports grouped by theme
+- [x] **Full report generation**: Comprehensive Markdown report with executive summary
+- [x] **Quote cards**: Shareable ASCII-art quote cards
+- [x] **Filter support**: Export by type, theme, intensity range, subreddit
+- [x] **UI buttons**: Export controls in Insights tab
 
-### 🔲 Phase 6.5: Data Enrichment
-- [ ] **Nested comment fetching**: Recursively fetch reply threads (most valuable insights often buried)
-- [ ] **Conversation refresh**: Re-fetch comments for high-engagement posts periodically
-- [ ] **Engagement tracking**: Store score snapshots over time for trend analysis
-- [ ] **Upvotes in UI**: Display post scores, upvote ratios, comment engagement
-- [ ] **Weighted quotes**: Higher-scoring comments = more credible evidence
-- [ ] *Note: User karma skipped (requires separate API calls per user)*
+### ✅ Phase 6.5: Data Enrichment
+- [x] **Nested comment fetching**: Recursively fetch reply threads up to configurable depth (default: 5)
+- [x] **Conversation refresh**: Re-fetch comments for high-engagement posts via API
+- [x] **Depth tracking**: Comment model includes `depth` field (0 = top-level, 1 = reply, etc.)
+- [x] **Upvotes in UI**: Display post scores with color coding, upvote ratios
+- [x] **Refresh buttons**: "Refresh Hot Conversations" on Dashboard, per-post refresh in Posts tab
+- [x] *Note: User karma skipped (requires separate API calls per user)*
+- [x] *Note: Score snapshots for trend analysis deferred to Phase 8 (graphs)*
 
-### 🔲 Phase 7: Performance & Polish
+### 🔲 Phase 7: Performance & Polish (Deferred)
+*Note: Deferred to focus on UI/UX first. Will revisit after Phase 8.*
 - [ ] **Background job queue** - Analysis runs async, UI shows progress
 - [ ] **Cloud LLM toggle** - Option to use Claude/OpenAI for faster analysis
 - [ ] **Batch prompting** - Analyze multiple posts per LLM call
@@ -609,16 +684,26 @@ uvicorn app.main:app --reload --port 8000
 - [ ] Scheduled collection (APScheduler)
 - [ ] Rate limit handling improvements
 
-### 🔲 Phase 8: UI/UX Improvements & Graph Visualization
+### ✅ Phase 8: Analytics & Visualization
+- [x] **Chart.js integration**: Added Chart.js 4.4.1 CDN for visualizations
+- [x] **Analytics tab**: New dedicated tab for data visualization
+- [x] **Insight type distribution chart**: Doughnut chart showing pain points vs opportunities vs product mentions
+- [x] **Top themes bar chart**: Horizontal bar chart of themes by combined score
+- [x] **Subreddit activity chart**: Vertical bar chart of posts per subreddit
+- [x] **Theme intensity scatter plot**: Bubble chart showing insight count vs avg intensity (size = count)
+- [x] **Collection timeline chart**: Dual-axis line chart with daily posts and cumulative total
+- [x] **Top intensity insights table**: Sortable table of highest intensity insights
+- [x] **Analytics summary cards**: Total insights, active themes, avg intensity, top subreddit
+- [x] **Backend updates**: Added `insights_by_type` to analysis status, `posts_by_date` to post stats
+
+### 🔲 Phase 9: Advanced Visualizations (Future)
 - [ ] **UI polish**: Better spacing, responsive design, dark/light mode toggle
-- [ ] **Engagement trend charts**: Score/comments over time (D3.js or Chart.js)
 - [ ] **Theme popularity timeline**: When themes spike/decline
 - [ ] **Subreddit activity heatmap**: Which subreddits are most active when
 - [ ] **Theme network graph**: Nodes = themes, edges = co-occurrence
 - [ ] **Insight similarity graph**: Cluster similar insights visually (uses ChromaDB embeddings)
 - [ ] **Subreddit × Theme matrix**: Which themes appear where
 - [ ] **Product ecosystem map**: Competitive landscape from product mentions
-- [ ] Library options: D3.js, Chart.js, Cytoscape.js, or vis.js
 
 *Note: Graph views are most valuable with ChromaDB embeddings (Phase 5) enabling similarity-based edges.*
 
@@ -940,6 +1025,65 @@ collection.add(
 ---
 
 ## Changelog
+
+### 2026-01-31: Phase 8 Complete (Analytics & Visualization)
+- Added **Chart.js 4.4.1** for data visualization
+- Created **Analytics tab** with 5 interactive charts:
+  1. **Insight Type Distribution** (doughnut): Visual breakdown of pain points, opportunities, etc.
+  2. **Top Themes** (horizontal bar): Themes ranked by combined score
+  3. **Subreddit Activity** (bar): Posts per subreddit comparison
+  4. **Theme Intensity** (scatter/bubble): Plots themes by count vs avg intensity
+  5. **Collection Timeline** (line): Daily posts + cumulative growth
+- Added **analytics summary cards**: Total insights, active themes, avg intensity, top subreddit
+- Added **top intensity insights table**: Sortable view of highest-intensity insights
+- **Backend updates**:
+  - `GET /api/analyze/status` now includes `insights_by_type` breakdown
+  - `GET /api/posts/stats` now includes `posts_by_date` for timeline charts
+  - `GET /api/analyze/insights` supports `sort=intensity` parameter
+  - Insights response now includes `subreddit` field from joined Post
+- All charts use dark theme styling to match the UI
+- Charts render dynamically when Analytics tab is selected
+- **Tested**: All endpoints verified working with existing data (82 insights, 73 themes, 23 posts)
+
+### 2026-01-31: Phase 6.5 Complete (Data Enrichment)
+- **Nested comment fetching**: Reddit collector now recursively extracts reply threads
+  - Added `_extract_comments_recursive()` method to traverse `replies` objects
+  - Configurable `max_depth` (default: 5 levels deep)
+  - `include_nested` parameter to enable/disable (default: enabled)
+- **Comment model updated**: Added `depth` field to track thread depth (0 = top-level)
+- **Conversation refresh API**:
+  - `POST /api/collect/refresh` - Refresh comments for high-engagement posts
+  - `POST /api/collect/refresh/{post_id}` - Refresh specific post's comments
+  - Params: `min_score`, `min_comments`, `limit`
+- **Config updated**: Added `max_comment_depth` setting (default: 5)
+- **UI enhancements**:
+  - Posts now show color-coded scores (green 50+, yellow 10-49, gray <10)
+  - Upvote ratio displayed with color coding (green 80%+, yellow 60-79%, red <60%)
+  - "Refresh Hot Conversations" button on Dashboard
+  - Per-post "Refresh" button in Posts tab
+  - Results show new/updated comment counts
+- **Tested**: Refresh found 12 new nested comments from existing posts
+
+### 2026-01-31: Phase 6 Complete (Export & Reports)
+- Created comprehensive **export API** (`api/export.py`) with:
+  - `GET /api/export/insights?format=csv|json|md` - Export insights with filters
+  - `GET /api/export/themes?format=csv|json|md` - Export theme summaries
+  - `GET /api/export/report` - Generate full Markdown research report
+  - `GET /api/export/insights/{id}/quote-card` - Shareable ASCII quote cards
+  - `POST /api/export/insights/selected` - Export specific insights by ID
+- **Export formats**:
+  - **CSV**: Spreadsheet-ready with all fields
+  - **JSON**: Includes metadata, filters applied, post titles
+  - **Markdown**: Grouped by theme with quotes, type badges, intensity scores
+- **Full report includes**:
+  - Executive summary (posts analyzed, insights count, theme count)
+  - Insight breakdown by type with emojis
+  - Top 15 themes with key quotes
+  - High-intensity pain points (70+) section
+  - Opportunities section
+  - Product mentions sentiment table
+- **UI updates**: Added export buttons (CSV, JSON, Markdown) and "Generate Full Report" button to Insights tab
+- Fixed SQLAlchemy lazy loading issue with `joinedload` for Post relationship
 
 ### 2026-01-31: Phase 5 Complete (Semantic Search)
 - Added **ChromaDB** for vector storage and semantic search

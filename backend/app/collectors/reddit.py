@@ -287,28 +287,107 @@ class RedditCollector:
 
         return posts
 
+    def _extract_comments_recursive(
+        self,
+        children: list,
+        post_id: str,
+        depth: int = 0,
+        max_depth: int = 5,
+        limit: int = 100,
+    ) -> list[Comment]:
+        """
+        Recursively extract comments from Reddit's nested structure.
+
+        Args:
+            children: List of comment children from Reddit API
+            post_id: Reddit post ID
+            depth: Current depth in comment tree
+            max_depth: Maximum depth to traverse
+            limit: Maximum total comments to extract
+
+        Returns:
+            Flat list of Comment model instances with depth info
+        """
+        comments = []
+
+        for item in children:
+            if len(comments) >= limit:
+                break
+
+            if item.get("kind") != "t1":  # t1 = comment
+                continue
+
+            comment_data = item.get("data", {})
+
+            # Skip deleted/removed comments
+            body = comment_data.get("body", "")
+            if body in ["[deleted]", "[removed]", ""]:
+                continue
+
+            # Extract parent ID (remove prefix)
+            parent_id = comment_data.get("parent_id", "")
+            if parent_id.startswith("t1_"):
+                parent_id = parent_id[3:]
+            elif parent_id.startswith("t3_"):
+                parent_id = parent_id[3:]
+
+            comment = Comment(
+                id=comment_data.get("id", ""),
+                post_id=post_id,
+                parent_id=parent_id,
+                body=body,
+                author=comment_data.get("author", "[deleted]"),
+                score=comment_data.get("score", 0),
+                depth=depth,
+                created_utc=datetime.fromtimestamp(
+                    comment_data.get("created_utc", 0), tz=timezone.utc
+                ),
+            )
+            comments.append(comment)
+
+            # Recursively get replies if within depth limit
+            if depth < max_depth:
+                replies = comment_data.get("replies")
+                if replies and isinstance(replies, dict):
+                    reply_children = replies.get("data", {}).get("children", [])
+                    if reply_children:
+                        nested_comments = self._extract_comments_recursive(
+                            reply_children,
+                            post_id,
+                            depth=depth + 1,
+                            max_depth=max_depth,
+                            limit=limit - len(comments),
+                        )
+                        comments.extend(nested_comments)
+
+        return comments
+
     async def collect_comments(
         self,
         post_id: str,
         subreddit_name: str,
-        limit: int = 30,
+        limit: int = 50,
+        max_depth: int = 5,
+        include_nested: bool = True,
     ) -> list[Comment]:
         """
-        Collect comments for a post.
+        Collect comments for a post, including nested replies.
 
         Args:
             post_id: Reddit post ID
             subreddit_name: Name of subreddit
             limit: Maximum number of comments to fetch
+            max_depth: Maximum depth of nested replies (0 = top-level only)
+            include_nested: Whether to include nested replies
 
         Returns:
-            List of Comment model instances
+            List of Comment model instances with depth information
         """
         comments = []
         client = await self._get_client()
 
         url = f"{self.base_url}/r/{subreddit_name}/comments/{post_id}.json"
-        params = {"limit": limit, "sort": "top"}
+        params = {"limit": limit, "sort": "top", "depth": max_depth + 1 if include_nested else 1}
 
         try:
             # Add a small delay to avoid rate limiting
@@ -331,38 +410,51 @@ class RedditCollector:
 
             comment_listing = data[1].get("data", {}).get("children", [])
 
-            for item in comment_listing[:limit]:
-                if item.get("kind") != "t1":  # t1 = comment
-                    continue
-
-                comment_data = item.get("data", {})
-
-                # Skip deleted/removed comments
-                body = comment_data.get("body", "")
-                if body in ["[deleted]", "[removed]", ""]:
-                    continue
-
-                # Extract parent ID (remove prefix)
-                parent_id = comment_data.get("parent_id", "")
-                if parent_id.startswith("t1_"):
-                    parent_id = parent_id[3:]
-                elif parent_id.startswith("t3_"):
-                    parent_id = parent_id[3:]
-
-                comment = Comment(
-                    id=comment_data.get("id", ""),
-                    post_id=post_id,
-                    parent_id=parent_id,
-                    body=body,
-                    author=comment_data.get("author", "[deleted]"),
-                    score=comment_data.get("score", 0),
-                    created_utc=datetime.fromtimestamp(
-                        comment_data.get("created_utc", 0), tz=timezone.utc
-                    ),
+            if include_nested:
+                # Recursively extract nested comments
+                comments = self._extract_comments_recursive(
+                    comment_listing,
+                    post_id,
+                    depth=0,
+                    max_depth=max_depth,
+                    limit=limit,
                 )
-                comments.append(comment)
+            else:
+                # Only top-level comments (old behavior)
+                for item in comment_listing[:limit]:
+                    if item.get("kind") != "t1":
+                        continue
 
-            logger.debug(f"Collected {len(comments)} comments for post {post_id}")
+                    comment_data = item.get("data", {})
+                    body = comment_data.get("body", "")
+                    if body in ["[deleted]", "[removed]", ""]:
+                        continue
+
+                    parent_id = comment_data.get("parent_id", "")
+                    if parent_id.startswith("t1_"):
+                        parent_id = parent_id[3:]
+                    elif parent_id.startswith("t3_"):
+                        parent_id = parent_id[3:]
+
+                    comment = Comment(
+                        id=comment_data.get("id", ""),
+                        post_id=post_id,
+                        parent_id=parent_id,
+                        body=body,
+                        author=comment_data.get("author", "[deleted]"),
+                        score=comment_data.get("score", 0),
+                        depth=0,
+                        created_utc=datetime.fromtimestamp(
+                            comment_data.get("created_utc", 0), tz=timezone.utc
+                        ),
+                    )
+                    comments.append(comment)
+
+            nested_count = sum(1 for c in comments if c.depth > 0)
+            logger.debug(
+                f"Collected {len(comments)} comments for post {post_id} "
+                f"({nested_count} nested, max depth {max(c.depth for c in comments) if comments else 0})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to collect comments for post {post_id}: {e}")

@@ -54,5 +54,15 @@ build/
 *.egg-info/
 *.egg
 
+# Secrets & keys
+key.txt
+key.txt.pub
+
+# Setup notes (not needed in repo)
+GIT_SETUP.md
+
+# Personal roadmaps (not for public repo)
+MONETIZATION_ROADMAP.md
+
 # Claude Code (session-specific)
 .claude/

@@ -23,8 +23,7 @@ class CommentResponse(BaseModel):
     score: int = 0
     created_utc: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class PostResponse(BaseModel):
@@ -45,8 +44,7 @@ class PostResponse(BaseModel):
     category: Optional[str] = None
     reddit_url: str
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class PostDetailResponse(PostResponse):
@@ -71,6 +69,7 @@ class PostStats(BaseModel):
     unanalyzed_posts: int
     posts_by_subreddit: dict
     posts_by_category: dict
+    posts_by_date: dict
 
 
 @router.get("", response_model=PostListResponse)
@@ -142,6 +141,8 @@ async def list_posts(
 @router.get("/stats", response_model=PostStats)
 async def get_post_stats(session: AsyncSession = Depends(get_session)):
     """Get aggregate post statistics."""
+    from sqlalchemy import cast, Date
+
     # Total counts
     total = (await session.execute(select(func.count(Post.id)))).scalar() or 0
     analyzed = (await session.execute(
@@ -166,12 +167,25 @@ async def get_post_stats(session: AsyncSession = Depends(get_session)):
     category_result = await session.execute(category_query)
     posts_by_category = {row[0]: row[1] for row in category_result}
 
+    # By date (collected_at)
+    date_query = (
+        select(
+            func.date(Post.collected_at).label('date'),
+            func.count(Post.id)
+        )
+        .group_by(func.date(Post.collected_at))
+        .order_by(func.date(Post.collected_at))
+    )
+    date_result = await session.execute(date_query)
+    posts_by_date = {str(row[0]): row[1] for row in date_result if row[0]}
+
     return PostStats(
         total_posts=total,
         analyzed_posts=analyzed,
         unanalyzed_posts=total - analyzed,
         posts_by_subreddit=posts_by_subreddit,
         posts_by_category=posts_by_category,
+        posts_by_date=posts_by_date,
     )
 
 
@@ -232,12 +246,31 @@ async def delete_post(
 ):
     """
     Delete a post and all related data (comments, insights).
+    Also removes associated insights from ChromaDB search index.
     """
-    post = await session.get(Post, post_id)
+    from sqlalchemy.orm import selectinload as _sel
+
+    # Load post with insights to get IDs for ChromaDB cleanup
+    result = await session.execute(
+        select(Post).where(Post.id == post_id).options(_sel(Post.insights))
+    )
+    post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail=f"Post {post_id} not found")
+
+    # Remove from ChromaDB search index
+    insight_ids = [i.id for i in post.insights]
+    if insight_ids:
+        try:
+            from app.services.search import get_search_service
+            search = get_search_service()
+            collection = search._get_collection()
+            doc_ids = [f"insight_{iid}" for iid in insight_ids]
+            collection.delete(ids=doc_ids)
+        except Exception:
+            pass  # Non-critical: search index can be rebuilt
 
     await session.delete(post)
     await session.commit()
 
-    return {"message": f"Post {post_id} deleted"}
+    return {"message": f"Post {post_id} deleted", "insights_removed": len(insight_ids)}

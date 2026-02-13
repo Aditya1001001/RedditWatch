@@ -55,7 +55,8 @@ class CollectionConfig(BaseModel):
     interval_minutes: int = 30
     posts_per_subreddit: int = 25
     include_comments: bool = True
-    max_comments_per_post: int = 30
+    max_comments_per_post: int = 50
+    max_comment_depth: int = 5  # Max depth for nested replies (0 = top-level only)
     sort_by: str = "hot"
 
 
@@ -74,11 +75,21 @@ class ScoringConfig(BaseModel):
     intensity_weight: float = 0.6
 
 
+class CORSConfig(BaseModel):
+    """CORS configuration."""
+
+    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8000", "http://127.0.0.1:8000"])
+    allow_credentials: bool = False
+    allow_methods: list[str] = Field(default_factory=lambda: ["*"])
+    allow_headers: list[str] = Field(default_factory=lambda: ["*"])
+
+
 class ServerConfig(BaseModel):
     """Server configuration."""
 
     host: str = "0.0.0.0"
     port: int = 8000
+    cors: CORSConfig = Field(default_factory=CORSConfig)
 
 
 class Config(BaseModel):
