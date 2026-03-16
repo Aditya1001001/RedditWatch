@@ -6,11 +6,43 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 10 in progress (Historical Data + UI Polish) | Phases 1-9 complete
+**Status**: Phase 10 in progress (Historical Data + UI Polish) | Monorepo split done | Phases 1-9 complete
 
 ---
 
 ## Changelog
+
+### 2026-03-16: Private Monorepo + Public OSS Mirror
+
+Set up a private/public repo split so SaaS-only features can be developed without exposing them in the open-source version.
+
+**Repo Architecture**
+
+- Created private repo `Aditya1001001/redditwatch-pro` — all development happens here now
+- Public repo `Aditya1001001/RedditWatch` is now an auto-synced OSS mirror
+- Local `origin` remote points to `redditwatch-pro`
+
+**OSS Sync Workflow**
+
+- `.github/workflows/sync-oss.yml` triggers on push to `main` in private repo
+- Strips paths listed in `.oss-ignore` (cloud/, .oss-ignore, the workflow itself)
+- Force-pushes cleaned tree to public `RedditWatch` repo via classic PAT (`OSS_REPO_TOKEN` secret)
+- Gotcha: had to unset `http.extraheader` set by `actions/checkout` to allow cross-repo push
+
+**Edition Toggle**
+
+- `EDITION` env var (`"oss"` default, `"cloud"` for SaaS) read in `backend/app/config.py`
+- `Config.is_cloud` property for easy checks
+- `main.py` conditionally loads cloud routes when `EDITION=cloud`, gracefully falls back if cloud package missing
+
+**SaaS-Only Code (`backend/app/cloud/`)**
+
+- `auth/` — JWT/session auth (placeholder)
+- `tenancy/` — user-scoped DB queries (placeholder)
+- `historical/` — Arctic Shift collector (placeholder)
+- `billing/` — Stripe/quotas (placeholder)
+
+---
 
 ### 2026-03-16: Expanded Catalog & Audience Suggestions
 
