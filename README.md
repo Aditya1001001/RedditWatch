@@ -3,19 +3,40 @@
 [![Tests](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml/badge.svg)](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A self-hosted Reddit market research tool for discovering pain points, product opportunities, and market signals. Built as a privacy-first alternative to GummySearch and PainOnSocial.
+**Market research from Reddit, on your terms.**
 
-## Features
+A self-hosted, LLM-powered tool that discovers pain points, product opportunities, and market signals from Reddit discussions. No Reddit API key needed. No monthly fees. Your data stays on your machine.
 
-- **No Reddit API Keys Required** - Uses public endpoints (old.reddit.com JSON)
-- **Local-First** - All data stays on your machine, works offline
-- **LLM-Powered Analysis** - Extracts pain points, opportunities, and product mentions
-- **Flexible LLM Providers** - Ollama (default, free), Claude, or OpenAI
-- **Semantic Search** - Find similar insights using ChromaDB embeddings
-- **Export & Reports** - CSV, JSON, Markdown exports with full research reports
-- **Analytics Dashboard** - Charts and visualizations with Chart.js
-- **Background Processing** - Collection and analysis run without blocking the UI
-- **Web UI** - 6-tab SPA with Alpine.js + Tailwind CSS (no build step)
+> GummySearch shut down in December 2025 after Reddit killed their API access. RedditWatch uses public endpoints (old.reddit.com) — it can't be shut down the same way. Free forever, open source.
+
+![RedditWatch Dashboard](screenshots/v0.3/dashboard.png)
+
+## Why RedditWatch?
+
+- **No Reddit API key required** — Uses public old.reddit.com endpoints. Immune to API policy changes.
+- **Free and open source** — Self-host it. No subscriptions, no vendor lock-in.
+- **LLM-powered analysis** — Not just keyword alerts. Extracts pain points, solution requests, product mentions, and opportunities with intensity scoring.
+- **Works with free local models** — Defaults to Ollama (llama3.1:8b). Zero cost, fully private. Also supports Claude and OpenAI.
+- **Semantic search** — Find related insights by meaning using ChromaDB embeddings.
+- **Export everything** — CSV, JSON, Markdown, or full research reports.
+
+## See It in Action
+
+### Insights — Themes, Semantic Search, and Exports
+
+![Insights](screenshots/v0.3/insights.gif)
+
+### Analytics — Charts, Trends, and High-Intensity Signals
+
+![Analytics](screenshots/v0.3/analytics.gif)
+
+### Subreddit Catalog — 117 Curated Subreddits Across 20 Categories
+
+![Subreddits](screenshots/v0.3/subreddits.png)
+
+### LLM Provider Management
+
+![LLM Providers](screenshots/v0.3/llm.png)
 
 ## Quick Start
 
@@ -55,36 +76,34 @@ cd RedditWatch
 ollama pull llama3.1:8b
 ```
 
-## Usage
+## How It Works
 
 ### 1. Add Subreddits
 
-Go to the **Subreddits** tab and either:
-- Type a subreddit name (e.g., "SaaS") and click Add
-- Browse the curated catalog of 53+ startup-relevant subreddits
+Go to the **Subreddits** tab. Type a subreddit name or browse the curated catalog of 117 subreddits across 20 categories (startups, tech, marketing, cybersecurity, gaming, health, education, and more). When creating audience groups, the app suggests related subreddits from the same category.
 
 ### 2. Collect Posts
 
-Click **Collect All Posts** on the Dashboard. Collection runs in the background - you can continue using the app.
+Click **Collect All Posts** on the Dashboard. RedditWatch scrapes posts and comments from old.reddit.com in the background — no API key, no rate limit worries.
 
 ### 3. Analyze with LLM
 
-Go to the **Insights** tab and click **Analyze Posts**. The LLM extracts:
-- **Pain Points** - User frustrations with intensity scores (0-100)
-- **Solution Requests** - "I wish there was a tool that..."
-- **Product Mentions** - Tools/services mentioned with sentiment
-- **Opportunities** - Market gaps and unmet needs
+Go to the **Insights** tab and click **Analyze Posts**. The LLM reads each post and its comments, then extracts:
+- **Pain Points** — User frustrations with intensity scores (0-100)
+- **Solution Requests** — "I wish there was a tool that..."
+- **Product Mentions** — Tools/services discussed, with sentiment
+- **Opportunities** — Market gaps and unmet needs
 
 ### 4. Explore & Export
 
-- **Themes View** - Pain points grouped by theme (e.g., "onboarding_friction")
-- **Semantic Search** - Find insights by meaning, not just keywords
-- **Analytics** - Charts showing insight distribution, theme intensity, collection timeline
-- **Export** - CSV, JSON, or Markdown. Generate full research reports.
+- **Themes** — Pain points grouped by theme (e.g., "onboarding_friction"), ranked by frequency x intensity
+- **Semantic Search** — Find insights by meaning, not just keywords
+- **Analytics** — Insight distribution, top themes, intensity scatter plots, collection timeline
+- **Export** — CSV, JSON, Markdown, or generate a full research report
 
 ## Configuration
 
-All settings are optional. RedditWatch works out of the box with Ollama.
+RedditWatch works out of the box with Ollama. All settings are optional.
 
 Copy `.env.example` to `.env` for cloud LLM providers:
 
@@ -112,7 +131,7 @@ server:
       - "http://localhost:8000"
 ```
 
-## API Endpoints
+## API
 
 42+ endpoints across 9 modules. Full interactive docs at http://localhost:8000/docs
 
@@ -171,23 +190,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Roadmap
 
-- [x] Phase 1-5: Core functionality (collection, analysis, search)
-- [x] Phase 6: Export (CSV, JSON, Markdown, reports)
-- [x] Phase 6.5: Data enrichment (nested comments, engagement tracking)
-- [x] Phase 8: Analytics & Visualization (Chart.js dashboards)
-- [x] Phase 9: Security hardening, background tasks, testing, Docker
-- [ ] Phase 10: Scheduled collection (APScheduler)
-- [ ] Phase 11: Performance (migrations, indexes, rate limiting)
-- [ ] Phase 12: SaaS foundation (auth, multi-tenancy)
-
-See [DEVLOG.md](DEVLOG.md) for detailed development notes.
-
-## Why This Exists
-
-- GummySearch shut down (Nov 2025)
-- Paid alternatives cost $20-200/month
-- Privacy: Your research data should stay on your machine
-- Flexibility: Use any LLM, customize analysis prompts
+- [x] Core collection and LLM analysis pipeline
+- [x] Semantic search with ChromaDB embeddings
+- [x] Export (CSV, JSON, Markdown, full research reports)
+- [x] Analytics dashboard with Chart.js visualizations
+- [x] Audience grouping and filtering with subreddit suggestions
+- [x] 117-subreddit catalog across 20 categories
+- [x] Security hardening, background tasks, testing, Docker
+- [ ] Scheduled collection (APScheduler)
+- [ ] Performance improvements (migrations, indexes, rate limiting)
 
 ## License
 
@@ -197,3 +208,7 @@ See [DEVLOG.md](DEVLOG.md) for detailed development notes.
 
 - Inspired by [GummySearch](https://gummysearch.com) and [PainOnSocial](https://painonsocial.com)
 - Built with [Ollama](https://ollama.ai), [FastAPI](https://fastapi.tiangolo.com), [ChromaDB](https://www.trychroma.com)
+
+---
+
+If RedditWatch is useful to you, consider giving it a star — it helps others discover the project.

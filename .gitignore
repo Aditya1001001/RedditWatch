@@ -61,8 +61,10 @@ key.txt.pub
 # Setup notes (not needed in repo)
 GIT_SETUP.md
 
-# Personal roadmaps (not for public repo)
+# Personal roadmaps & strategy (not for public repo)
 MONETIZATION_ROADMAP.md
+MARKETING_GTM_PLAN.md
+marketing/
 
 # Claude Code (session-specific)
 .claude/

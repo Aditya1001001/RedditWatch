@@ -6,11 +6,96 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 9 in progress (Roadmap & Hardening) | Phases 1-8 complete
+**Status**: Phase 10 in progress (Historical Data + UI Polish) | Phases 1-9 complete
 
 ---
 
 ## Changelog
+
+### 2026-03-16: Expanded Catalog & Audience Suggestions
+
+Expanded the subreddit catalog from 53 to 117 subreddits across 20 categories, sourced from r/ListOfSubreddits wiki. Added audience-aware subreddit suggestions.
+
+**Catalog Expansion**
+
+- Added 11 new categories: cybersecurity, data analytics, gaming, health & fitness, education, creative media, careers & HR, crypto/web3, science & technology, personal finance & investing, lifestyle & hobbies
+- Expanded industry verticals with Teachers, nursing, Truckers, RealEstate
+- 117 total subreddits across 20 categories (was 53 across 9)
+- Updated catalog subtitle from "startup research" to "market research"
+
+**Audience Form Suggestions**
+
+- When selecting subreddits for an audience, a "Suggested from catalog" section now appears with related subs from the same category
+- Clicking a suggestion auto-adds it to monitored subreddits and selects it for the audience
+- Shows up to 8 suggestions with hover tooltips showing each sub's `best_for` description
+
+**Audience Card Growth Summary**
+
+- Audience cards now show aggregate subscriber count and weighted-average growth % (e.g., "r/indiehackers, r/saas · 705K subscribers · ↑1.2%")
+- Monitored subreddits header shows total subscriber count across all tracked subs
+- New `getAudienceGrowth()` helper computes weighted stats from existing growth data
+
+**Bug Fixes**
+
+- Fixed `replace('_', ' ')` → `replaceAll('_', ' ')` so multi-underscore category names display correctly
+
+---
+
+### 2026-03-14: Phase 10 — Historical Data & UI Polish (Pre-Launch)
+
+Two workstreams before public release:
+
+**Track 3: Audience Groups (Multi-Subreddit Collections)**
+
+- GummySearch's "Audience" feature was key — group multiple subreddits into a topic (e.g., "SaaS founders" = r/SaaS + r/startups + r/Entrepreneur)
+- Current state: catalog has static `category` tags but no runtime grouping, insights API has no subreddit filter at all
+- Need: `Audience` model, CRUD API, query posts/insights across groups, compare audiences
+- Frontend: audience selector in dashboard, cross-audience analytics
+
+**Track 4: Subreddit Growth Tracking**
+
+- Current state: `subscribers` captured once at add time, never updated, no history
+- Need: `SubscriberSnapshot` time-series model, scheduled refresh job, growth trend calculation
+- Frontend: sparklines or growth indicators per subreddit
+
+**Track 5: Hybrid Analysis (LLM + Rule-Based) — Deferred**
+
+- Investigated what the LLM actually does in analysis (~60% requires LLM, ~40% could use simpler methods)
+- Intensity scoring → keyword sentiment + engagement heuristics (score × comments)
+- Sentiment → VADER/TextBlob library
+- Product detection → known-product regex + spaCy NER
+- Quote extraction → already fetching top comments by score, just pick the best
+- Theme key generation → TF-IDF or keyword clustering (LLM gives cleaner labels though)
+- Core LLM value: semantic classification (pain_point vs opportunity) and description generation
+- **Plan**: Implement hybrid approach later — rule-based for intensity/sentiment/products/quotes, keep LLM for classification + description. Will cut LLM calls significantly.
+
+**Track 1: Maximize Historical Data**
+
+- Current Reddit collector limited to ~1,000 posts per sort/time combo via `old.reddit.com` JSON (max ~1 year via `top/year`)
+- Researched **Arctic Shift** as primary source for deep historical data:
+  - Free public API at `arctic-shift.photon-reddit.com` (successor to Pushshift)
+  - Covers Reddit data from 2005–2025 via archived dumps
+  - Endpoints: `/api/posts/search`, `/api/comments/search` with date-range cursors
+  - Rate limit: ~2 req/sec, data lags ~36 hours behind live Reddit
+  - Pagination via `created_utc` cursor for full subreddit history
+- **PullPush** (`api.pullpush.io`) identified as fallback (Pushshift-compatible API, 15 req/min)
+- Plan: Add Arctic Shift collector for one-time historical backfill, then continue using existing Reddit collector for incremental updates
+
+**Track 2: UI Polish (Complete)**
+
+- Installed **Impeccable** design skill (17 commands for AI-guided UI improvement)
+- Captured "before" screenshots of all 6 tabs (`screenshots/before/`)
+- **Complete visual overhaul** of `frontend/index.html`:
+  - **Typography**: Plus Jakarta Sans + Newsreader (serif for quotes). Modular type scale, `tabular-nums` for data, uppercase tracking section labels
+  - **Color**: Warm-tinted surfaces (not pure gray), amber/gold accent palette, tinted transparent insight badges instead of solid blocks
+  - **Layout**: Border-based containers replacing card-everything pattern, `gap-px` grid for metrics, varied spatial rhythm
+  - **Interactions**: Toast notification system replacing `alert()`, spinner SVGs on async buttons, 150-300ms transitions with exponential easing, entrance animations
+  - **Accessibility**: `:focus-visible` rings, `role="tablist"` + `aria-selected`, `prefers-reduced-motion` support
+  - **Details**: Custom scrollbar, connection status indicator, helpful empty states with dashed borders, version badge
+- Captured "after" screenshots (`screenshots/after/`)
+- Bumped to v0.2, Phase 10
+
+---
 
 ### 2026-02-13: Large-Scale Collection (Paginated Multi-Sort + Scheduler)
 

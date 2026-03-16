@@ -1,5 +1,6 @@
 # Curated Subreddit Catalog for RedditWatch
 # Organized by category for easy browsing
+# Sources: r/ListOfSubreddits wiki + hand-curated additions
 
 startup_entrepreneurship:
   - name: startups
@@ -327,3 +328,398 @@ industry_verticals:
     description: "HVAC professionals community"
     subscribers: 120000
     best_for: "Trade business software"
+
+  - name: Teachers
+    display_name: "r/Teachers"
+    description: "K-12 teachers sharing classroom experiences"
+    subscribers: 650000
+    best_for: "EdTech opportunities"
+
+  - name: nursing
+    display_name: "r/nursing"
+    description: "Nurses discussing patient care and work life"
+    subscribers: 550000
+    best_for: "Healthcare workflow tools"
+
+  - name: Truckers
+    display_name: "r/Truckers"
+    description: "Trucking industry professionals"
+    subscribers: 120000
+    best_for: "Logistics tech"
+
+  - name: RealEstate
+    display_name: "r/RealEstate"
+    description: "Real estate buying, selling, and investing"
+    subscribers: 850000
+    best_for: "PropTech opportunities"
+
+cybersecurity:
+  - name: cybersecurity
+    display_name: "r/cybersecurity"
+    description: "Cybersecurity news, discussion, and career advice"
+    subscribers: 750000
+    best_for: "Security tool gaps"
+
+  - name: netsec
+    display_name: "r/netsec"
+    description: "Technical information security content"
+    subscribers: 550000
+    best_for: "InfoSec tooling needs"
+
+  - name: privacy
+    display_name: "r/privacy"
+    description: "Online privacy discussion and tools"
+    subscribers: 1500000
+    best_for: "Privacy-first product ideas"
+
+  - name: hacking
+    display_name: "r/hacking"
+    description: "Ethical hacking and penetration testing"
+    subscribers: 650000
+    best_for: "Pentesting tool needs"
+
+  - name: AskNetsec
+    display_name: "r/AskNetsec"
+    description: "Q&A for information security professionals"
+    subscribers: 180000
+    best_for: "Security pain points"
+
+data_analytics:
+  - name: datascience
+    display_name: "r/datascience"
+    description: "Data science careers, tools, and techniques"
+    subscribers: 950000
+    best_for: "Data tool opportunities"
+
+  - name: dataengineering
+    display_name: "r/dataengineering"
+    description: "Data pipeline and infrastructure discussion"
+    subscribers: 280000
+    best_for: "Data infra pain points"
+
+  - name: BusinessIntelligence
+    display_name: "r/BusinessIntelligence"
+    description: "BI tools, dashboards, and analytics"
+    subscribers: 85000
+    best_for: "BI tool gaps"
+
+  - name: analytics
+    display_name: "r/analytics"
+    description: "Web and product analytics discussion"
+    subscribers: 120000
+    best_for: "Analytics tool needs"
+
+  - name: SQL
+    display_name: "r/SQL"
+    description: "SQL and database query discussion"
+    subscribers: 280000
+    best_for: "Database tooling"
+
+  - name: statistics
+    display_name: "r/statistics"
+    description: "Statistical methods and applications"
+    subscribers: 220000
+    best_for: "Stats tool opportunities"
+
+gaming:
+  - name: gamedev
+    display_name: "r/gamedev"
+    description: "Game developers sharing progress and advice"
+    subscribers: 1400000
+    best_for: "Game dev tool needs"
+
+  - name: IndieGaming
+    display_name: "r/IndieGaming"
+    description: "Independent game development and releases"
+    subscribers: 320000
+    best_for: "Indie dev tools"
+
+  - name: gaming
+    display_name: "r/gaming"
+    description: "General gaming discussion and news"
+    subscribers: 38000000
+    best_for: "Gaming market trends"
+
+  - name: pcgaming
+    display_name: "r/pcgaming"
+    description: "PC gaming news, hardware, and discussion"
+    subscribers: 3200000
+    best_for: "PC gaming preferences"
+
+  - name: Games
+    display_name: "r/Games"
+    description: "Quality gaming discussion and news"
+    subscribers: 3500000
+    best_for: "Gaming industry insights"
+
+health_fitness:
+  - name: Fitness
+    display_name: "r/Fitness"
+    description: "Exercise, nutrition, and fitness discussion"
+    subscribers: 10500000
+    best_for: "Fitness app ideas"
+
+  - name: nutrition
+    display_name: "r/nutrition"
+    description: "Evidence-based nutrition discussion"
+    subscribers: 2800000
+    best_for: "Nutrition tracking tools"
+
+  - name: loseit
+    display_name: "r/loseit"
+    description: "Weight loss support and advice"
+    subscribers: 3500000
+    best_for: "Health tracking apps"
+
+  - name: running
+    display_name: "r/running"
+    description: "Runners sharing training plans and gear"
+    subscribers: 2200000
+    best_for: "Running/fitness wearables"
+
+  - name: HealthIT
+    display_name: "r/HealthIT"
+    description: "Health information technology professionals"
+    subscribers: 35000
+    best_for: "Healthcare software gaps"
+
+  - name: mentalhealth
+    display_name: "r/mentalhealth"
+    description: "Mental health awareness and support"
+    subscribers: 950000
+    best_for: "Mental wellness apps"
+
+education_learning:
+  - name: learnprogramming
+    display_name: "r/learnprogramming"
+    description: "Programming learning resources and help"
+    subscribers: 3800000
+    best_for: "Learn-to-code tools"
+
+  - name: AskAcademia
+    display_name: "r/AskAcademia"
+    description: "Academic careers and research discussion"
+    subscribers: 280000
+    best_for: "Academic tool needs"
+
+  - name: OnlineLearning
+    display_name: "r/OnlineLearning"
+    description: "Online courses and e-learning discussion"
+    subscribers: 85000
+    best_for: "EdTech platforms"
+
+  - name: languagelearning
+    display_name: "r/languagelearning"
+    description: "Language learning tips, tools, and resources"
+    subscribers: 950000
+    best_for: "Language app opportunities"
+
+  - name: GradSchool
+    display_name: "r/GradSchool"
+    description: "Graduate student life and academics"
+    subscribers: 280000
+    best_for: "Academic productivity tools"
+
+creative_media:
+  - name: videography
+    display_name: "r/videography"
+    description: "Video production and filmmaking"
+    subscribers: 420000
+    best_for: "Video production tools"
+
+  - name: podcasting
+    display_name: "r/podcasting"
+    description: "Podcast creation and production"
+    subscribers: 280000
+    best_for: "Podcast tool gaps"
+
+  - name: graphic_design
+    display_name: "r/graphic_design"
+    description: "Graphic design professionals and enthusiasts"
+    subscribers: 1200000
+    best_for: "Design tool pain points"
+
+  - name: photography
+    display_name: "r/photography"
+    description: "Photography techniques, gear, and portfolio"
+    subscribers: 5500000
+    best_for: "Photo editing/management"
+
+  - name: youtubers
+    display_name: "r/youtubers"
+    description: "YouTube content creators and growth tips"
+    subscribers: 280000
+    best_for: "Creator economy tools"
+
+  - name: NewTubers
+    display_name: "r/NewTubers"
+    description: "New YouTube creators getting started"
+    subscribers: 450000
+    best_for: "Creator onboarding tools"
+
+  - name: Twitch
+    display_name: "r/Twitch"
+    description: "Twitch streaming community"
+    subscribers: 1200000
+    best_for: "Streaming tools"
+
+careers_hr:
+  - name: cscareerquestions
+    display_name: "r/cscareerquestions"
+    description: "Computer science career advice"
+    subscribers: 850000
+    best_for: "Job search tools"
+
+  - name: jobs
+    display_name: "r/jobs"
+    description: "Job searching and career advice"
+    subscribers: 950000
+    best_for: "Hiring platform opportunities"
+
+  - name: recruitinghell
+    display_name: "r/recruitinghell"
+    description: "Bad recruiting experiences and frustrations"
+    subscribers: 650000
+    best_for: "Recruiting tool pain points"
+
+  - name: humanresources
+    display_name: "r/humanresources"
+    description: "HR professionals sharing best practices"
+    subscribers: 65000
+    best_for: "HR software gaps"
+
+  - name: resumes
+    display_name: "r/resumes"
+    description: "Resume and CV review and advice"
+    subscribers: 380000
+    best_for: "Resume builder tools"
+
+  - name: careerguidance
+    display_name: "r/careerguidance"
+    description: "Career planning and professional development"
+    subscribers: 450000
+    best_for: "Career planning tools"
+
+crypto_web3:
+  - name: CryptoCurrency
+    display_name: "r/CryptoCurrency"
+    description: "Cryptocurrency news and discussion"
+    subscribers: 7500000
+    best_for: "Crypto tool needs"
+
+  - name: Bitcoin
+    display_name: "r/Bitcoin"
+    description: "Bitcoin news and discussion"
+    subscribers: 6200000
+    best_for: "Bitcoin/wallet tools"
+
+  - name: ethereum
+    display_name: "r/ethereum"
+    description: "Ethereum and smart contract discussion"
+    subscribers: 2800000
+    best_for: "Web3 dev tools"
+
+  - name: defi
+    display_name: "r/defi"
+    description: "Decentralized finance protocols and tools"
+    subscribers: 450000
+    best_for: "DeFi tool opportunities"
+
+  - name: NFT
+    display_name: "r/NFT"
+    description: "NFT creation, trading, and discussion"
+    subscribers: 650000
+    best_for: "NFT/digital asset tools"
+
+science_technology:
+  - name: technology
+    display_name: "r/technology"
+    description: "Technology news and discussion"
+    subscribers: 16000000
+    best_for: "Tech trend signals"
+
+  - name: science
+    display_name: "r/science"
+    description: "Scientific research and discoveries"
+    subscribers: 32000000
+    best_for: "Science comm tools"
+
+  - name: Futurology
+    display_name: "r/Futurology"
+    description: "Future technology and society"
+    subscribers: 19000000
+    best_for: "Emerging tech opportunities"
+
+  - name: gadgets
+    display_name: "r/gadgets"
+    description: "Latest gadgets and consumer tech"
+    subscribers: 22000000
+    best_for: "Consumer tech trends"
+
+  - name: hardware
+    display_name: "r/hardware"
+    description: "Computer hardware news and reviews"
+    subscribers: 1200000
+    best_for: "Hardware market insights"
+
+personal_finance_investing:
+  - name: investing
+    display_name: "r/investing"
+    description: "Investment strategies and market discussion"
+    subscribers: 2400000
+    best_for: "Investment tool needs"
+
+  - name: stocks
+    display_name: "r/stocks"
+    description: "Stock market news and analysis"
+    subscribers: 6500000
+    best_for: "Trading tool ideas"
+
+  - name: wallstreetbets
+    display_name: "r/wallstreetbets"
+    description: "High-risk trading and market memes"
+    subscribers: 15000000
+    best_for: "Retail investor trends"
+
+  - name: Fire
+    display_name: "r/Fire"
+    description: "Financial independence, retire early"
+    subscribers: 650000
+    best_for: "FIRE planning tools"
+
+  - name: Bogleheads
+    display_name: "r/Bogleheads"
+    description: "Index fund investing philosophy"
+    subscribers: 550000
+    best_for: "Passive investing tools"
+
+lifestyle_hobbies:
+  - name: BuyItForLife
+    display_name: "r/BuyItForLife"
+    description: "Durable, quality products that last"
+    subscribers: 2200000
+    best_for: "Product review/comparison"
+
+  - name: MealPrepSunday
+    display_name: "r/MealPrepSunday"
+    description: "Meal planning and preparation"
+    subscribers: 2800000
+    best_for: "Meal planning apps"
+
+  - name: HomeImprovement
+    display_name: "r/HomeImprovement"
+    description: "Home renovation and DIY projects"
+    subscribers: 3200000
+    best_for: "Home project planning"
+
+  - name: minimalism
+    display_name: "r/minimalism"
+    description: "Simple living and minimalist lifestyle"
+    subscribers: 950000
+    best_for: "Decluttering/org tools"
+
+  - name: Frugal
+    display_name: "r/Frugal"
+    description: "Frugal living tips and strategies"
+    subscribers: 2400000
+    best_for: "Budget tracking tools"

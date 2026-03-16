@@ -133,7 +133,7 @@
             <div>
                 <div class="flex items-center gap-3 mb-1">
                     <h1 class="text-2xl font-bold tracking-tight">RedditWatch</h1>
-                    <span class="text-xs font-medium text-text-muted bg-surface-3 px-2 py-0.5 rounded">v0.2</span>
+                    <span class="text-xs font-medium text-text-muted bg-surface-3 px-2 py-0.5 rounded">v0.3</span>
                 </div>
                 <p class="text-text-secondary text-sm">Market research from Reddit, on your terms</p>
             </div>
@@ -318,7 +318,19 @@
                                 <div class="w-3 h-3 rounded-full shrink-0" :style="'background-color:' + (aud.color || '#d4a373')"></div>
                                 <div class="min-w-0">
                                     <p class="font-medium text-sm" x-text="aud.name"></p>
-                                    <p class="text-xs text-text-muted truncate" x-text="aud.subreddit_names.map(s => 'r/' + s).join(', ') || 'No subreddits'"></p>
+                                    <p class="text-xs text-text-muted truncate">
+                                        <span x-text="aud.subreddit_names.map(s => 'r/' + s).join(', ') || 'No subreddits'"></span>
+                                        <template x-if="getAudienceGrowth(aud.subreddit_names)?.total_subscribers">
+                                            <span class="tabular-nums">
+                                                · <span x-text="getAudienceGrowth(aud.subreddit_names).total_subscribers.toLocaleString()"></span> subscribers
+                                                <template x-if="getAudienceGrowth(aud.subreddit_names)?.change_pct != null">
+                                                    <span :class="getAudienceGrowth(aud.subreddit_names).change_pct >= 0 ? 'text-insight-opportunity' : 'text-insight-pain'"
+                                                          class="font-medium"
+                                                          x-text="(getAudienceGrowth(aud.subreddit_names).change_pct >= 0 ? ' ↑' : ' ↓') + Math.abs(getAudienceGrowth(aud.subreddit_names).change_pct) + '%'"></span>
+                                                </template>
+                                            </span>
+                                        </template>
+                                    </p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 ml-3">
@@ -362,6 +374,22 @@
                                 </template>
                             </div>
                             <p x-show="subreddits.length === 0" class="text-xs text-text-muted">Add subreddits first</p>
+                            <!-- Suggested similar subreddits from catalog -->
+                            <template x-if="getSuggestedSubreddits().length > 0">
+                                <div class="mt-2.5 pt-2.5 border-t border-border/50">
+                                    <p class="text-xs text-text-muted mb-1.5">Suggested from catalog:</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <template x-for="sug in getSuggestedSubreddits()" :key="sug.name">
+                                            <button @click="addSuggestedToAudience(sug.name)"
+                                                    class="group flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-surface-2 text-text-muted hover:text-accent hover:border-accent/30 border border-transparent transition-colors duration-150"
+                                                    :title="sug.best_for">
+                                                <span x-text="'r/' + sug.name"></span>
+                                                <span class="text-accent opacity-0 group-hover:opacity-100 transition-opacity">+</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                         <div class="flex gap-2 pt-1">
                             <button @click="saveAudience()"
@@ -399,7 +427,7 @@
             <!-- Catalog -->
             <section>
                 <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Subreddit Catalog</h2>
-                <p class="text-text-muted text-xs mb-4">Curated subreddits for startup research</p>
+                <p class="text-text-muted text-xs mb-4">Curated subreddits for market research</p>
 
                 <div class="flex flex-wrap gap-1.5 mb-5">
                     <button @click="catalogFilter = null"
@@ -409,7 +437,7 @@
                         <button @click="catalogFilter = cat"
                                 :class="catalogFilter === cat ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
                                 class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150"
-                                x-text="cat.replace('_', ' ')"></button>
+                                x-text="cat.replaceAll('_', ' ')"></button>
                     </template>
                 </div>
 
@@ -436,7 +464,11 @@
 
             <!-- Monitored -->
             <section>
-                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Monitored Subreddits</h2>
+                <div class="flex items-baseline justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Monitored Subreddits</h2>
+                    <span x-show="growthSummary.length > 0" class="text-xs text-text-muted tabular-nums"
+                          x-text="growthSummary.reduce((s, g) => s + (g.current_subscribers || 0), 0).toLocaleString() + ' total subscribers'"></span>
+                </div>
                 <div x-show="subreddits.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
                     <p class="text-text-muted text-sm">No subreddits monitored yet</p>
                     <p class="text-text-muted text-xs mt-1">Add from the catalog above to start collecting</p>
@@ -1298,6 +1330,36 @@
 
                 getGrowth(subredditName) {
                     return this.growthSummary.find(g => g.subreddit === subredditName);
+                },
+
+                async addSuggestedToAudience(name) {
+                    if (!this.isMonitored(name)) {
+                        await this.addSubredditFromCatalog(name);
+                    }
+                    this.toggleAudienceSubreddit(name);
+                },
+
+                getSuggestedSubreddits() {
+                    const selected = this.audienceForm.subreddit_names;
+                    if (selected.length === 0 || this.catalog.length === 0) return [];
+                    const selectedCats = new Set(
+                        selected.map(n => this.catalog.find(c => c.name.toLowerCase() === n.toLowerCase())?.category).filter(Boolean)
+                    );
+                    if (selectedCats.size === 0) return [];
+                    return this.catalog
+                        .filter(c => selectedCats.has(c.category) && !selected.some(s => s.toLowerCase() === c.name.toLowerCase()))
+                        .slice(0, 8);
+                },
+
+                getAudienceGrowth(subredditNames) {
+                    const entries = subredditNames.map(n => this.growthSummary.find(g => g.subreddit === n)).filter(Boolean);
+                    if (entries.length === 0) return null;
+                    const total_subscribers = entries.reduce((s, g) => s + (g.current_subscribers || 0), 0);
+                    const withPct = entries.filter(g => g.change_pct != null && g.current_subscribers > 0);
+                    const change_pct = withPct.length > 0
+                        ? Math.round(withPct.reduce((s, g) => s + g.change_pct * g.current_subscribers, 0) / withPct.reduce((s, g) => s + g.current_subscribers, 0) * 10) / 10
+                        : null;
+                    return { total_subscribers, change_pct };
                 },
 
                 async addSubreddit() {
