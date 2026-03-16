@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,10 @@ class Post(Base):
     """Reddit post."""
 
     __tablename__ = "posts"
+    __table_args__ = (
+        Index("ix_posts_analyzed_created", "analyzed", "created_utc"),
+        Index("ix_posts_subreddit_analyzed", "subreddit", "analyzed"),
+    )
 
     # Reddit post ID (e.g., "abc123")
     id: Mapped[str] = mapped_column(String(20), primary_key=True)

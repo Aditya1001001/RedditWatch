@@ -25,7 +25,7 @@ class Insight(Base):
         String(20), ForeignKey("posts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     comment_id: Mapped[Optional[str]] = mapped_column(
-        String(20), ForeignKey("comments.id", ondelete="CASCADE")
+        String(20), ForeignKey("comments.id", ondelete="CASCADE"), index=True
     )
 
     # Classification

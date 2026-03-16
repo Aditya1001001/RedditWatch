@@ -141,19 +141,34 @@ async def get_growth_summary(
     )
     subreddits_list = subs_result.scalars().all()
 
+    # Batch query: get oldest snapshot per subreddit in one query
+    from sqlalchemy import and_
+
+    oldest_subq = (
+        select(
+            SubscriberSnapshot.subreddit_name,
+            func.min(SubscriberSnapshot.recorded_at).label("min_recorded_at"),
+        )
+        .where(SubscriberSnapshot.recorded_at >= cutoff)
+        .group_by(SubscriberSnapshot.subreddit_name)
+        .subquery()
+    )
+    oldest_result = await session.execute(
+        select(SubscriberSnapshot.subreddit_name, SubscriberSnapshot.subscriber_count)
+        .join(
+            oldest_subq,
+            and_(
+                SubscriberSnapshot.subreddit_name == oldest_subq.c.subreddit_name,
+                SubscriberSnapshot.recorded_at == oldest_subq.c.min_recorded_at,
+            ),
+        )
+    )
+    oldest_map = {row.subreddit_name: row.subscriber_count for row in oldest_result}
+
     growth_data = []
     for sub in subreddits_list:
         current_count = sub.subscribers or 0
-
-        # Get oldest snapshot in the period
-        oldest = await session.execute(
-            select(SubscriberSnapshot.subscriber_count)
-            .where(SubscriberSnapshot.subreddit_name == sub.name)
-            .where(SubscriberSnapshot.recorded_at >= cutoff)
-            .order_by(SubscriberSnapshot.recorded_at.asc())
-            .limit(1)
-        )
-        oldest_count = oldest.scalar()
+        oldest_count = oldest_map.get(sub.name)
 
         change = None
         change_pct = None

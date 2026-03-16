@@ -44,6 +44,47 @@ Set up a private/public repo split so SaaS-only features can be developed withou
 
 ---
 
+### 2026-03-16: Codebase Audit
+
+Full audit of backend and frontend before public launch. Prioritized findings below.
+
+**Backend — High Priority**
+
+- [ ] N+1 query in search API (`api/search.py:83-95`) — individual `session.get(Post, post_id)` per search result
+- [ ] Missing composite indexes — `(analyzed, created_utc)`, `(subreddit, analyzed)`, `(post_id, created_utc)`
+- [ ] N+1 in subreddit growth (`api/subreddits.py:145`) — individual query per subreddit for oldest snapshot
+- [ ] Overly broad exception handling in analyzer — silently swallowing DB errors
+- [ ] Inconsistent eager loading — mixing `selectinload()`/`joinedload()`
+
+**Backend — Medium Priority**
+
+- [ ] Missing composite index on `InsightTheme` for theme_id-only queries
+- [ ] No partial index for `analyzed=False` post lookups
+- [ ] Inconsistent pagination (page/page_size vs limit)
+- [ ] Post body truncated to 500 chars in list response with no indicator
+- [ ] Unvalidated subreddit names in growth endpoint (case sensitivity)
+- [ ] No startup validation for LLM provider
+
+**Frontend — High Priority**
+
+- [ ] `getAudienceGrowth()` called 3x per render for same audience
+- [ ] 20+ silent API failures — catch blocks set empty arrays, no user feedback
+- [ ] No loading states on 6+ operations
+- [ ] Task polling never times out — infinite retry if backend dies
+- [ ] Race conditions — rapid audience switching can overwrite data with stale responses
+
+**Frontend — Medium Priority**
+
+- [ ] Monolithic 1,859-line HTML file — all JS inline
+- [ ] 20+ duplicate error handling patterns
+- [ ] No input validation on subreddit names, audience names, search queries
+- [ ] Magic numbers / hardcoded limits throughout
+- [ ] Dead code: `searchStats` loaded but never displayed
+- [ ] Chart memory leaks on rapid tab switching
+- [ ] Missing accessibility attributes (aria-label, alt, aria-live)
+
+---
+
 ### 2026-03-16: Expanded Catalog & Audience Suggestions
 
 Expanded the subreddit catalog from 53 to 117 subreddits across 20 categories, sourced from r/ListOfSubreddits wiki. Added audience-aware subreddit suggestions.

@@ -144,7 +144,7 @@ def validate_llm_output(raw: dict) -> AnalysisOutput:
     """Validate and normalize LLM JSON output using Pydantic."""
     try:
         return AnalysisOutput(**raw)
-    except Exception as e:
+    except (ValueError, TypeError, KeyError) as e:
         logger.warning(f"LLM output validation failed, returning empty: {e}")
         return AnalysisOutput()
 
@@ -256,7 +256,7 @@ class AnalyzerService:
                         })
                     if batch:
                         search.add_insights_batch(batch)
-                except Exception as idx_err:
+                except (ValueError, RuntimeError, OSError) as idx_err:
                     logger.warning(f"Failed to auto-index insights: {idx_err}")
 
             logger.info(

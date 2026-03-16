@@ -81,18 +81,20 @@ async def search_insights(
 
     # Post-filter by subreddit if audience specified
     if sub_names is not None:
-        # Look up subreddit for each result's post_id
         from app.models import Post
-        filtered = []
-        for r in results:
-            post_id = r["metadata"].get("post_id")
-            if post_id:
-                post = await session.get(Post, post_id)
-                if post and post.subreddit in sub_names:
-                    filtered.append(r)
-            if len(filtered) >= limit:
-                break
-        results = filtered
+        # Batch-load subreddit for all post_ids in one query
+        post_ids = [r["metadata"].get("post_id") for r in results if r["metadata"].get("post_id")]
+        if post_ids:
+            rows = await session.execute(
+                select(Post.id, Post.subreddit).where(Post.id.in_(post_ids))
+            )
+            post_subreddit_map = {row.id: row.subreddit for row in rows}
+            results = [
+                r for r in results
+                if post_subreddit_map.get(r["metadata"].get("post_id")) in sub_names
+            ][:limit]
+        else:
+            results = []
 
     return SearchResponse(
         query=q,

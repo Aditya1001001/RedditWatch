@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -83,6 +83,9 @@ class InsightTheme(Base):
     """Association table linking insights to themes."""
 
     __tablename__ = "insight_themes"
+    __table_args__ = (
+        Index("ix_insight_themes_theme_id", "theme_id"),
+    )
 
     insight_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("insights.id", ondelete="CASCADE"), primary_key=True
