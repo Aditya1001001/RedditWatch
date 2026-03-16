@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import time
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ class RateLimiter:
         self._lock = asyncio.Lock()
 
         # Adaptive state fed by Reddit headers
-        self._header_remaining: float | None = None
-        self._header_reset: float | None = None  # monotonic time when window resets
+        self._header_remaining: Optional[float] = None
+        self._header_reset: Optional[float] = None  # monotonic time when window resets
 
         logger.info(f"Rate limiter initialised: {rpm} req/min, burst {burst}")
 
@@ -128,7 +129,7 @@ class RateLimiter:
 # Singleton
 # ------------------------------------------------------------------
 
-_instance: RateLimiter | None = None
+_instance: Optional[RateLimiter] = None
 
 
 def get_rate_limiter(rpm: float = 8.0, burst: int = 10) -> RateLimiter:

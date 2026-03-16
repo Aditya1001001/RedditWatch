@@ -61,7 +61,7 @@ class RedditCollector:
             await self._client.aclose()
             self._client = None
 
-    async def _request(self, url: str, params: dict | None = None) -> httpx.Response:
+    async def _request(self, url: str, params: Optional[dict] = None) -> httpx.Response:
         """
         Send a rate-limited GET request and feed response headers back.
 
