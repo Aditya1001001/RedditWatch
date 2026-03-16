@@ -84,6 +84,15 @@ async def health_check():
 # Include API routes
 app.include_router(api_router)
 
+# Conditionally load cloud (SaaS-only) routes
+if _config.is_cloud:
+    try:
+        from app.cloud import register_cloud_routes
+
+        register_cloud_routes(app)
+    except ImportError:
+        logger.warning("EDITION=cloud but cloud package not found — running as OSS")
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

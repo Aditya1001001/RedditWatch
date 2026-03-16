@@ -119,12 +119,17 @@ class ServerConfig(BaseModel):
 class Config(BaseModel):
     """Main application configuration."""
 
+    edition: str = Field(default_factory=lambda: os.getenv("EDITION", "oss"))
     reddit: RedditConfig = Field(default_factory=RedditConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     collection: CollectionConfig = Field(default_factory=CollectionConfig)
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     scoring: ScoringConfig = Field(default_factory=ScoringConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
+
+    @property
+    def is_cloud(self) -> bool:
+        return self.edition == "cloud"
 
 
 def _substitute_env_vars(value: str) -> str:

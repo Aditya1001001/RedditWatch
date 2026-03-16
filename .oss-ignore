@@ -1,0 +1,3 @@
+backend/app/cloud/
+.oss-ignore
+.github/workflows/sync-oss.yml
