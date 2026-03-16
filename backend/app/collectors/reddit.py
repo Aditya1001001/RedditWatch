@@ -11,6 +11,7 @@ from xml.etree import ElementTree
 import httpx
 
 from app.models import Comment, Post
+from app.services.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,11 @@ class RedditCollector:
     Falls back to RSS feeds or HTML scraping if rate limited.
     """
 
-    def __init__(self):
+    def __init__(self, rate_limit_rpm: float = 8.0):
         self.base_url = "https://old.reddit.com"
         self.timeout = 30.0
         self._client: Optional[httpx.AsyncClient] = None
+        self._rate_limiter = get_rate_limiter(rpm=rate_limit_rpm)
 
     def _get_headers(self) -> dict:
         """Get request headers with random user agent."""
@@ -59,14 +61,24 @@ class RedditCollector:
             await self._client.aclose()
             self._client = None
 
+    async def _request(self, url: str, params: dict | None = None) -> httpx.Response:
+        """
+        Send a rate-limited GET request and feed response headers back.
+
+        Raises httpx exceptions on network errors.
+        """
+        await self._rate_limiter.acquire()
+        client = await self._get_client()
+        response = await client.get(url, params=params, headers=self._get_headers())
+        self._rate_limiter.update_from_headers(dict(response.headers))
+        return response
+
     async def test_connection(self) -> dict:
         """Test if we can reach Reddit."""
         try:
-            client = await self._get_client()
-            response = await client.get(
+            response = await self._request(
                 f"{self.base_url}/r/test.json",
                 params={"limit": 1},
-                headers=self._get_headers(),
             )
 
             if response.status_code == 200:
@@ -82,10 +94,8 @@ class RedditCollector:
     async def get_subreddit_info(self, subreddit_name: str) -> Optional[dict]:
         """Get information about a subreddit."""
         try:
-            client = await self._get_client()
-            response = await client.get(
+            response = await self._request(
                 f"{self.base_url}/r/{subreddit_name}/about.json",
-                headers=self._get_headers(),
             )
 
             if response.status_code != 200:
@@ -179,7 +189,6 @@ class RedditCollector:
     ) -> list[Post]:
         """Collect posts using JSON endpoint (single page)."""
         posts = []
-        client = await self._get_client()
 
         # Map sort to URL path
         sort_path = sort if sort in ["hot", "new", "top", "rising"] else "hot"
@@ -190,7 +199,7 @@ class RedditCollector:
             params["t"] = time_filter or "week"
 
         try:
-            response = await client.get(url, params=params, headers=self._get_headers())
+            response = await self._request(url, params=params)
 
             if response.status_code == 429:
                 logger.warning(f"Rate limited on r/{subreddit_name}")
@@ -242,8 +251,6 @@ class RedditCollector:
         """
         all_posts = []
         after_cursor = None
-        client = await self._get_client()
-        delay = rate_limit_delay
 
         sort_path = sort if sort in ["hot", "new", "top", "rising"] else "hot"
         url = f"{self.base_url}/r/{subreddit_name}/{sort_path}.json"
@@ -256,20 +263,16 @@ class RedditCollector:
                 params["after"] = after_cursor
 
             try:
-                if page > 0:
-                    await asyncio.sleep(delay)
-
-                response = await client.get(url, params=params, headers=self._get_headers())
+                # Rate limiter handles pacing — no manual delay needed
+                response = await self._request(url, params=params)
 
                 if response.status_code == 429:
                     logger.warning(
                         f"Rate limited on r/{subreddit_name} page {page + 1}, "
-                        f"backing off {delay * 2:.1f}s"
+                        f"backing off"
                     )
-                    delay = min(delay * 2, 30.0)  # Exponential backoff, cap at 30s
-                    await asyncio.sleep(delay)
-                    # Retry this page once
-                    response = await client.get(url, params=params, headers=self._get_headers())
+                    await asyncio.sleep(rate_limit_delay * 2)
+                    response = await self._request(url, params=params)
                     if response.status_code != 200:
                         logger.error(f"Still rate limited after backoff on r/{subreddit_name}")
                         break
@@ -299,9 +302,6 @@ class RedditCollector:
                 if not after_cursor or not page_posts:
                     break
 
-                # Reset delay on success
-                delay = rate_limit_delay
-
             except Exception as e:
                 logger.error(
                     f"Pagination failed for r/{subreddit_name} page {page + 1}: {e}"
@@ -318,12 +318,16 @@ class RedditCollector:
         self,
         subreddit_name: str,
         sort_configs: Optional[list[dict]] = None,
-        max_pages: int = 10,
+        max_pages: int = 5,
         per_page: int = 100,
         rate_limit_delay: float = 1.0,
+        modes_per_run: int = 3,
     ) -> list[Post]:
         """
         Collect posts using multiple sort/time combos, deduplicated by post ID.
+
+        Uses ``modes_per_run`` to rotate through sort modes across days so that
+        each run is cheaper but all modes are still exercised over time.
 
         Args:
             subreddit_name: Name of subreddit (without r/)
@@ -332,6 +336,7 @@ class RedditCollector:
             max_pages: Max pages per sort/time combo
             per_page: Posts per page
             rate_limit_delay: Base delay between requests
+            modes_per_run: How many sort modes to use this run (rotates daily)
 
         Returns:
             Deduplicated list of Post model instances
@@ -344,6 +349,24 @@ class RedditCollector:
                 {"sort": "top", "t": "month"},
                 {"sort": "top", "t": "year"},
             ]
+
+        # Rotate sort modes across days so we cover all eventually
+        if modes_per_run < len(sort_configs):
+            from datetime import date
+            day_index = date.today().toordinal() % len(sort_configs)
+            # Always include hot + new, rotate the top/* variants
+            always = [c for c in sort_configs if c.get("sort") in ("hot", "new")]
+            rotating = [c for c in sort_configs if c not in always]
+            # Pick rotating modes based on day
+            slots = max(0, modes_per_run - len(always))
+            if rotating and slots > 0:
+                start = day_index % len(rotating)
+                picked = []
+                for i in range(slots):
+                    picked.append(rotating[(start + i) % len(rotating)])
+                sort_configs = always + picked
+            else:
+                sort_configs = always[:modes_per_run]
 
         seen_ids: set[str] = set()
         unique_posts: list[Post] = []
@@ -374,9 +397,6 @@ class RedditCollector:
                 f"{len(posts)} total, {new_count} new unique"
             )
 
-            # Small delay between sort modes
-            await asyncio.sleep(rate_limit_delay)
-
         logger.info(
             f"Deep collection complete for r/{subreddit_name}: "
             f"{len(unique_posts)} unique posts from {len(sort_configs)} sort modes"
@@ -390,12 +410,11 @@ class RedditCollector:
     ) -> list[Post]:
         """Collect posts using RSS feed (fallback method)."""
         posts = []
-        client = await self._get_client()
 
         url = f"https://www.reddit.com/r/{subreddit_name}/.rss"
 
         try:
-            response = await client.get(url, headers=self._get_headers())
+            response = await self._request(url)
 
             if response.status_code != 200:
                 return []
@@ -558,16 +577,12 @@ class RedditCollector:
             List of Comment model instances with depth information
         """
         comments = []
-        client = await self._get_client()
 
         url = f"{self.base_url}/r/{subreddit_name}/comments/{post_id}.json"
         params = {"limit": limit, "sort": "top", "depth": max_depth + 1 if include_nested else 1}
 
         try:
-            # Add a small delay to avoid rate limiting
-            await asyncio.sleep(0.5)
-
-            response = await client.get(url, params=params, headers=self._get_headers())
+            response = await self._request(url, params=params)
 
             if response.status_code == 429:
                 logger.warning(f"Rate limited fetching comments for {post_id}")
@@ -668,11 +683,10 @@ class RedditCollector:
         posts = await self.collect_posts(subreddit_name, limit, sort, time_filter)
 
         if include_comments and posts:
-            # Collect comments for each post with delay (only high-scoring posts)
+            # Collect comments for high-scoring posts (rate limiter handles pacing)
             for post in posts:
                 if post.score < comment_min_score:
                     continue
-                await asyncio.sleep(delay_seconds)
                 comments = await self.collect_comments(
                     post.id, subreddit_name, max_comments_per_post
                 )

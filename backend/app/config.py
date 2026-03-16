@@ -74,11 +74,14 @@ class CollectionConfig(BaseModel):
         {"sort": "top", "t": "month"},
         {"sort": "top", "t": "year"},
     ])
-    max_pages_per_sort: int = 10
+    max_pages_per_sort: int = 5
     deep_collect_enabled: bool = False
-    concurrent_subreddits: int = 3
+    deep_sort_modes_per_run: int = 3  # How many sort modes per deep run (rotates)
+    concurrent_subreddits: int = 1  # Sequential by default to work with rate limiter
     rate_limit_delay: float = 1.0  # Base delay between requests (seconds)
+    rate_limit_rpm: float = 8.0  # Global rate limit: requests per minute
     comment_min_score: int = 5  # Only fetch comments for posts above this score
+    comments_per_collection: int = 3  # Max comment-fetches per subreddit per run
 
     # Scheduling
     auto_schedule: bool = False

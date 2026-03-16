@@ -53,11 +53,14 @@ collection:
       t: "month"
     - sort: "top"
       t: "year"
-  max_pages_per_sort: 10
+  max_pages_per_sort: 5
   deep_collect_enabled: false
-  concurrent_subreddits: 3
-  rate_limit_delay: 1.0  # Base delay between requests (seconds)
-  comment_min_score: 5   # Only fetch comments for posts above this score
+  deep_sort_modes_per_run: 3  # Sort modes per deep run (rotates through all 5)
+  concurrent_subreddits: 1    # Sequential — rate limiter serialises anyway
+  rate_limit_delay: 1.0       # Base delay between requests (seconds)
+  rate_limit_rpm: 8.0         # Global rate limit: requests per minute
+  comment_min_score: 5        # Only fetch comments for posts above this score
+  comments_per_collection: 3  # Max posts to fetch comments for per subreddit
 
   # Scheduling
   auto_schedule: false
