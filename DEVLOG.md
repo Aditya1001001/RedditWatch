@@ -44,6 +44,22 @@ Set up a private/public repo split so SaaS-only features can be developed withou
 
 ---
 
+### 2026-03-16: Catalog Expansion & Data Collection
+
+**Subreddit Catalog**
+- Expanded from 117 → 1,859 subreddits across 287 categories
+- Full import from r/ListOfSubreddits wiki HTML — covers every niche (pets, fitness, cooking, gaming, etc.)
+- TODO: Review and improve category groupings — many wiki categories are oddly named or overly granular
+
+**Initial Data Collection**
+- Collected posts from 9 subreddits (indiehackers, saas, sideproject, selfhosted, startups, entrepreneur, microsaas, buildinpublic, webdev)
+- r/indiehackers: 1,383 posts (deep collect), others: ~23 each (single page due to rate limits)
+- Total: 1,592 posts, 4,679 comments
+- r/smallbusiness blocked by rate limits — retry needed
+- Note: concurrent collection causes SQLite locks + burns Reddit rate limits fast; sequential + cooldown is more reliable
+
+---
+
 ### 2026-03-16: Phase 9 — Advanced Visualizations
 
 Added 4 new analytics visualizations with backend endpoints and frontend rendering.

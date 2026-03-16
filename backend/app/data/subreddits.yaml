@@ -1,725 +1,4361 @@
 # Curated Subreddit Catalog for RedditWatch
 # Organized by category for easy browsing
+# 1859 subreddits across 287 categories
 # Sources: r/ListOfSubreddits wiki + hand-curated additions
 
-startup_entrepreneurship:
-  - name: startups
-    display_name: "r/startups"
-    description: "Pair up, teknically, marketing, sales discussions for startups"
-    subscribers: 1200000
-    best_for: "Early-stage ideas, founder problems"
-
-  - name: Entrepreneur
-    display_name: "r/Entrepreneur"
-    description: "Pair pair pair for entrepreneurs and small business owners"
-    subscribers: 3500000
-    best_for: "Business models, growth tactics"
-
-  - name: SaaS
-    display_name: "r/SaaS"
-    description: "SaaS founders discussing growth, churn, pricing, and tools"
-    subscribers: 95000
-    best_for: "SaaS pain points, pricing, churn"
-
-  - name: indiehackers
-    display_name: "r/indiehackers"
-    description: "Solo founders building profitable internet businesses"
-    subscribers: 45000
-    best_for: "Bootstrapped product ideas"
-
-  - name: smallbusiness
-    display_name: "r/smallbusiness"
-    description: "Questions and answers about running a small business"
-    subscribers: 1800000
-    best_for: "SMB problems, local business"
-
-  - name: EntrepreneurRideAlong
-    display_name: "r/EntrepreneurRideAlong"
-    description: "Follow along as entrepreneurs build businesses in real-time"
-    subscribers: 180000
-    best_for: "Real-time founder journeys"
-
-tech_development:
-  - name: webdev
-    display_name: "r/webdev"
-    description: "Web development news, discussion, and help"
-    subscribers: 2100000
-    best_for: "Developer tools, frameworks"
-
-  - name: programming
-    display_name: "r/programming"
-    description: "Computer programming discussion and news"
-    subscribers: 6500000
-    best_for: "Dev workflow pain points"
-
-  - name: devops
-    display_name: "r/devops"
-    description: "DevOps, CI/CD, infrastructure automation"
-    subscribers: 320000
-    best_for: "Infrastructure, CI/CD tools"
-
-  - name: selfhosted
-    display_name: "r/selfhosted"
-    description: "Self-hosting software and services"
-    subscribers: 350000
-    best_for: "Privacy tools, open source"
-
-  - name: sysadmin
-    display_name: "r/sysadmin"
-    description: "System administration and IT infrastructure"
-    subscribers: 850000
-    best_for: "IT infrastructure problems"
-
-  - name: node
-    display_name: "r/node"
-    description: "Node.js and JavaScript server-side development"
-    subscribers: 220000
-    best_for: "JavaScript ecosystem"
-
-  - name: reactjs
-    display_name: "r/reactjs"
-    description: "React.js discussion and help"
-    subscribers: 380000
-    best_for: "Frontend tools"
-
-  - name: Python
-    display_name: "r/Python"
-    description: "Python programming language discussion"
-    subscribers: 1300000
-    best_for: "Python tools, libraries"
-
-product_design:
-  - name: ProductManagement
-    display_name: "r/ProductManagement"
-    description: "Product management discussion and resources"
-    subscribers: 95000
-    best_for: "PM tools, roadmap problems"
-
-  - name: UXDesign
-    display_name: "r/UXDesign"
-    description: "User experience design discussion"
-    subscribers: 180000
-    best_for: "Design tool pain points"
-
-  - name: userexperience
-    display_name: "r/userexperience"
-    description: "User experience professionals and enthusiasts"
-    subscribers: 220000
-    best_for: "UX research insights"
-
-  - name: web_design
-    display_name: "r/web_design"
-    description: "Web design trends, tools, and discussion"
-    subscribers: 680000
-    best_for: "Design workflow issues"
-
-marketing_growth:
-  - name: marketing
-    display_name: "r/marketing"
-    description: "Marketing strategies and discussion"
-    subscribers: 520000
-    best_for: "Marketing tool gaps"
-
-  - name: digital_marketing
-    display_name: "r/digital_marketing"
-    description: "Digital marketing strategies and tools"
-    subscribers: 180000
-    best_for: "Ads, analytics problems"
-
-  - name: SEO
-    display_name: "r/SEO"
-    description: "Search engine optimization discussion"
-    subscribers: 280000
-    best_for: "SEO tool opportunities"
-
-  - name: content_marketing
-    display_name: "r/content_marketing"
-    description: "Content marketing strategies"
-    subscribers: 85000
-    best_for: "Content tool needs"
-
-  - name: socialmedia
-    display_name: "r/socialmedia"
-    description: "Social media marketing and management"
-    subscribers: 420000
-    best_for: "Social tool pain points"
-
-  - name: PPC
-    display_name: "r/PPC"
-    description: "Pay-per-click advertising discussion"
-    subscribers: 65000
-    best_for: "Ad platform frustrations"
-
-  - name: emailmarketing
-    display_name: "r/emailmarketing"
-    description: "Email marketing strategies and tools"
-    subscribers: 45000
-    best_for: "Email tool problems"
-
-  - name: Affiliatemarketing
-    display_name: "r/Affiliatemarketing"
-    description: "Affiliate marketing discussion"
-    subscribers: 180000
-    best_for: "Affiliate tool needs"
-
-remote_productivity:
-  - name: remotework
-    display_name: "r/remotework"
-    description: "Remote work tips and discussion"
-    subscribers: 85000
-    best_for: "Remote tool gaps"
-
-  - name: digitalnomad
-    display_name: "r/digitalnomad"
-    description: "Location-independent lifestyle and work"
-    subscribers: 2800000
-    best_for: "Location-independent tools"
-
-  - name: productivity
-    display_name: "r/productivity"
-    description: "Personal and professional productivity"
-    subscribers: 1500000
-    best_for: "Productivity app ideas"
-
-  - name: WorkOnline
-    display_name: "r/WorkOnline"
-    description: "Making money online and remote work"
-    subscribers: 580000
-    best_for: "Freelance tool needs"
-
-  - name: freelance
-    display_name: "r/freelance"
-    description: "Freelancing tips and discussion"
-    subscribers: 280000
-    best_for: "Freelancer pain points"
-
-finance_business:
-  - name: accounting
-    display_name: "r/accounting"
-    description: "Accounting professionals discussion"
-    subscribers: 380000
-    best_for: "Accounting software gaps"
-
-  - name: Bookkeeping
-    display_name: "r/Bookkeeping"
-    description: "Bookkeeping questions and discussion"
-    subscribers: 65000
-    best_for: "Financial tool needs"
-
-  - name: personalfinance
-    display_name: "r/personalfinance"
-    description: "Personal finance discussion and advice"
-    subscribers: 19000000
-    best_for: "Fintech opportunities"
-
-  - name: fatFIRE
-    display_name: "r/fatFIRE"
-    description: "High-income FIRE community"
-    subscribers: 520000
-    best_for: "Premium tool market"
-
-  - name: financialindependence
-    display_name: "r/financialindependence"
-    description: "Financial independence and early retirement"
-    subscribers: 2100000
-    best_for: "Investment tool needs"
-
-ecommerce:
-  - name: ecommerce
-    display_name: "r/ecommerce"
-    description: "E-commerce business discussion"
-    subscribers: 180000
-    best_for: "E-comm tool pain points"
-
-  - name: shopify
-    display_name: "r/shopify"
-    description: "Shopify merchants and developers"
-    subscribers: 220000
-    best_for: "Shopify app opportunities"
-
-  - name: FulfillmentByAmazon
-    display_name: "r/FulfillmentByAmazon"
-    description: "Amazon FBA sellers community"
-    subscribers: 120000
-    best_for: "Amazon seller tools"
-
-  - name: dropship
-    display_name: "r/dropship"
-    description: "Dropshipping business discussion"
-    subscribers: 180000
-    best_for: "Dropship tool needs"
-
-  - name: Etsy
-    display_name: "r/Etsy"
-    description: "Etsy sellers and buyers"
-    subscribers: 280000
-    best_for: "Etsy seller problems"
-
 ai_automation:
-  - name: artificial
-    display_name: "r/artificial"
-    description: "Artificial intelligence discussion"
-    subscribers: 950000
-    best_for: "AI tool opportunities"
-
-  - name: MachineLearning
-    display_name: "r/MachineLearning"
-    description: "Machine learning research and practice"
-    subscribers: 2800000
-    best_for: "ML tooling gaps"
-
-  - name: ChatGPT
-    display_name: "r/ChatGPT"
-    description: "ChatGPT users and enthusiasts"
-    subscribers: 5200000
-    best_for: "AI app ideas"
-
-  - name: LocalLLaMA
-    display_name: "r/LocalLLaMA"
-    description: "Running LLMs locally"
-    subscribers: 180000
-    best_for: "Local AI tool needs"
-
-  - name: automation
-    display_name: "r/automation"
-    description: "Automation tools and workflows"
-    subscribers: 85000
-    best_for: "Automation tool gaps"
-
-industry_verticals:
-  - name: realtors
-    display_name: "r/realtors"
-    description: "Real estate agents discussion"
-    subscribers: 85000
-    best_for: "Real estate tech"
-
-  - name: LawFirm
-    display_name: "r/LawFirm"
-    description: "Law firm management and practice"
-    subscribers: 35000
-    best_for: "Legal tech opportunities"
-
-  - name: dentistry
-    display_name: "r/dentistry"
-    description: "Dental professionals discussion"
-    subscribers: 45000
-    best_for: "Dental practice software"
-
-  - name: pharmacy
-    display_name: "r/pharmacy"
-    description: "Pharmacists and pharmacy discussion"
-    subscribers: 85000
-    best_for: "Healthcare tech"
-
-  - name: restaurateur
-    display_name: "r/restaurateur"
-    description: "Restaurant owners and managers"
-    subscribers: 25000
-    best_for: "Restaurant tech"
-
-  - name: Construction
-    display_name: "r/Construction"
-    description: "Construction industry discussion"
-    subscribers: 180000
-    best_for: "Construction software"
-
-  - name: HVAC
-    display_name: "r/HVAC"
-    description: "HVAC professionals community"
-    subscribers: 120000
-    best_for: "Trade business software"
-
-  - name: Teachers
-    display_name: "r/Teachers"
-    description: "K-12 teachers sharing classroom experiences"
-    subscribers: 650000
-    best_for: "EdTech opportunities"
-
-  - name: nursing
-    display_name: "r/nursing"
-    description: "Nurses discussing patient care and work life"
-    subscribers: 550000
-    best_for: "Healthcare workflow tools"
-
-  - name: Truckers
-    display_name: "r/Truckers"
-    description: "Trucking industry professionals"
-    subscribers: 120000
-    best_for: "Logistics tech"
-
-  - name: RealEstate
-    display_name: "r/RealEstate"
-    description: "Real estate buying, selling, and investing"
-    subscribers: 850000
-    best_for: "PropTech opportunities"
-
-cybersecurity:
-  - name: cybersecurity
-    display_name: "r/cybersecurity"
-    description: "Cybersecurity news, discussion, and career advice"
-    subscribers: 750000
-    best_for: "Security tool gaps"
-
-  - name: netsec
-    display_name: "r/netsec"
-    description: "Technical information security content"
-    subscribers: 550000
-    best_for: "InfoSec tooling needs"
-
-  - name: privacy
-    display_name: "r/privacy"
-    description: "Online privacy discussion and tools"
-    subscribers: 1500000
-    best_for: "Privacy-first product ideas"
-
-  - name: hacking
-    display_name: "r/hacking"
-    description: "Ethical hacking and penetration testing"
-    subscribers: 650000
-    best_for: "Pentesting tool needs"
-
-  - name: AskNetsec
-    display_name: "r/AskNetsec"
-    description: "Q&A for information security professionals"
-    subscribers: 180000
-    best_for: "Security pain points"
-
-data_analytics:
-  - name: datascience
-    display_name: "r/datascience"
-    description: "Data science careers, tools, and techniques"
-    subscribers: 950000
-    best_for: "Data tool opportunities"
-
-  - name: dataengineering
-    display_name: "r/dataengineering"
-    description: "Data pipeline and infrastructure discussion"
-    subscribers: 280000
-    best_for: "Data infra pain points"
-
-  - name: BusinessIntelligence
-    display_name: "r/BusinessIntelligence"
-    description: "BI tools, dashboards, and analytics"
-    subscribers: 85000
-    best_for: "BI tool gaps"
-
-  - name: analytics
-    display_name: "r/analytics"
-    description: "Web and product analytics discussion"
-    subscribers: 120000
-    best_for: "Analytics tool needs"
-
-  - name: SQL
-    display_name: "r/SQL"
-    description: "SQL and database query discussion"
-    subscribers: 280000
-    best_for: "Database tooling"
-
-  - name: statistics
-    display_name: "r/statistics"
-    description: "Statistical methods and applications"
-    subscribers: 220000
-    best_for: "Stats tool opportunities"
-
-gaming:
-  - name: gamedev
-    display_name: "r/gamedev"
-    description: "Game developers sharing progress and advice"
-    subscribers: 1400000
-    best_for: "Game dev tool needs"
-
-  - name: IndieGaming
-    display_name: "r/IndieGaming"
-    description: "Independent game development and releases"
-    subscribers: 320000
-    best_for: "Indie dev tools"
-
-  - name: gaming
-    display_name: "r/gaming"
-    description: "General gaming discussion and news"
-    subscribers: 38000000
-    best_for: "Gaming market trends"
-
-  - name: pcgaming
-    display_name: "r/pcgaming"
-    description: "PC gaming news, hardware, and discussion"
-    subscribers: 3200000
-    best_for: "PC gaming preferences"
-
-  - name: Games
-    display_name: "r/Games"
-    description: "Quality gaming discussion and news"
-    subscribers: 3500000
-    best_for: "Gaming industry insights"
-
-health_fitness:
-  - name: Fitness
-    display_name: "r/Fitness"
-    description: "Exercise, nutrition, and fitness discussion"
-    subscribers: 10500000
-    best_for: "Fitness app ideas"
-
-  - name: nutrition
-    display_name: "r/nutrition"
-    description: "Evidence-based nutrition discussion"
-    subscribers: 2800000
-    best_for: "Nutrition tracking tools"
-
-  - name: loseit
-    display_name: "r/loseit"
-    description: "Weight loss support and advice"
-    subscribers: 3500000
-    best_for: "Health tracking apps"
-
-  - name: running
-    display_name: "r/running"
-    description: "Runners sharing training plans and gear"
-    subscribers: 2200000
-    best_for: "Running/fitness wearables"
-
-  - name: HealthIT
-    display_name: "r/HealthIT"
-    description: "Health information technology professionals"
-    subscribers: 35000
-    best_for: "Healthcare software gaps"
-
-  - name: mentalhealth
-    display_name: "r/mentalhealth"
-    description: "Mental health awareness and support"
-    subscribers: 950000
-    best_for: "Mental wellness apps"
-
-education_learning:
-  - name: learnprogramming
-    display_name: "r/learnprogramming"
-    description: "Programming learning resources and help"
-    subscribers: 3800000
-    best_for: "Learn-to-code tools"
-
-  - name: AskAcademia
-    display_name: "r/AskAcademia"
-    description: "Academic careers and research discussion"
-    subscribers: 280000
-    best_for: "Academic tool needs"
-
-  - name: OnlineLearning
-    display_name: "r/OnlineLearning"
-    description: "Online courses and e-learning discussion"
-    subscribers: 85000
-    best_for: "EdTech platforms"
-
-  - name: languagelearning
-    display_name: "r/languagelearning"
-    description: "Language learning tips, tools, and resources"
-    subscribers: 950000
-    best_for: "Language app opportunities"
-
-  - name: GradSchool
-    display_name: "r/GradSchool"
-    description: "Graduate student life and academics"
-    subscribers: 280000
-    best_for: "Academic productivity tools"
-
-creative_media:
-  - name: videography
-    display_name: "r/videography"
-    description: "Video production and filmmaking"
-    subscribers: 420000
-    best_for: "Video production tools"
-
-  - name: podcasting
-    display_name: "r/podcasting"
-    description: "Podcast creation and production"
-    subscribers: 280000
-    best_for: "Podcast tool gaps"
-
-  - name: graphic_design
-    display_name: "r/graphic_design"
-    description: "Graphic design professionals and enthusiasts"
-    subscribers: 1200000
-    best_for: "Design tool pain points"
-
-  - name: photography
-    display_name: "r/photography"
-    description: "Photography techniques, gear, and portfolio"
-    subscribers: 5500000
-    best_for: "Photo editing/management"
-
-  - name: youtubers
-    display_name: "r/youtubers"
-    description: "YouTube content creators and growth tips"
-    subscribers: 280000
-    best_for: "Creator economy tools"
-
-  - name: NewTubers
-    display_name: "r/NewTubers"
-    description: "New YouTube creators getting started"
-    subscribers: 450000
-    best_for: "Creator onboarding tools"
-
-  - name: Twitch
-    display_name: "r/Twitch"
-    description: "Twitch streaming community"
-    subscribers: 1200000
-    best_for: "Streaming tools"
-
+- best_for: AI tool opportunities
+  description: Artificial intelligence discussion
+  display_name: r/artificial
+  name: artificial
+  subscribers: 950000
+- best_for: ML tooling gaps
+  description: Machine learning research and practice
+  display_name: r/MachineLearning
+  name: MachineLearning
+  subscribers: 2800000
+- best_for: AI app ideas
+  description: ChatGPT users and enthusiasts
+  display_name: r/ChatGPT
+  name: ChatGPT
+  subscribers: 5200000
+- best_for: Local AI tool needs
+  description: Running LLMs locally
+  display_name: r/LocalLLaMA
+  name: LocalLLaMA
+  subscribers: 180000
+- best_for: Automation tool gaps
+  description: Automation tools and workflows
+  display_name: r/automation
+  name: automation
+  subscribers: 85000
 careers_hr:
-  - name: cscareerquestions
-    display_name: "r/cscareerquestions"
-    description: "Computer science career advice"
-    subscribers: 850000
-    best_for: "Job search tools"
-
-  - name: jobs
-    display_name: "r/jobs"
-    description: "Job searching and career advice"
-    subscribers: 950000
-    best_for: "Hiring platform opportunities"
-
-  - name: recruitinghell
-    display_name: "r/recruitinghell"
-    description: "Bad recruiting experiences and frustrations"
-    subscribers: 650000
-    best_for: "Recruiting tool pain points"
-
-  - name: humanresources
-    display_name: "r/humanresources"
-    description: "HR professionals sharing best practices"
-    subscribers: 65000
-    best_for: "HR software gaps"
-
-  - name: resumes
-    display_name: "r/resumes"
-    description: "Resume and CV review and advice"
-    subscribers: 380000
-    best_for: "Resume builder tools"
-
-  - name: careerguidance
-    display_name: "r/careerguidance"
-    description: "Career planning and professional development"
-    subscribers: 450000
-    best_for: "Career planning tools"
-
+- best_for: Job search tools
+  description: Computer science career advice
+  display_name: r/cscareerquestions
+  name: cscareerquestions
+  subscribers: 850000
+- best_for: Hiring platform opportunities
+  description: Job searching and career advice
+  display_name: r/jobs
+  name: jobs
+  subscribers: 950000
+- best_for: Recruiting tool pain points
+  description: Bad recruiting experiences and frustrations
+  display_name: r/recruitinghell
+  name: recruitinghell
+  subscribers: 650000
+- best_for: HR software gaps
+  description: HR professionals sharing best practices
+  display_name: r/humanresources
+  name: humanresources
+  subscribers: 65000
+- best_for: Resume builder tools
+  description: Resume and CV review and advice
+  display_name: r/resumes
+  name: resumes
+  subscribers: 380000
+- best_for: Career planning tools
+  description: Career planning and professional development
+  display_name: r/careerguidance
+  name: careerguidance
+  subscribers: 450000
+content_creation:
+- display_name: r/ContentCreation
+  name: ContentCreation
+creative_media:
+- best_for: Video production tools
+  description: Video production and filmmaking
+  display_name: r/videography
+  name: videography
+  subscribers: 420000
+- best_for: Podcast tool gaps
+  description: Podcast creation and production
+  display_name: r/podcasting
+  name: podcasting
+  subscribers: 280000
+- best_for: Design tool pain points
+  description: Graphic design professionals and enthusiasts
+  display_name: r/graphic_design
+  name: graphic_design
+  subscribers: 1200000
+- best_for: Photo editing/management
+  description: Photography techniques, gear, and portfolio
+  display_name: r/photography
+  name: photography
+  subscribers: 5500000
+- best_for: Creator economy tools
+  description: YouTube content creators and growth tips
+  display_name: r/youtubers
+  name: youtubers
+  subscribers: 280000
+- best_for: Creator onboarding tools
+  description: New YouTube creators getting started
+  display_name: r/NewTubers
+  name: NewTubers
+  subscribers: 450000
+- best_for: Streaming tools
+  description: Twitch streaming community
+  display_name: r/Twitch
+  name: Twitch
+  subscribers: 1200000
 crypto_web3:
-  - name: CryptoCurrency
-    display_name: "r/CryptoCurrency"
-    description: "Cryptocurrency news and discussion"
-    subscribers: 7500000
-    best_for: "Crypto tool needs"
-
-  - name: Bitcoin
-    display_name: "r/Bitcoin"
-    description: "Bitcoin news and discussion"
-    subscribers: 6200000
-    best_for: "Bitcoin/wallet tools"
-
-  - name: ethereum
-    display_name: "r/ethereum"
-    description: "Ethereum and smart contract discussion"
-    subscribers: 2800000
-    best_for: "Web3 dev tools"
-
-  - name: defi
-    display_name: "r/defi"
-    description: "Decentralized finance protocols and tools"
-    subscribers: 450000
-    best_for: "DeFi tool opportunities"
-
-  - name: NFT
-    display_name: "r/NFT"
-    description: "NFT creation, trading, and discussion"
-    subscribers: 650000
-    best_for: "NFT/digital asset tools"
-
-science_technology:
-  - name: technology
-    display_name: "r/technology"
-    description: "Technology news and discussion"
-    subscribers: 16000000
-    best_for: "Tech trend signals"
-
-  - name: science
-    display_name: "r/science"
-    description: "Scientific research and discoveries"
-    subscribers: 32000000
-    best_for: "Science comm tools"
-
-  - name: Futurology
-    display_name: "r/Futurology"
-    description: "Future technology and society"
-    subscribers: 19000000
-    best_for: "Emerging tech opportunities"
-
-  - name: gadgets
-    display_name: "r/gadgets"
-    description: "Latest gadgets and consumer tech"
-    subscribers: 22000000
-    best_for: "Consumer tech trends"
-
-  - name: hardware
-    display_name: "r/hardware"
-    description: "Computer hardware news and reviews"
-    subscribers: 1200000
-    best_for: "Hardware market insights"
-
-personal_finance_investing:
-  - name: investing
-    display_name: "r/investing"
-    description: "Investment strategies and market discussion"
-    subscribers: 2400000
-    best_for: "Investment tool needs"
-
-  - name: stocks
-    display_name: "r/stocks"
-    description: "Stock market news and analysis"
-    subscribers: 6500000
-    best_for: "Trading tool ideas"
-
-  - name: wallstreetbets
-    display_name: "r/wallstreetbets"
-    description: "High-risk trading and market memes"
-    subscribers: 15000000
-    best_for: "Retail investor trends"
-
-  - name: Fire
-    display_name: "r/Fire"
-    description: "Financial independence, retire early"
-    subscribers: 650000
-    best_for: "FIRE planning tools"
-
-  - name: Bogleheads
-    display_name: "r/Bogleheads"
-    description: "Index fund investing philosophy"
-    subscribers: 550000
-    best_for: "Passive investing tools"
-
+- best_for: Crypto tool needs
+  description: Cryptocurrency news and discussion
+  display_name: r/CryptoCurrency
+  name: CryptoCurrency
+  subscribers: 7500000
+- best_for: Bitcoin/wallet tools
+  description: Bitcoin news and discussion
+  display_name: r/Bitcoin
+  name: Bitcoin
+  subscribers: 6200000
+- best_for: Web3 dev tools
+  description: Ethereum and smart contract discussion
+  display_name: r/ethereum
+  name: ethereum
+  subscribers: 2800000
+- best_for: DeFi tool opportunities
+  description: Decentralized finance protocols and tools
+  display_name: r/defi
+  name: defi
+  subscribers: 450000
+- best_for: NFT/digital asset tools
+  description: NFT creation, trading, and discussion
+  display_name: r/NFT
+  name: NFT
+  subscribers: 650000
+cybersecurity:
+- best_for: Security tool gaps
+  description: Cybersecurity news, discussion, and career advice
+  display_name: r/cybersecurity
+  name: cybersecurity
+  subscribers: 750000
+- best_for: InfoSec tooling needs
+  description: Technical information security content
+  display_name: r/netsec
+  name: netsec
+  subscribers: 550000
+- best_for: Privacy-first product ideas
+  description: Online privacy discussion and tools
+  display_name: r/privacy
+  name: privacy
+  subscribers: 1500000
+- best_for: Pentesting tool needs
+  description: Ethical hacking and penetration testing
+  display_name: r/hacking
+  name: hacking
+  subscribers: 650000
+- best_for: Security pain points
+  description: Q&A for information security professionals
+  display_name: r/AskNetsec
+  name: AskNetsec
+  subscribers: 180000
+data_analytics:
+- best_for: Data tool opportunities
+  description: Data science careers, tools, and techniques
+  display_name: r/datascience
+  name: datascience
+  subscribers: 950000
+- best_for: Data infra pain points
+  description: Data pipeline and infrastructure discussion
+  display_name: r/dataengineering
+  name: dataengineering
+  subscribers: 280000
+- best_for: BI tool gaps
+  description: BI tools, dashboards, and analytics
+  display_name: r/BusinessIntelligence
+  name: BusinessIntelligence
+  subscribers: 85000
+- best_for: Analytics tool needs
+  description: Web and product analytics discussion
+  display_name: r/analytics
+  name: analytics
+  subscribers: 120000
+- best_for: Database tooling
+  description: SQL and database query discussion
+  display_name: r/SQL
+  name: SQL
+  subscribers: 280000
+- best_for: Stats tool opportunities
+  description: Statistical methods and applications
+  display_name: r/statistics
+  name: statistics
+  subscribers: 220000
+developer_tools:
+- display_name: r/coding
+  name: coding
+- display_name: r/golang
+  name: golang
+- display_name: r/rust
+  name: rust
+- display_name: r/typescript
+  name: typescript
+- display_name: r/flutter
+  name: flutter
+- display_name: r/aws
+  name: aws
+- display_name: r/docker
+  name: docker
+ecommerce:
+- best_for: E-comm tool pain points
+  description: E-commerce business discussion
+  display_name: r/ecommerce
+  name: ecommerce
+  subscribers: 180000
+- best_for: Shopify app opportunities
+  description: Shopify merchants and developers
+  display_name: r/shopify
+  name: shopify
+  subscribers: 220000
+- best_for: Amazon seller tools
+  description: Amazon FBA sellers community
+  display_name: r/FulfillmentByAmazon
+  name: FulfillmentByAmazon
+  subscribers: 120000
+- best_for: Dropship tool needs
+  description: Dropshipping business discussion
+  display_name: r/dropship
+  name: dropship
+  subscribers: 180000
+- best_for: Etsy seller problems
+  description: Etsy sellers and buyers
+  display_name: r/Etsy
+  name: Etsy
+  subscribers: 280000
+- display_name: r/AmazonSeller
+  name: AmazonSeller
+education_learning:
+- best_for: Learn-to-code tools
+  description: Programming learning resources and help
+  display_name: r/learnprogramming
+  name: learnprogramming
+  subscribers: 3800000
+- best_for: Academic tool needs
+  description: Academic careers and research discussion
+  display_name: r/AskAcademia
+  name: AskAcademia
+  subscribers: 280000
+- best_for: EdTech platforms
+  description: Online courses and e-learning discussion
+  display_name: r/OnlineLearning
+  name: OnlineLearning
+  subscribers: 85000
+- best_for: Language app opportunities
+  description: Language learning tips, tools, and resources
+  display_name: r/languagelearning
+  name: languagelearning
+  subscribers: 950000
+- best_for: Academic productivity tools
+  description: Graduate student life and academics
+  display_name: r/GradSchool
+  name: GradSchool
+  subscribers: 280000
+finance_business:
+- best_for: Accounting software gaps
+  description: Accounting professionals discussion
+  display_name: r/accounting
+  name: accounting
+  subscribers: 380000
+- best_for: Financial tool needs
+  description: Bookkeeping questions and discussion
+  display_name: r/Bookkeeping
+  name: Bookkeeping
+  subscribers: 65000
+- best_for: Fintech opportunities
+  description: Personal finance discussion and advice
+  display_name: r/personalfinance
+  name: personalfinance
+  subscribers: 19000000
+- best_for: Premium tool market
+  description: High-income FIRE community
+  display_name: r/fatFIRE
+  name: fatFIRE
+  subscribers: 520000
+- best_for: Investment tool needs
+  description: Financial independence and early retirement
+  display_name: r/financialindependence
+  name: financialindependence
+  subscribers: 2100000
+gaming:
+- best_for: Game dev tool needs
+  description: Game developers sharing progress and advice
+  display_name: r/gamedev
+  name: gamedev
+  subscribers: 1400000
+- best_for: Indie dev tools
+  description: Independent game development and releases
+  display_name: r/IndieGaming
+  name: IndieGaming
+  subscribers: 320000
+- best_for: Gaming market trends
+  description: General gaming discussion and news
+  display_name: r/gaming
+  name: gaming
+  subscribers: 38000000
+- best_for: PC gaming preferences
+  description: PC gaming news, hardware, and discussion
+  display_name: r/pcgaming
+  name: pcgaming
+  subscribers: 3200000
+- best_for: Gaming industry insights
+  description: Quality gaming discussion and news
+  display_name: r/Games
+  name: Games
+  subscribers: 3500000
+health_fitness:
+- best_for: Fitness app ideas
+  description: Exercise, nutrition, and fitness discussion
+  display_name: r/Fitness
+  name: Fitness
+  subscribers: 10500000
+- best_for: Nutrition tracking tools
+  description: Evidence-based nutrition discussion
+  display_name: r/nutrition
+  name: nutrition
+  subscribers: 2800000
+- best_for: Health tracking apps
+  description: Weight loss support and advice
+  display_name: r/loseit
+  name: loseit
+  subscribers: 3500000
+- best_for: Running/fitness wearables
+  description: Runners sharing training plans and gear
+  display_name: r/running
+  name: running
+  subscribers: 2200000
+- best_for: Healthcare software gaps
+  description: Health information technology professionals
+  display_name: r/HealthIT
+  name: HealthIT
+  subscribers: 35000
+- best_for: Mental wellness apps
+  description: Mental health awareness and support
+  display_name: r/mentalhealth
+  name: mentalhealth
+  subscribers: 950000
+industry_verticals:
+- best_for: Real estate tech
+  description: Real estate agents discussion
+  display_name: r/realtors
+  name: realtors
+  subscribers: 85000
+- best_for: Legal tech opportunities
+  description: Law firm management and practice
+  display_name: r/LawFirm
+  name: LawFirm
+  subscribers: 35000
+- best_for: Dental practice software
+  description: Dental professionals discussion
+  display_name: r/dentistry
+  name: dentistry
+  subscribers: 45000
+- best_for: Healthcare tech
+  description: Pharmacists and pharmacy discussion
+  display_name: r/pharmacy
+  name: pharmacy
+  subscribers: 85000
+- best_for: Restaurant tech
+  description: Restaurant owners and managers
+  display_name: r/restaurateur
+  name: restaurateur
+  subscribers: 25000
+- best_for: Construction software
+  description: Construction industry discussion
+  display_name: r/Construction
+  name: Construction
+  subscribers: 180000
+- best_for: Trade business software
+  description: HVAC professionals community
+  display_name: r/HVAC
+  name: HVAC
+  subscribers: 120000
+- best_for: EdTech opportunities
+  description: K-12 teachers sharing classroom experiences
+  display_name: r/Teachers
+  name: Teachers
+  subscribers: 650000
+- best_for: Healthcare workflow tools
+  description: Nurses discussing patient care and work life
+  display_name: r/nursing
+  name: nursing
+  subscribers: 550000
+- best_for: Logistics tech
+  description: Trucking industry professionals
+  display_name: r/Truckers
+  name: Truckers
+  subscribers: 120000
+- best_for: PropTech opportunities
+  description: Real estate buying, selling, and investing
+  display_name: r/RealEstate
+  name: RealEstate
+  subscribers: 850000
 lifestyle_hobbies:
-  - name: BuyItForLife
-    display_name: "r/BuyItForLife"
-    description: "Durable, quality products that last"
-    subscribers: 2200000
-    best_for: "Product review/comparison"
-
-  - name: MealPrepSunday
-    display_name: "r/MealPrepSunday"
-    description: "Meal planning and preparation"
-    subscribers: 2800000
-    best_for: "Meal planning apps"
-
-  - name: HomeImprovement
-    display_name: "r/HomeImprovement"
-    description: "Home renovation and DIY projects"
-    subscribers: 3200000
-    best_for: "Home project planning"
-
-  - name: minimalism
-    display_name: "r/minimalism"
-    description: "Simple living and minimalist lifestyle"
-    subscribers: 950000
-    best_for: "Decluttering/org tools"
-
-  - name: Frugal
-    display_name: "r/Frugal"
-    description: "Frugal living tips and strategies"
-    subscribers: 2400000
-    best_for: "Budget tracking tools"
+- best_for: Product review/comparison
+  description: Durable, quality products that last
+  display_name: r/BuyItForLife
+  name: BuyItForLife
+  subscribers: 2200000
+- best_for: Meal planning apps
+  description: Meal planning and preparation
+  display_name: r/MealPrepSunday
+  name: MealPrepSunday
+  subscribers: 2800000
+- best_for: Home project planning
+  description: Home renovation and DIY projects
+  display_name: r/HomeImprovement
+  name: HomeImprovement
+  subscribers: 3200000
+- best_for: Decluttering/org tools
+  description: Simple living and minimalist lifestyle
+  display_name: r/minimalism
+  name: minimalism
+  subscribers: 950000
+- best_for: Budget tracking tools
+  description: Frugal living tips and strategies
+  display_name: r/Frugal
+  name: Frugal
+  subscribers: 2400000
+marketing_growth:
+- best_for: Marketing tool gaps
+  description: Marketing strategies and discussion
+  display_name: r/marketing
+  name: marketing
+  subscribers: 520000
+- best_for: Ads, analytics problems
+  description: Digital marketing strategies and tools
+  display_name: r/digital_marketing
+  name: digital_marketing
+  subscribers: 180000
+- best_for: SEO tool opportunities
+  description: Search engine optimization discussion
+  display_name: r/SEO
+  name: SEO
+  subscribers: 280000
+- best_for: Content tool needs
+  description: Content marketing strategies
+  display_name: r/content_marketing
+  name: content_marketing
+  subscribers: 85000
+- best_for: Social tool pain points
+  description: Social media marketing and management
+  display_name: r/socialmedia
+  name: socialmedia
+  subscribers: 420000
+- best_for: Ad platform frustrations
+  description: Pay-per-click advertising discussion
+  display_name: r/PPC
+  name: PPC
+  subscribers: 65000
+- best_for: Email tool problems
+  description: Email marketing strategies and tools
+  display_name: r/emailmarketing
+  name: emailmarketing
+  subscribers: 45000
+- best_for: Affiliate tool needs
+  description: Affiliate marketing discussion
+  display_name: r/Affiliatemarketing
+  name: Affiliatemarketing
+  subscribers: 180000
+no_code_low_code:
+- display_name: r/nocode
+  name: nocode
+- display_name: r/Automate
+  name: Automate
+- display_name: r/zapier
+  name: zapier
+- display_name: r/webflow
+  name: webflow
+open_source:
+- display_name: r/opensource
+  name: opensource
+- display_name: r/linux
+  name: linux
+- display_name: r/linuxadmin
+  name: linuxadmin
+personal_finance:
+- display_name: r/povertyfinance
+  name: povertyfinance
+- display_name: r/leanfire
+  name: leanfire
+personal_finance_investing:
+- best_for: Investment tool needs
+  description: Investment strategies and market discussion
+  display_name: r/investing
+  name: investing
+  subscribers: 2400000
+- best_for: Trading tool ideas
+  description: Stock market news and analysis
+  display_name: r/stocks
+  name: stocks
+  subscribers: 6500000
+- best_for: Retail investor trends
+  description: High-risk trading and market memes
+  display_name: r/wallstreetbets
+  name: wallstreetbets
+  subscribers: 15000000
+- best_for: FIRE planning tools
+  description: Financial independence, retire early
+  display_name: r/Fire
+  name: Fire
+  subscribers: 650000
+- best_for: Passive investing tools
+  description: Index fund investing philosophy
+  display_name: r/Bogleheads
+  name: Bogleheads
+  subscribers: 550000
+product_design:
+- best_for: PM tools, roadmap problems
+  description: Product management discussion and resources
+  display_name: r/ProductManagement
+  name: ProductManagement
+  subscribers: 95000
+- best_for: Design tool pain points
+  description: User experience design discussion
+  display_name: r/UXDesign
+  name: UXDesign
+  subscribers: 180000
+- best_for: UX research insights
+  description: User experience professionals and enthusiasts
+  display_name: r/userexperience
+  name: userexperience
+  subscribers: 220000
+- best_for: Design workflow issues
+  description: Web design trends, tools, and discussion
+  display_name: r/web_design
+  name: web_design
+  subscribers: 680000
+real_estate:
+- display_name: r/realestateinvesting
+  name: realestateinvesting
+- display_name: r/Landlord
+  name: Landlord
+- display_name: r/FirstTimeHomeBuyer
+  name: FirstTimeHomeBuyer
+remote_productivity:
+- best_for: Remote tool gaps
+  description: Remote work tips and discussion
+  display_name: r/remotework
+  name: remotework
+  subscribers: 85000
+- best_for: Location-independent tools
+  description: Location-independent lifestyle and work
+  display_name: r/digitalnomad
+  name: digitalnomad
+  subscribers: 2800000
+- best_for: Productivity app ideas
+  description: Personal and professional productivity
+  display_name: r/productivity
+  name: productivity
+  subscribers: 1500000
+- best_for: Freelance tool needs
+  description: Making money online and remote work
+  display_name: r/WorkOnline
+  name: WorkOnline
+  subscribers: 580000
+- best_for: Freelancer pain points
+  description: Freelancing tips and discussion
+  display_name: r/freelance
+  name: freelance
+  subscribers: 280000
+science_technology:
+- best_for: Tech trend signals
+  description: Technology news and discussion
+  display_name: r/technology
+  name: technology
+  subscribers: 16000000
+- best_for: Science comm tools
+  description: Scientific research and discoveries
+  display_name: r/science
+  name: science
+  subscribers: 32000000
+- best_for: Emerging tech opportunities
+  description: Future technology and society
+  display_name: r/Futurology
+  name: Futurology
+  subscribers: 19000000
+- best_for: Consumer tech trends
+  description: Latest gadgets and consumer tech
+  display_name: r/gadgets
+  name: gadgets
+  subscribers: 22000000
+- best_for: Hardware market insights
+  description: Computer hardware news and reviews
+  display_name: r/hardware
+  name: hardware
+  subscribers: 1200000
+self_hosted:
+- display_name: r/homelab
+  name: homelab
+- display_name: r/HomeServer
+  name: HomeServer
+- display_name: r/datahoarder
+  name: datahoarder
+- display_name: r/pihole
+  name: pihole
+startup_entrepreneurship:
+- best_for: Early-stage ideas, founder problems
+  description: Pair up, teknically, marketing, sales discussions for startups
+  display_name: r/startups
+  name: startups
+  subscribers: 1200000
+- best_for: Business models, growth tactics
+  description: Pair pair pair for entrepreneurs and small business owners
+  display_name: r/Entrepreneur
+  name: Entrepreneur
+  subscribers: 3500000
+- best_for: SaaS pain points, pricing, churn
+  description: SaaS founders discussing growth, churn, pricing, and tools
+  display_name: r/SaaS
+  name: SaaS
+  subscribers: 95000
+- best_for: Bootstrapped product ideas
+  description: Solo founders building profitable internet businesses
+  display_name: r/indiehackers
+  name: indiehackers
+  subscribers: 45000
+- best_for: SMB problems, local business
+  description: Questions and answers about running a small business
+  display_name: r/smallbusiness
+  name: smallbusiness
+  subscribers: 1800000
+- best_for: Real-time founder journeys
+  description: Follow along as entrepreneurs build businesses in real-time
+  display_name: r/EntrepreneurRideAlong
+  name: EntrepreneurRideAlong
+  subscribers: 180000
+- display_name: r/business
+  name: business
+- display_name: r/Entrepreneurs
+  name: Entrepreneurs
+- display_name: r/sweatystartup
+  name: sweatystartup
+- display_name: r/GrowMyBusiness
+  name: GrowMyBusiness
+tech_development:
+- best_for: Developer tools, frameworks
+  description: Web development news, discussion, and help
+  display_name: r/webdev
+  name: webdev
+  subscribers: 2100000
+- best_for: Dev workflow pain points
+  description: Computer programming discussion and news
+  display_name: r/programming
+  name: programming
+  subscribers: 6500000
+- best_for: Infrastructure, CI/CD tools
+  description: DevOps, CI/CD, infrastructure automation
+  display_name: r/devops
+  name: devops
+  subscribers: 320000
+- best_for: Privacy tools, open source
+  description: Self-hosting software and services
+  display_name: r/selfhosted
+  name: selfhosted
+  subscribers: 350000
+- best_for: IT infrastructure problems
+  description: System administration and IT infrastructure
+  display_name: r/sysadmin
+  name: sysadmin
+  subscribers: 850000
+- best_for: JavaScript ecosystem
+  description: Node.js and JavaScript server-side development
+  display_name: r/node
+  name: node
+  subscribers: 220000
+- best_for: Frontend tools
+  description: React.js discussion and help
+  display_name: r/reactjs
+  name: reactjs
+  subscribers: 380000
+- best_for: Python tools, libraries
+  description: Python programming language discussion
+  display_name: r/Python
+  name: Python
+  subscribers: 1300000
+gifs:
+- name: gifs
+  display_name: r/gifs
+- name: behindthegifs
+  display_name: r/behindthegifs
+- name: gif
+  display_name: r/gif
+- name: Cinemagraphs
+  display_name: r/Cinemagraphs
+- name: WastedGifs
+  display_name: r/WastedGifs
+- name: educationalgifs
+  display_name: r/educationalgifs
+- name: perfectloops
+  display_name: r/perfectloops
+- name: highqualitygifs
+  display_name: r/highqualitygifs
+- name: gifsound
+  display_name: r/gifsound
+- name: combinedgifs
+  display_name: r/combinedgifs
+- name: retiredgif
+  display_name: r/retiredgif
+- name: michaelbaygifs
+  display_name: r/michaelbaygifs
+- name: gifrecipes
+  display_name: r/gifrecipes
+- name: mechanical_gifs
+  display_name: r/mechanical_gifs
+- name: bettereveryloop
+  display_name: r/bettereveryloop
+- name: gifextra
+  display_name: r/gifextra
+- name: slygifs
+  display_name: r/slygifs
+- name: gifsthatkeepongiving
+  display_name: r/gifsthatkeepongiving
+- name: wholesomegifs
+  display_name: r/wholesomegifs
+- name: noisygifs
+  display_name: r/noisygifs
+- name: brokengifs
+  display_name: r/brokengifs
+- name: loadingicon
+  display_name: r/loadingicon
+- name: splitdepthgifs
+  display_name: r/splitdepthgifs
+people:
+- name: blackpeoplegifs
+  display_name: r/blackpeoplegifs
+- name: whitepeoplegifs
+  display_name: r/whitepeoplegifs
+- name: asianpeoplegifs
+  display_name: r/asianpeoplegifs
+- name: scriptedasiangifs
+  display_name: r/scriptedasiangifs
+reaction:
+- name: reactiongifs
+  display_name: r/reactiongifs
+- name: shittyreactiongifs
+  display_name: r/shittyreactiongifs
+science:
+- name: chemicalreactiongifs
+  display_name: r/chemicalreactiongifs
+- name: physicsgifs
+  display_name: r/physicsgifs
+- name: AskScience
+  display_name: r/AskScience
+- name: cogsci
+  display_name: r/cogsci
+- name: medicine
+  display_name: r/medicine
+- name: everythingscience
+  display_name: r/everythingscience
+- name: geology
+  display_name: r/geology
+nature:
+- name: babyelephantgifs
+  display_name: r/babyelephantgifs
+- name: weathergifs
+  display_name: r/weathergifs
+- name: earthporn
+  display_name: r/earthporn
+- name: hardcoreaww
+  display_name: r/hardcoreaww
+- name: hitmanimals
+  display_name: r/hitmanimals
+- name: natureisfuckinglit
+  display_name: r/natureisfuckinglit
+- name: heavyseas
+  display_name: r/heavyseas
+images:
+- name: pics
+  display_name: r/pics
+- name: PhotoshopBattles
+  display_name: r/PhotoshopBattles
+- name: perfecttiming
+  display_name: r/perfecttiming
+- name: itookapicture
+  display_name: r/itookapicture
+- name: Pareidolia
+  display_name: r/Pareidolia
+- name: ExpectationVSReality
+  display_name: r/ExpectationVSReality
+- name: dogpictures
+  display_name: r/dogpictures
+- name: misleadingthumbnails
+  display_name: r/misleadingthumbnails
+- name: FifthWorldPics
+  display_name: r/FifthWorldPics
+- name: TheWayWeWere
+  display_name: r/TheWayWeWere
+- name: pic
+  display_name: r/pic
+- name: nocontextpics
+  display_name: r/nocontextpics
+- name: miniworlds
+  display_name: r/miniworlds
+- name: foundpaper
+  display_name: r/foundpaper
+- name: images
+  display_name: r/images
+- name: screenshots
+  display_name: r/screenshots
+interesting:
+- name: mildlyinteresting
+  display_name: r/mildlyinteresting
+- name: interestingasfuck
+  display_name: r/interestingasfuck
+- name: damnthatsinteresting
+  display_name: r/damnthatsinteresting
+- name: beamazed
+  display_name: r/beamazed
+- name: reallifeshinies
+  display_name: r/reallifeshinies
+- name: thatsinsane
+  display_name: r/thatsinsane
+- name: playitagainsam
+  display_name: r/playitagainsam
+imagesgifs_of_women:
+- name: gentlemanboners
+  display_name: r/gentlemanboners
+- name: prettygirls
+  display_name: r/prettygirls
+- name: hardbodies
+  display_name: r/hardbodies
+- name: girlsmirin
+  display_name: r/girlsmirin
+- name: thinspo
+  display_name: r/thinspo
+- name: goddesses
+  display_name: r/goddesses
+- name: shorthairedhotties
+  display_name: r/shorthairedhotties
+- name: fitandnatural
+  display_name: r/fitandnatural
+- name: wrestlewiththeplot
+  display_name: r/wrestlewiththeplot
+- name: skinnywithabs
+  display_name: r/skinnywithabs
+- name: bois
+  display_name: r/bois
+- name: GentlemanBonersGifs
+  display_name: r/GentlemanBonersGifs
+asian:
+- name: asiancuties
+  display_name: r/asiancuties
+- name: asiangirlsbeingcute
+  display_name: r/asiangirlsbeingcute
+photoshop:
+- name: ColorizedHistory
+  display_name: r/ColorizedHistory
+- name: reallifedoodles
+  display_name: r/reallifedoodles
+- name: HybridAnimals
+  display_name: r/HybridAnimals
+- name: colorization
+  display_name: r/colorization
+redditorsselfies:
+- name: amiugly
+  display_name: r/amiugly
+- name: roastme
+  display_name: r/roastme
+- name: rateme
+  display_name: r/rateme
+- name: uglyduckling
+  display_name: r/uglyduckling
+- name: prettygirlsuglyfaces
+  display_name: r/prettygirlsuglyfaces
+wallpapers:
+- name: wallpapers
+  display_name: r/wallpapers
+- name: wallpaper
+  display_name: r/wallpaper
+- name: Offensive_Wallpapers
+  display_name: r/Offensive_Wallpapers
+videos:
+- name: videos
+  display_name: r/videos
+- name: youtubehaiku
+  display_name: r/youtubehaiku
+- name: artisanvideos
+  display_name: r/artisanvideos
+- name: DeepIntoYouTube
+  display_name: r/DeepIntoYouTube
+- name: nottimanderic
+  display_name: r/nottimanderic
+- name: praisethecameraman
+  display_name: r/praisethecameraman
+- name: killthecameraman
+  display_name: r/killthecameraman
+- name: perfectlycutscreams
+  display_name: r/perfectlycutscreams
+- name: donthelpjustfilm
+  display_name: r/donthelpjustfilm
+- name: abruptchaos
+  display_name: r/abruptchaos
+general:
+- name: ShowerThoughts
+  display_name: r/ShowerThoughts
+- name: DoesAnybodyElse
+  display_name: r/DoesAnybodyElse
+- name: changemyview
+  display_name: r/changemyview
+- name: crazyideas
+  display_name: r/crazyideas
+- name: howtonotgiveafuck
+  display_name: r/howtonotgiveafuck
+- name: tipofmytongue
+  display_name: r/tipofmytongue
+- name: quotes
+  display_name: r/quotes
+- name: casualconversation
+  display_name: r/casualconversation
+- name: makenewfriendshere
+  display_name: r/makenewfriendshere
+- name: YouShouldKnow
+  display_name: r/YouShouldKnow
+- name: everymanshouldknow
+  display_name: r/everymanshouldknow
+- name: LearnUselessTalents
+  display_name: r/LearnUselessTalents
+- name: howto
+  display_name: r/howto
+- name: Foodforthought
+  display_name: r/Foodforthought
+- name: lectures
+  display_name: r/lectures
+- name: education
+  display_name: r/education
+- name: college
+  display_name: r/college
+- name: GetStudying
+  display_name: r/GetStudying
+- name: watchandlearn
+  display_name: r/watchandlearn
+- name: bulletjournal
+  display_name: r/bulletjournal
+- name: applyingtocollege
+  display_name: r/applyingtocollege
+- name: lawschool
+  display_name: r/lawschool
+- name: entertainment
+  display_name: r/entertainment
+- name: fantheories
+  display_name: r/fantheories
+- name: Disney
+  display_name: r/Disney
+- name: obscuremedia
+  display_name: r/obscuremedia
+- name: DIY
+  display_name: r/DIY
+- name: cosplay
+  display_name: r/cosplay
+- name: woodworking
+  display_name: r/woodworking
+- name: somethingimade
+  display_name: r/somethingimade
+- name: architecture
+  display_name: r/architecture
+- name: CoolGuides
+  display_name: r/CoolGuides
+- name: WorldBuilding
+  display_name: r/WorldBuilding
+- name: ifyoulikeblank
+  display_name: r/ifyoulikeblank
+- name: DiWHY
+  display_name: r/DiWHY
+- name: knitting
+  display_name: r/knitting
+- name: sewing
+  display_name: r/sewing
+- name: modelmakers
+  display_name: r/modelmakers
+- name: crochet
+  display_name: r/crochet
+- name: ProtectAndServe
+  display_name: r/ProtectAndServe
+- name: RTLSDR
+  display_name: r/RTLSDR
+- name: FastWorkers
+  display_name: r/FastWorkers
+- name: preppers
+  display_name: r/preppers
+- name: redneckengineering
+  display_name: r/redneckengineering
+- name: crossstitch
+  display_name: r/crossstitch
+- name: dumpsterdiving
+  display_name: r/dumpsterdiving
+- name: gunpla
+  display_name: r/gunpla
+- name: urbanplanning
+  display_name: r/urbanplanning
+- name: cubers
+  display_name: r/cubers
+- name: blacksmith
+  display_name: r/blacksmith
+- name: toptalent
+  display_name: r/toptalent
+- name: slavelabour
+  display_name: r/slavelabour
+- name: LifeProTips
+  display_name: r/LifeProTips
+- name: lifehacks
+  display_name: r/lifehacks
+- name: geek
+  display_name: r/geek
+- name: EDC
+  display_name: r/EDC
+- name: simpleliving
+  display_name: r/simpleliving
+- name: tinyhouses
+  display_name: r/tinyhouses
+- name: rainmeter
+  display_name: r/rainmeter
+- name: vandwellers
+  display_name: r/vandwellers
+- name: UnethicalLifeProTips
+  display_name: r/UnethicalLifeProTips
+- name: vagabond
+  display_name: r/vagabond
+- name: illegallifeprotips
+  display_name: r/illegallifeprotips
+- name: TrueReddit
+  display_name: r/TrueReddit
+- name: awesome
+  display_name: r/awesome
+advice:
+- name: relationship_advice
+  display_name: r/relationship_advice
+- name: raisedbynarcissists
+  display_name: r/raisedbynarcissists
+- name: legaladvice
+  display_name: r/legaladvice
+- name: bestoflegaladvice
+  display_name: r/bestoflegaladvice
+- name: advice
+  display_name: r/advice
+- name: amitheasshole
+  display_name: r/amitheasshole
+- name: mechanicadvice
+  display_name: r/mechanicadvice
+- name: toastme
+  display_name: r/toastme
+- name: needadvice
+  display_name: r/needadvice
+ama:
+- name: IAmA
+  display_name: r/IAmA
+- name: ExplainlikeIAmA
+  display_name: r/ExplainlikeIAmA
+- name: AMA
+  display_name: r/AMA
+- name: casualiama
+  display_name: r/casualiama
+- name: de_Iama
+  display_name: r/de_Iama
+games:
+- name: whowouldwin
+  display_name: r/whowouldwin
+- name: wouldyourather
+  display_name: r/wouldyourather
+- name: scenesfromahat
+  display_name: r/scenesfromahat
+- name: AskOuija
+  display_name: r/AskOuija
+- name: themonkeyspaw
+  display_name: r/themonkeyspaw
+- name: shittysuperpowers
+  display_name: r/shittysuperpowers
+- name: godtiersuperpowers
+  display_name: r/godtiersuperpowers
+- name: decreasinglyverbose
+  display_name: r/decreasinglyverbose
+- name: jesuschristouija
+  display_name: r/jesuschristouija
+- name: lego
+  display_name: r/lego
+- name: boardgames
+  display_name: r/boardgames
+- name: rpg
+  display_name: r/rpg
+- name: chess
+  display_name: r/chess
+- name: poker
+  display_name: r/poker
+- name: jrpg
+  display_name: r/jrpg
+questionanswer:
+- name: whatisthisthing
+  display_name: r/whatisthisthing
+- name: AskReddit
+  display_name: r/AskReddit
+- name: answers
+  display_name: r/answers
+- name: NoStupidQuestions
+  display_name: r/NoStupidQuestions
+- name: whatsthisbug
+  display_name: r/whatsthisbug
+- name: samplesize
+  display_name: r/samplesize
+- name: tooafraidtoask
+  display_name: r/tooafraidtoask
+- name: whatsthisplant
+  display_name: r/whatsthisplant
+- name: isitbullshit
+  display_name: r/isitbullshit
+- name: questions
+  display_name: r/questions
+- name: morbidquestions
+  display_name: r/morbidquestions
+ask:
+- name: ShittyAskScience
+  display_name: r/ShittyAskScience
+- name: TrueAskReddit
+  display_name: r/TrueAskReddit
+- name: AskScienceFiction
+  display_name: r/AskScienceFiction
+occupation:
+- name: askhistorians
+  display_name: r/askhistorians
+- name: AskHistory
+  display_name: r/AskHistory
+- name: askculinary
+  display_name: r/askculinary
+- name: AskSocialScience
+  display_name: r/AskSocialScience
+- name: askengineers
+  display_name: r/askengineers
+- name: askphilosophy
+  display_name: r/askphilosophy
+- name: askdocs
+  display_name: r/askdocs
+sexgender:
+- name: askwomen
+  display_name: r/askwomen
+- name: askmen
+  display_name: r/askmen
+- name: askgaybros
+  display_name: r/askgaybros
+- name: askredditafterdark
+  display_name: r/askredditafterdark
+- name: asktransgender
+  display_name: r/asktransgender
+- name: askmenover30
+  display_name: r/askmenover30
+stories:
+- name: tifu
+  display_name: r/tifu
+- name: self
+  display_name: r/self
+- name: confession
+  display_name: r/confession
+- name: fatpeoplestories
+  display_name: r/fatpeoplestories
+- name: confessions
+  display_name: r/confessions
+- name: storiesaboutkevin
+  display_name: r/storiesaboutkevin
+customer_service:
+- name: talesfromtechsupport
+  display_name: r/talesfromtechsupport
+- name: talesfromretail
+  display_name: r/talesfromretail
+- name: techsupportmacgyver
+  display_name: r/techsupportmacgyver
+- name: idontworkherelady
+  display_name: r/idontworkherelady
+- name: TalesFromYourServer
+  display_name: r/TalesFromYourServer
+- name: KitchenConfidential
+  display_name: r/KitchenConfidential
+- name: TalesFromThePizzaGuy
+  display_name: r/TalesFromThePizzaGuy
+- name: TalesFromTheFrontDesk
+  display_name: r/TalesFromTheFrontDesk
+- name: talesfromthecustomer
+  display_name: r/talesfromthecustomer
+- name: talesfromcallcenters
+  display_name: r/talesfromcallcenters
+- name: talesfromthesquadcar
+  display_name: r/talesfromthesquadcar
+- name: talesfromthepharmacy
+  display_name: r/talesfromthepharmacy
+- name: starbucks
+  display_name: r/starbucks
+revenge:
+- name: pettyrevenge
+  display_name: r/pettyrevenge
+- name: prorevenge
+  display_name: r/prorevenge
+- name: nuclearrevenge
+  display_name: r/nuclearrevenge
+scaryweird:
+- name: nosleep
+  display_name: r/nosleep
+- name: LetsNotMeet
+  display_name: r/LetsNotMeet
+- name: Glitch_in_the_Matrix
+  display_name: r/Glitch_in_the_Matrix
+- name: shortscarystories
+  display_name: r/shortscarystories
+- name: thetruthishere
+  display_name: r/thetruthishere
+- name: UnresolvedMysteries
+  display_name: r/UnresolvedMysteries
+- name: UnsolvedMysteries
+  display_name: r/UnsolvedMysteries
+support:
+- name: depression
+  display_name: r/depression
+- name: SuicideWatch
+  display_name: r/SuicideWatch
+- name: Anxiety
+  display_name: r/Anxiety
+- name: foreveralone
+  display_name: r/foreveralone
+- name: offmychest
+  display_name: r/offmychest
+- name: socialanxiety
+  display_name: r/socialanxiety
+- name: trueoffmychest
+  display_name: r/trueoffmychest
+- name: unsentletters
+  display_name: r/unsentletters
+- name: rant
+  display_name: r/rant
+facts:
+- name: todayilearned
+  display_name: r/todayilearned
+- name: wikipedia
+  display_name: r/wikipedia
+questions:
+- name: OutOfTheLoop
+  display_name: r/OutOfTheLoop
+- name: IWantToLearn
+  display_name: r/IWantToLearn
+explain_like:
+- name: explainlikeimfive
+  display_name: r/explainlikeimfive
+- name: ExplainLikeImCalvin
+  display_name: r/ExplainLikeImCalvin
+anthropology:
+- name: anthropology
+  display_name: r/anthropology
+art:
+- name: Art
+  display_name: r/Art
+- name: redditgetsdrawn
+  display_name: r/redditgetsdrawn
+- name: heavymind
+  display_name: r/heavymind
+- name: drawing
+  display_name: r/drawing
+- name: graffiti
+  display_name: r/graffiti
+- name: retrofuturism
+  display_name: r/retrofuturism
+- name: sketchdaily
+  display_name: r/sketchdaily
+- name: ArtPorn
+  display_name: r/ArtPorn
+- name: pixelart
+  display_name: r/pixelart
+- name: artfundamentals
+  display_name: r/artfundamentals
+- name: learnart
+  display_name: r/learnart
+- name: specart
+  display_name: r/specart
+- name: animation
+  display_name: r/animation
+- name: wimmelbilder
+  display_name: r/wimmelbilder
+- name: illustration
+  display_name: r/illustration
+- name: streetart
+  display_name: r/streetart
+reddit:
+- name: place
+  display_name: r/place
+- name: breadstapledtotrees
+  display_name: r/breadstapledtotrees
+- name: chairsunderwater
+  display_name: r/chairsunderwater
+painting:
+- name: painting
+  display_name: r/painting
+- name: minipainting
+  display_name: r/minipainting
+computer_scienceengineering:
+- name: engineering
+  display_name: r/engineering
+- name: ubuntu
+  display_name: r/ubuntu
+- name: EngineeringStudents
+  display_name: r/EngineeringStudents
+coding:
+- name: compsci
+  display_name: r/compsci
+- name: java
+  display_name: r/java
+- name: javascript
+  display_name: r/javascript
+- name: howtohack
+  display_name: r/howtohack
+- name: cpp
+  display_name: r/cpp
+- name: dailyprogrammer
+  display_name: r/dailyprogrammer
+- name: security
+  display_name: r/security
+python:
+- name: learnpython
+  display_name: r/learnpython
+economics:
+- name: Economics
+  display_name: r/Economics
+- name: BasicIncome
+  display_name: r/BasicIncome
+stocks:
+- name: stockmarket
+  display_name: r/stockmarket
+environment:
+- name: environment
+  display_name: r/environment
+- name: zerowaste
+  display_name: r/zerowaste
+history:
+- name: HistoryNetwork
+  display_name: r/HistoryNetwork
+- name: history
+  display_name: r/history
+- name: badhistory
+  display_name: r/badhistory
+- name: 100yearsago
+  display_name: r/100yearsago
+historical_images:
+- name: HistoryPorn
+  display_name: r/HistoryPorn
+- name: PropagandaPosters
+  display_name: r/PropagandaPosters
+- name: historymemes
+  display_name: r/historymemes
+- name: castles
+  display_name: r/castles
+language:
+- name: linguistics
+  display_name: r/linguistics
+- name: learnjapanese
+  display_name: r/learnjapanese
+- name: french
+  display_name: r/french
+- name: etymology
+  display_name: r/etymology
+law:
+- name: law
+  display_name: r/law
+math:
+- name: math
+  display_name: r/math
+- name: theydidthemath
+  display_name: r/theydidthemath
+medicine:
+- name: medicalschool
+  display_name: r/medicalschool
+- name: medizzy
+  display_name: r/medizzy
+psychology:
+- name: psychology
+  display_name: r/psychology
+- name: JordanPeterson
+  display_name: r/JordanPeterson
+astronomyaliens:
+- name: Space
+  display_name: r/Space
+- name: SpacePorn
+  display_name: r/SpacePorn
+- name: astronomy
+  display_name: r/astronomy
+- name: astrophotography
+  display_name: r/astrophotography
+- name: aliens
+  display_name: r/aliens
+- name: rockets
+  display_name: r/rockets
+companies:
+- name: spacex
+  display_name: r/spacex
+- name: nasa
+  display_name: r/nasa
+biology:
+- name: biology
+  display_name: r/biology
+- name: Awwducational
+  display_name: r/Awwducational
+chemistry:
+- name: chemistry
+  display_name: r/chemistry
+physics:
+- name: physics
+  display_name: r/physics
+animemanga:
+- name: anime
+  display_name: r/anime
+- name: manga
+  display_name: r/manga
+- name: anime_irl
+  display_name: r/anime_irl
+- name: awwnime
+  display_name: r/awwnime
+- name: TsundereSharks
+  display_name: r/TsundereSharks
+- name: animesuggest
+  display_name: r/animesuggest
+- name: animemes
+  display_name: r/animemes
+- name: animegifs
+  display_name: r/animegifs
+- name: animewallpaper
+  display_name: r/animewallpaper
+- name: wholesomeanimemes
+  display_name: r/wholesomeanimemes
+individual_animemanga:
+- name: pokemon
+  display_name: r/pokemon
+- name: onepiece
+  display_name: r/onepiece
+- name: naruto
+  display_name: r/naruto
+- name: dbz
+  display_name: r/dbz
+- name: onepunchman
+  display_name: r/onepunchman
+- name: ShingekiNoKyojin
+  display_name: r/ShingekiNoKyojin
+- name: yugioh
+  display_name: r/yugioh
+- name: BokuNoHeroAcademia
+  display_name: r/BokuNoHeroAcademia
+- name: DDLC
+  display_name: r/DDLC
+- name: berserk
+  display_name: r/berserk
+- name: hunterxhunter
+  display_name: r/hunterxhunter
+- name: tokyoghoul
+  display_name: r/tokyoghoul
+- name: shitpostcrusaders
+  display_name: r/shitpostcrusaders
+bookswriting:
+- name: Books
+  display_name: r/Books
+- name: WritingPrompts
+  display_name: r/WritingPrompts
+- name: writing
+  display_name: r/writing
+- name: literature
+  display_name: r/literature
+- name: booksuggestions
+  display_name: r/booksuggestions
+- name: lifeofnorman
+  display_name: r/lifeofnorman
+- name: poetry
+  display_name: r/poetry
+- name: screenwriting
+  display_name: r/screenwriting
+- name: freeEbooks
+  display_name: r/freeEbooks
+- name: boottoobig
+  display_name: r/boottoobig
+- name: hfy
+  display_name: r/hfy
+- name: suggestmeabook
+  display_name: r/suggestmeabook
+- name: lovecraft
+  display_name: r/lovecraft
+comics:
+- name: comics
+  display_name: r/comics
+- name: comicbooks
+  display_name: r/comicbooks
+- name: polandball
+  display_name: r/polandball
+- name: marvel
+  display_name: r/marvel
+- name: webcomics
+  display_name: r/webcomics
+- name: bertstrips
+  display_name: r/bertstrips
+- name: marvelstudios
+  display_name: r/marvelstudios
+- name: defenders
+  display_name: r/defenders
+- name: marvelmemes
+  display_name: r/marvelmemes
+- name: avengers
+  display_name: r/avengers
+individual_booksstoriescomics:
+- name: harrypotter
+  display_name: r/harrypotter
+- name: batman
+  display_name: r/batman
+- name: calvinandhobbes
+  display_name: r/calvinandhobbes
+- name: xkcd
+  display_name: r/xkcd
+- name: DCComics
+  display_name: r/DCComics
+- name: arrow
+  display_name: r/arrow
+- name: unexpectedhogwarts
+  display_name: r/unexpectedhogwarts
+- name: spiderman
+  display_name: r/spiderman
+- name: deadpool
+  display_name: r/deadpool
+- name: KingkillerChronicle
+  display_name: r/KingkillerChronicle
+game_of_thrones:
+- name: asoiaf
+  display_name: r/asoiaf
+- name: gameofthrones
+  display_name: r/gameofthrones
+- name: freefolk
+  display_name: r/freefolk
+- name: jonwinsthethrone
+  display_name: r/jonwinsthethrone
+- name: gameofthronesmemes
+  display_name: r/gameofthronesmemes
+- name: daeneryswinsthethrone
+  display_name: r/daeneryswinsthethrone
+- name: asongofmemesandrage
+  display_name: r/asongofmemesandrage
+lord_of_the_rings:
+- name: lotr
+  display_name: r/lotr
+- name: lotrmemes
+  display_name: r/lotrmemes
+- name: tolkienfans
+  display_name: r/tolkienfans
+celebrities:
+- name: celebs
+  display_name: r/celebs
+- name: celebhub
+  display_name: r/celebhub
+female:
+- name: EmmaWatson
+  display_name: r/EmmaWatson
+- name: jessicanigri
+  display_name: r/jessicanigri
+- name: kateupton
+  display_name: r/kateupton
+- name: alisonbrie
+  display_name: r/alisonbrie
+- name: EmilyRatajkowski
+  display_name: r/EmilyRatajkowski
+- name: jenniferlawrence
+  display_name: r/jenniferlawrence
+- name: alexandradaddario
+  display_name: r/alexandradaddario
+male:
+- name: onetruegod
+  display_name: r/onetruegod
+- name: joerogan
+  display_name: r/joerogan
+- name: keanubeingawesome
+  display_name: r/keanubeingawesome
+- name: crewscrew
+  display_name: r/crewscrew
+- name: donaldglover
+  display_name: r/donaldglover
+- name: elonmusk
+  display_name: r/elonmusk
+cosplay:
+- name: cosplaygirls
+  display_name: r/cosplaygirls
+dungeons_and_dragons:
+- name: DnD
+  display_name: r/DnD
+- name: DnDGreentext
+  display_name: r/DnDGreentext
+- name: DnDBehindTheScreen
+  display_name: r/DnDBehindTheScreen
+- name: dndnext
+  display_name: r/dndnext
+- name: dungeonsanddragons
+  display_name: r/dungeonsanddragons
+- name: criticalrole
+  display_name: r/criticalrole
+- name: DMAcademy
+  display_name: r/DMAcademy
+- name: dndmemes
+  display_name: r/dndmemes
+magic:
+- name: magicTCG
+  display_name: r/magicTCG
+- name: modernmagic
+  display_name: r/modernmagic
+- name: magicarena
+  display_name: r/magicarena
+genres:
+- name: zombies
+  display_name: r/zombies
+- name: cyberpunk
+  display_name: r/cyberpunk
+- name: classicalmusic
+  display_name: r/classicalmusic
+- name: jazz
+  display_name: r/jazz
+- name: trap
+  display_name: r/trap
+- name: indieheads
+  display_name: r/indieheads
+- name: gamemusic
+  display_name: r/gamemusic
+- name: outrun
+  display_name: r/outrun
+- name: vaporwave
+  display_name: r/vaporwave
+fantasy:
+- name: fantasy
+  display_name: r/fantasy
+scifi:
+- name: SpaceGeek
+  display_name: r/SpaceGeek
+- name: scifi
+  display_name: r/scifi
+- name: starwars
+  display_name: r/starwars
+- name: startrek
+  display_name: r/startrek
+- name: prequelmemes
+  display_name: r/prequelmemes
+- name: empiredidnothingwrong
+  display_name: r/empiredidnothingwrong
+- name: SequelMemes
+  display_name: r/SequelMemes
+- name: sciencefiction
+  display_name: r/sciencefiction
+internetapps:
+- name: InternetIsBeautiful
+  display_name: r/InternetIsBeautiful
+- name: facepalm
+  display_name: r/facepalm
+- name: creepyPMs
+  display_name: r/creepyPMs
+- name: google
+  display_name: r/google
+- name: KenM
+  display_name: r/KenM
+- name: bannedfromclubpenguin
+  display_name: r/bannedfromclubpenguin
+- name: savedyouaclick
+  display_name: r/savedyouaclick
+- name: bestofworldstar
+  display_name: r/bestofworldstar
+- name: discordapp
+  display_name: r/discordapp
+- name: snaplenses
+  display_name: r/snaplenses
+- name: tronix
+  display_name: r/tronix
+- name: instagramreality
+  display_name: r/instagramreality
+- name: internetstars
+  display_name: r/internetstars
+- name: robinhood
+  display_name: r/robinhood
+- name: shortcuts
+  display_name: r/shortcuts
+- name: scams
+  display_name: r/scams
+- name: tiktokcringe
+  display_name: r/tiktokcringe
+- name: crackheadcraigslist
+  display_name: r/crackheadcraigslist
+4chan:
+- name: 4chan
+  display_name: r/4chan
+- name: Classic4chan
+  display_name: r/Classic4chan
+- name: greentext
+  display_name: r/greentext
+facebook:
+- name: oldpeoplefacebook
+  display_name: r/oldpeoplefacebook
+- name: facebookwins
+  display_name: r/facebookwins
+- name: indianpeoplefacebook
+  display_name: r/indianpeoplefacebook
+- name: terriblefacebookmemes
+  display_name: r/terriblefacebookmemes
+- name: insanepeoplefacebook
+  display_name: r/insanepeoplefacebook
+internet_dating:
+- name: Tinder
+  display_name: r/Tinder
+- name: OkCupid
+  display_name: r/OkCupid
+internet_politics:
+- name: KotakuInAction
+  display_name: r/KotakuInAction
+- name: wikileaks
+  display_name: r/wikileaks
+- name: shitcosmosays
+  display_name: r/shitcosmosays
+live_streaming:
+- name: livestreamfail
+  display_name: r/livestreamfail
+podcasts:
+- name: serialpodcast
+  display_name: r/serialpodcast
+- name: podcasts
+  display_name: r/podcasts
+tumblr:
+- name: tumblrinaction
+  display_name: r/tumblrinaction
+- name: tumblr
+  display_name: r/tumblr
+twitter:
+- name: blackpeopletwitter
+  display_name: r/blackpeopletwitter
+- name: scottishpeopletwitter
+  display_name: r/scottishpeopletwitter
+- name: WhitePeopleTwitter
+  display_name: r/WhitePeopleTwitter
+- name: wholesomebpt
+  display_name: r/wholesomebpt
+- name: latinopeopletwitter
+  display_name: r/latinopeopletwitter
+youtube:
+- name: youtube
+  display_name: r/youtube
+- name: youngpeopleyoutube
+  display_name: r/youngpeopleyoutube
+individual_youtuberscompanies:
+- name: gamegrumps
+  display_name: r/gamegrumps
+- name: h3h3productions
+  display_name: r/h3h3productions
+- name: CGPGrey
+  display_name: r/CGPGrey
+- name: yogscast
+  display_name: r/yogscast
+- name: jontron
+  display_name: r/jontron
+- name: Idubbbz
+  display_name: r/Idubbbz
+- name: defranco
+  display_name: r/defranco
+- name: cynicalbrit
+  display_name: r/cynicalbrit
+- name: pyrocynical
+  display_name: r/pyrocynical
+- name: SovietWomble
+  display_name: r/SovietWomble
+- name: RedLetterMedia
+  display_name: r/RedLetterMedia
+- name: videogamedunkey
+  display_name: r/videogamedunkey
+- name: loltyler1
+  display_name: r/loltyler1
+- name: ksi
+  display_name: r/ksi
+- name: MiniLadd
+  display_name: r/MiniLadd
+- name: jacksepticeye
+  display_name: r/jacksepticeye
+- name: pewdiepiesubmissions
+  display_name: r/pewdiepiesubmissions
+- name: pewdiepie
+  display_name: r/pewdiepie
+- name: roosterteeth
+  display_name: r/roosterteeth
+- name: funhaus
+  display_name: r/funhaus
+- name: rwby
+  display_name: r/rwby
+- name: cowchop
+  display_name: r/cowchop
+movies:
+- name: movies
+  display_name: r/movies
+- name: documentaries
+  display_name: r/documentaries
+- name: fullmoviesonyoutube
+  display_name: r/fullmoviesonyoutube
+- name: truefilm
+  display_name: r/truefilm
+- name: bollywoodrealism
+  display_name: r/bollywoodrealism
+- name: moviedetails
+  display_name: r/moviedetails
+- name: moviesinthemaking
+  display_name: r/moviesinthemaking
+- name: fullmoviesonvimeo
+  display_name: r/fullmoviesonvimeo
+- name: continuityporn
+  display_name: r/continuityporn
+- name: ghibli
+  display_name: r/ghibli
+- name: cinematography
+  display_name: r/cinematography
+- name: shittymoviedetails
+  display_name: r/shittymoviedetails
+- name: moviescirclejerk
+  display_name: r/moviescirclejerk
+individual_moviesseries:
+- name: otmemes
+  display_name: r/otmemes
+comic_movies:
+- name: DC_Cinematic
+  display_name: r/DC_Cinematic
+- name: thanosdidnothingwrong
+  display_name: r/thanosdidnothingwrong
+- name: inthesoulstone
+  display_name: r/inthesoulstone
+music:
+- name: listentothis
+  display_name: r/listentothis
+- name: music
+  display_name: r/music
+- name: WeAreTheMusicMakers
+  display_name: r/WeAreTheMusicMakers
+- name: mashups
+  display_name: r/mashups
+- name: vinyl
+  display_name: r/vinyl
+- name: futurebeats
+  display_name: r/futurebeats
+- name: musictheory
+  display_name: r/musictheory
+- name: guitarlessons
+  display_name: r/guitarlessons
+- name: spotify
+  display_name: r/spotify
+- name: fakealbumcovers
+  display_name: r/fakealbumcovers
+- name: ableton
+  display_name: r/ableton
+- name: guitar
+  display_name: r/guitar
+- name: edmproduction
+  display_name: r/edmproduction
+- name: piano
+  display_name: r/piano
+- name: drums
+  display_name: r/drums
+- name: FL_Studio
+  display_name: r/FL_Studio
+artists:
+- name: kanye
+  display_name: r/kanye
+- name: radiohead
+  display_name: r/radiohead
+- name: KendrickLamar
+  display_name: r/KendrickLamar
+- name: gorillaz
+  display_name: r/gorillaz
+- name: frankocean
+  display_name: r/frankocean
+- name: eminem
+  display_name: r/eminem
+- name: brockhampton
+  display_name: r/brockhampton
+- name: beatles
+  display_name: r/beatles
+- name: deathgrips
+  display_name: r/deathgrips
+- name: pinkfloyd
+  display_name: r/pinkfloyd
+electronic:
+- name: dubstep
+  display_name: r/dubstep
+- name: electronicmusic
+  display_name: r/electronicmusic
+- name: EDM
+  display_name: r/EDM
+hip_hop:
+- name: hiphopheads
+  display_name: r/hiphopheads
+- name: hiphopimages
+  display_name: r/hiphopimages
+metal:
+- name: Metal
+  display_name: r/Metal
+- name: Metalcore
+  display_name: r/Metalcore
+pop:
+- name: spop
+  display_name: r/spop
+- name: kpop
+  display_name: r/kpop
+- name: funkopop
+  display_name: r/funkopop
+- name: popheads
+  display_name: r/popheads
+instruments:
+- name: bass
+  display_name: r/bass
+sports:
+- name: sports
+  display_name: r/sports
+- name: bicycling
+  display_name: r/bicycling
+- name: golf
+  display_name: r/golf
+- name: fishing
+  display_name: r/fishing
+- name: skiing
+  display_name: r/skiing
+- name: sportsarefun
+  display_name: r/sportsarefun
+- name: tennis
+  display_name: r/tennis
+- name: rugbyunion
+  display_name: r/rugbyunion
+- name: discgolf
+  display_name: r/discgolf
+- name: cricket
+  display_name: r/cricket
+- name: sailing
+  display_name: r/sailing
+american_football:
+- name: nfl
+  display_name: r/nfl
+- name: CFB
+  display_name: r/CFB
+- name: fantasyfootball
+  display_name: r/fantasyfootball
+- name: nflstreams
+  display_name: r/nflstreams
+american_football_teams:
+- name: patriots
+  display_name: r/patriots
+- name: eagles
+  display_name: r/eagles
+- name: greenbaypackers
+  display_name: r/greenbaypackers
+- name: minnesotavikings
+  display_name: r/minnesotavikings
+- name: losangelesrams
+  display_name: r/losangelesrams
+baseball:
+- name: baseball
+  display_name: r/baseball
+- name: mlb
+  display_name: r/mlb
+- name: fantasybaseball
+  display_name: r/fantasybaseball
+basketball:
+- name: nba
+  display_name: r/nba
+- name: collegebasketball
+  display_name: r/collegebasketball
+- name: nbastreams
+  display_name: r/nbastreams
+- name: fantasybball
+  display_name: r/fantasybball
+teams:
+- name: warriors
+  display_name: r/warriors
+- name: lakers
+  display_name: r/lakers
+- name: bostonceltics
+  display_name: r/bostonceltics
+- name: torontoraptors
+  display_name: r/torontoraptors
+- name: sixers
+  display_name: r/sixers
+- name: chicagobulls
+  display_name: r/chicagobulls
+boards:
+- name: skateboarding
+  display_name: r/skateboarding
+- name: snowboarding
+  display_name: r/snowboarding
+- name: longboarding
+  display_name: r/longboarding
+cars:
+- name: formula1
+  display_name: r/formula1
+- name: Nascar
+  display_name: r/Nascar
+fighting:
+- name: MMA
+  display_name: r/MMA
+- name: squaredcircle
+  display_name: r/squaredcircle
+- name: theocho
+  display_name: r/theocho
+- name: ufc
+  display_name: r/ufc
+- name: boxing
+  display_name: r/boxing
+- name: wwe
+  display_name: r/wwe
+- name: MMAStreams
+  display_name: r/MMAStreams
+hockey:
+- name: hockey
+  display_name: r/hockey
+- name: nhl
+  display_name: r/nhl
+- name: nhlstreams
+  display_name: r/nhlstreams
+- name: leafs
+  display_name: r/leafs
+olympics:
+- name: olympics
+  display_name: r/olympics
+- name: apocalympics2016
+  display_name: r/apocalympics2016
+soccer:
+- name: soccer
+  display_name: r/soccer
+- name: worldcup
+  display_name: r/worldcup
+- name: Bundesliga
+  display_name: r/Bundesliga
+- name: futbol
+  display_name: r/futbol
+- name: soccerstreams
+  display_name: r/soccerstreams
+- name: MLS
+  display_name: r/MLS
+- name: fantasypl
+  display_name: r/fantasypl
+soccer_teams:
+- name: gunners
+  display_name: r/gunners
+- name: reddevils
+  display_name: r/reddevils
+- name: LiverpoolFC
+  display_name: r/LiverpoolFC
+- name: chelseafc
+  display_name: r/chelseafc
+tv:
+- name: Television
+  display_name: r/Television
+- name: japanesegameshows
+  display_name: r/japanesegameshows
+- name: shield
+  display_name: r/shield
+- name: cordcutters
+  display_name: r/cordcutters
+- name: offlinetv
+  display_name: r/offlinetv
+- name: tvdetails
+  display_name: r/tvdetails
+individual_shows:
+- name: BreakingBad
+  display_name: r/BreakingBad
+- name: thewalkingdead
+  display_name: r/thewalkingdead
+- name: community
+  display_name: r/community
+- name: arresteddevelopment
+  display_name: r/arresteddevelopment
+- name: topgear
+  display_name: r/topgear
+- name: Treknobabble
+  display_name: r/Treknobabble
+- name: HIMYM
+  display_name: r/HIMYM
+- name: firefly
+  display_name: r/firefly
+- name: PandR
+  display_name: r/PandR
+- name: Sherlock
+  display_name: r/Sherlock
+- name: DunderMifflin
+  display_name: r/DunderMifflin
+- name: BetterCallSaul
+  display_name: r/BetterCallSaul
+- name: TrueDetective
+  display_name: r/TrueDetective
+- name: houseofcards
+  display_name: r/houseofcards
+- name: MakingaMurderer
+  display_name: r/MakingaMurderer
+- name: FlashTV
+  display_name: r/FlashTV
+- name: trailerparkboys
+  display_name: r/trailerparkboys
+- name: mrrobot
+  display_name: r/mrrobot
+- name: siliconvalleyhbo
+  display_name: r/siliconvalleyhbo
+- name: strangerthings
+  display_name: r/strangerthings
+- name: supernatural
+  display_name: r/supernatural
+- name: thegrandtour
+  display_name: r/thegrandtour
+- name: AmericanHorrorStory
+  display_name: r/AmericanHorrorStory
+- name: rupaulsdragrace
+  display_name: r/rupaulsdragrace
+- name: westworld
+  display_name: r/westworld
+- name: blackmirror
+  display_name: r/blackmirror
+- name: FilthyFrank
+  display_name: r/FilthyFrank
+- name: orangeisthenewblack
+  display_name: r/orangeisthenewblack
+- name: twinpeaks
+  display_name: r/twinpeaks
+- name: bigbrother
+  display_name: r/bigbrother
+- name: brooklynninenine
+  display_name: r/brooklynninenine
+- name: scrubs
+  display_name: r/scrubs
+- name: howyoudoin
+  display_name: r/howyoudoin
+- name: 30rock
+  display_name: r/30rock
+- name: lifeisstrange
+  display_name: r/lifeisstrange
+- name: survivor
+  display_name: r/survivor
+- name: riverdale
+  display_name: r/riverdale
+- name: letterkenny
+  display_name: r/letterkenny
+animated:
+- name: AdventureTime
+  display_name: r/AdventureTime
+- name: futurama
+  display_name: r/futurama
+- name: TheLastAirbender
+  display_name: r/TheLastAirbender
+- name: ArcherFX
+  display_name: r/ArcherFX
+- name: southpark
+  display_name: r/southpark
+- name: TheSimpsons
+  display_name: r/TheSimpsons
+- name: mylittlepony
+  display_name: r/mylittlepony
+- name: rickandmorty
+  display_name: r/rickandmorty
+- name: stevenuniverse
+  display_name: r/stevenuniverse
+- name: BobsBurgers
+  display_name: r/BobsBurgers
+- name: BoJackHorseman
+  display_name: r/BoJackHorseman
+- name: gravityfalls
+  display_name: r/gravityfalls
+- name: familyguy
+  display_name: r/familyguy
+- name: kingofthehill
+  display_name: r/kingofthehill
+- name: spongebob
+  display_name: r/spongebob
+- name: DBZDokkanBattle
+  display_name: r/DBZDokkanBattle
+- name: dragonballfighterz
+  display_name: r/dragonballfighterz
+doctor_who:
+- name: doctorwho
+  display_name: r/doctorwho
+- name: gallifrey
+  display_name: r/gallifrey
+its_always_sunny_in_philadelphia:
+- name: IASIP
+  display_name: r/IASIP
+- name: the_dennis
+  display_name: r/the_dennis
+seinfeld:
+- name: seinfeld
+  display_name: r/seinfeld
+- name: redditwritesseinfeld
+  display_name: r/redditwritesseinfeld
+- name: seinfeldgifs
+  display_name: r/seinfeldgifs
+netflix_related:
+- name: NetflixBestOf
+  display_name: r/NetflixBestOf
+- name: Netflix
+  display_name: r/Netflix
+- name: bestofnetflix
+  display_name: r/bestofnetflix
+aquariums:
+- name: aquariums
+  display_name: r/aquariums
+- name: plantedtank
+  display_name: r/plantedtank
+artswriting:
+- name: crafts
+  display_name: r/crafts
+- name: alternativeart
+  display_name: r/alternativeart
+- name: glitch_art
+  display_name: r/glitch_art
+- name: coloringcorruptions
+  display_name: r/coloringcorruptions
+- name: restofthefuckingowl
+  display_name: r/restofthefuckingowl
+- name: DisneyVacation
+  display_name: r/DisneyVacation
+writing:
+- name: fountainpens
+  display_name: r/fountainpens
+- name: calligraphy
+  display_name: r/calligraphy
+- name: handwriting
+  display_name: r/handwriting
+- name: twosentencehorror
+  display_name: r/twosentencehorror
+- name: brandnewsentence
+  display_name: r/brandnewsentence
+automotive:
+- name: cars
+  display_name: r/cars
+- name: motorcycles
+  display_name: r/motorcycles
+- name: carporn
+  display_name: r/carporn
+- name: justrolledintotheshop
+  display_name: r/justrolledintotheshop
+- name: idiotsincars
+  display_name: r/idiotsincars
+- name: Shitty_Car_Mods
+  display_name: r/Shitty_Car_Mods
+- name: autos
+  display_name: r/autos
+- name: roadcam
+  display_name: r/roadcam
+- name: AutoDetailing
+  display_name: r/AutoDetailing
+- name: awesomecarmods
+  display_name: r/awesomecarmods
+- name: projectcar
+  display_name: r/projectcar
+- name: cartalk
+  display_name: r/cartalk
+- name: tiresaretheenemy
+  display_name: r/tiresaretheenemy
+- name: roadtrip
+  display_name: r/roadtrip
+- name: convenientcop
+  display_name: r/convenientcop
+- name: dashcamgifs
+  display_name: r/dashcamgifs
+car_companies:
+- name: subaru
+  display_name: r/subaru
+- name: teslamotors
+  display_name: r/teslamotors
+- name: bmw
+  display_name: r/bmw
+- name: jeep
+  display_name: r/jeep
+design:
+- name: CrappyDesign
+  display_name: r/CrappyDesign
+- name: design
+  display_name: r/design
+- name: designporn
+  display_name: r/designporn
+- name: InteriorDesign
+  display_name: r/InteriorDesign
+- name: ATBGE
+  display_name: r/ATBGE
+- name: dontdeadopeninside
+  display_name: r/dontdeadopeninside
+- name: assholedesign
+  display_name: r/assholedesign
+- name: keming
+  display_name: r/keming
+- name: logodesign
+  display_name: r/logodesign
+- name: tombstoning
+  display_name: r/tombstoning
+- name: dangerousdesign
+  display_name: r/dangerousdesign
+fake_it_til_you_make_it:
+- name: actlikeyoubelong
+  display_name: r/actlikeyoubelong
+- name: irlsmurfing
+  display_name: r/irlsmurfing
+combat:
+- name: MilitaryPorn
+  display_name: r/MilitaryPorn
+- name: military
+  display_name: r/military
+- name: combatfootage
+  display_name: r/combatfootage
+- name: militarygfys
+  display_name: r/militarygfys
+- name: army
+  display_name: r/army
+- name: warshipporn
+  display_name: r/warshipporn
+- name: justbootthings
+  display_name: r/justbootthings
+guns:
+- name: guns
+  display_name: r/guns
+- name: gunporn
+  display_name: r/gunporn
+- name: gundeals
+  display_name: r/gundeals
+- name: ar15
+  display_name: r/ar15
+- name: firearms
+  display_name: r/firearms
+- name: ccw
+  display_name: r/ccw
+- name: airsoft
+  display_name: r/airsoft
+job_finding:
+- name: forhire
+  display_name: r/forhire
+outdoors:
+- name: urbanexploration
+  display_name: r/urbanexploration
+- name: survival
+  display_name: r/survival
+- name: backpacking
+  display_name: r/backpacking
+- name: camping
+  display_name: r/camping
+- name: homestead
+  display_name: r/homestead
+- name: MTB
+  display_name: r/MTB
+- name: outdoors
+  display_name: r/outdoors
+- name: wildernessbackpacking
+  display_name: r/wildernessbackpacking
+- name: campinggear
+  display_name: r/campinggear
+- name: bushcraft
+  display_name: r/bushcraft
+gardening:
+- name: gardening
+  display_name: r/gardening
+- name: indoorgarden
+  display_name: r/indoorgarden
+hiking:
+- name: campingandhiking
+  display_name: r/campingandhiking
+- name: hiking
+  display_name: r/hiking
+- name: ultralight
+  display_name: r/ultralight
+photographyfilm:
+- name: Filmmakers
+  display_name: r/Filmmakers
+- name: analog
+  display_name: r/analog
+- name: photocritique
+  display_name: r/photocritique
+- name: postprocessing
+  display_name: r/postprocessing
+planes:
+- name: aviation
+  display_name: r/aviation
+- name: flying
+  display_name: r/flying
+tech_related:
+- name: programmerhumor
+  display_name: r/programmerhumor
+- name: mechanicalkeyboards
+  display_name: r/mechanicalkeyboards
+- name: reverseengineering
+  display_name: r/reverseengineering
+- name: itsaunixsystem
+  display_name: r/itsaunixsystem
+- name: plex
+  display_name: r/plex
+- name: multicopter
+  display_name: r/multicopter
+- name: programminghorror
+  display_name: r/programminghorror
+pc_building:
+- name: buildapc
+  display_name: r/buildapc
+- name: buildapcsales
+  display_name: r/buildapcsales
+- name: buildapcforme
+  display_name: r/buildapcforme
+tech_support:
+- name: techsupportgore
+  display_name: r/techsupportgore
+- name: techsupport
+  display_name: r/techsupport
+- name: softwaregore
+  display_name: r/softwaregore
+- name: iiiiiiitttttttttttt
+  display_name: r/iiiiiiitttttttttttt
+tools:
+- name: watches
+  display_name: r/watches
+- name: lockpicking
+  display_name: r/lockpicking
+- name: knives
+  display_name: r/knives
+- name: specializedtools
+  display_name: r/specializedtools
+- name: knifeclub
+  display_name: r/knifeclub
+travel:
+- name: travel
+  display_name: r/travel
+- name: solotravel
+  display_name: r/solotravel
+- name: japantravel
+  display_name: r/japantravel
+- name: shoestring
+  display_name: r/shoestring
+gender:
+- name: malelifestyle
+  display_name: r/malelifestyle
+- name: malelivingspace
+  display_name: r/malelivingspace
+- name: TheGirlSurvivalGuide
+  display_name: r/TheGirlSurvivalGuide
+home:
+- name: homeautomation
+  display_name: r/homeautomation
+- name: battlestations
+  display_name: r/battlestations
+- name: hometheater
+  display_name: r/hometheater
+communities:
+- name: teenagers
+  display_name: r/teenagers
+- name: introvert
+  display_name: r/introvert
+- name: ADHD
+  display_name: r/ADHD
+- name: totallynotrobots
+  display_name: r/totallynotrobots
+- name: polyamory
+  display_name: r/polyamory
+- name: aliensamongus
+  display_name: r/aliensamongus
+- name: neverbrokeabone
+  display_name: r/neverbrokeabone
+- name: bipolar
+  display_name: r/bipolar
+bodydiet:
+- name: beards
+  display_name: r/beards
+- name: vegan
+  display_name: r/vegan
+- name: swoleacceptance
+  display_name: r/swoleacceptance
+- name: tall
+  display_name: r/tall
+lgbt:
+- name: lgbt
+  display_name: r/lgbt
+- name: gaybros
+  display_name: r/gaybros
+- name: actuallesbians
+  display_name: r/actuallesbians
+- name: gaymers
+  display_name: r/gaymers
+- name: bisexual
+  display_name: r/bisexual
+- name: ainbow
+  display_name: r/ainbow
+- name: gay
+  display_name: r/gay
+- name: gay_irl
+  display_name: r/gay_irl
+transgender:
+- name: transgender
+  display_name: r/transgender
+parenting:
+- name: parenting
+  display_name: r/parenting
+- name: daddit
+  display_name: r/daddit
+- name: babybumps
+  display_name: r/babybumps
+alcohol:
+- name: drunk
+  display_name: r/drunk
+- name: scotch
+  display_name: r/scotch
+- name: stopdrinking
+  display_name: r/stopdrinking
+- name: cocktails
+  display_name: r/cocktails
+- name: wine
+  display_name: r/wine
+- name: bourbon
+  display_name: r/bourbon
+- name: whiskey
+  display_name: r/whiskey
+beer:
+- name: beer
+  display_name: r/beer
+- name: homebrewing
+  display_name: r/homebrewing
+- name: showerbeer
+  display_name: r/showerbeer
+- name: beerporn
+  display_name: r/beerporn
+marijuana:
+- name: trees
+  display_name: r/trees
+- name: marijuana
+  display_name: r/marijuana
+- name: microgrowery
+  display_name: r/microgrowery
+- name: eldertrees
+  display_name: r/eldertrees
+- name: see
+  display_name: r/see
+- name: leaves
+  display_name: r/leaves
+- name: weed
+  display_name: r/weed
+- name: weedstocks
+  display_name: r/weedstocks
+- name: cannabis
+  display_name: r/cannabis
+other_drugs:
+- name: drugs
+  display_name: r/drugs
+- name: electronic_cigarette
+  display_name: r/electronic_cigarette
+- name: stonerengineering
+  display_name: r/stonerengineering
+- name: Nootropics
+  display_name: r/Nootropics
+- name: LSD
+  display_name: r/LSD
+- name: vaporents
+  display_name: r/vaporents
+- name: Vaping
+  display_name: r/Vaping
+- name: stopsmoking
+  display_name: r/stopsmoking
+- name: shrooms
+  display_name: r/shrooms
+- name: dmt
+  display_name: r/dmt
+exercisehealth:
+- name: GetMotivated
+  display_name: r/GetMotivated
+- name: health
+  display_name: r/health
+- name: ZenHabits
+  display_name: r/ZenHabits
+- name: motivation
+  display_name: r/motivation
+mental:
+- name: LucidDreaming
+  display_name: r/LucidDreaming
+- name: meditation
+  display_name: r/meditation
+- name: Psychonaut
+  display_name: r/Psychonaut
+physical:
+- name: xxfitness
+  display_name: r/xxfitness
+diet:
+- name: fitmeals
+  display_name: r/fitmeals
+- name: paleo
+  display_name: r/paleo
+- name: vegetarian
+  display_name: r/vegetarian
+- name: leangains
+  display_name: r/leangains
+- name: HealthyFood
+  display_name: r/HealthyFood
+- name: intermittentfasting
+  display_name: r/intermittentfasting
+- name: fasting
+  display_name: r/fasting
+- name: keto
+  display_name: r/keto
+- name: ketorecipes
+  display_name: r/ketorecipes
+- name: ketogains
+  display_name: r/ketogains
+exercise:
+- name: yoga
+  display_name: r/yoga
+- name: climbing
+  display_name: r/climbing
+- name: bjj
+  display_name: r/bjj
+- name: crossfit
+  display_name: r/crossfit
+- name: bodybuilding
+  display_name: r/bodybuilding
+- name: WeightRoom
+  display_name: r/WeightRoom
+- name: powerlifting
+  display_name: r/powerlifting
+- name: c25k
+  display_name: r/c25k
+medicinedisease:
+- name: Coronavirus
+  display_name: r/Coronavirus
+- name: COVID19
+  display_name: r/COVID19
+weightbody_shape_control:
+- name: bodyweightfitness
+  display_name: r/bodyweightfitness
+- name: gainit
+  display_name: r/gainit
+- name: flexibility
+  display_name: r/flexibility
+- name: progresspics
+  display_name: r/progresspics
+- name: brogress
+  display_name: r/brogress
+body_image:
+- name: makeupaddiction
+  display_name: r/makeupaddiction
+- name: SkincareAddiction
+  display_name: r/SkincareAddiction
+- name: wicked_edge
+  display_name: r/wicked_edge
+- name: RedditLaqueristas
+  display_name: r/RedditLaqueristas
+- name: AsianBeauty
+  display_name: r/AsianBeauty
+- name: piercing
+  display_name: r/piercing
+hair:
+- name: FancyFollicles
+  display_name: r/FancyFollicles
+- name: malehairadvice
+  display_name: r/malehairadvice
+- name: curlyhair
+  display_name: r/curlyhair
+tattoos:
+- name: tattoos
+  display_name: r/tattoos
+- name: badtattoos
+  display_name: r/badtattoos
+- name: tattoo
+  display_name: r/tattoo
+fashion:
+- name: malefashionadvice
+  display_name: r/malefashionadvice
+- name: frugalmalefashion
+  display_name: r/frugalmalefashion
+- name: femalefashionadvice
+  display_name: r/femalefashionadvice
+- name: thriftstorehauls
+  display_name: r/thriftstorehauls
+- name: fashion
+  display_name: r/fashion
+- name: streetwear
+  display_name: r/streetwear
+- name: malefashion
+  display_name: r/malefashion
+- name: supremeclothing
+  display_name: r/supremeclothing
+- name: FashionReps
+  display_name: r/FashionReps
+- name: designerreps
+  display_name: r/designerreps
+shoes:
+- name: sneakers
+  display_name: r/sneakers
+- name: repsneakers
+  display_name: r/repsneakers
+- name: goodyearwelt
+  display_name: r/goodyearwelt
+food:
+- name: food
+  display_name: r/food
+- name: FoodPorn
+  display_name: r/FoodPorn
+- name: foodhacks
+  display_name: r/foodhacks
+- name: shittyfoodporn
+  display_name: r/shittyfoodporn
+- name: eatsandwiches
+  display_name: r/eatsandwiches
+- name: mealtimevideos
+  display_name: r/mealtimevideos
+- name: WeWantPlates
+  display_name: r/WeWantPlates
+- name: forbiddensnacks
+  display_name: r/forbiddensnacks
+- name: seriouseats
+  display_name: r/seriouseats
+- name: spicy
+  display_name: r/spicy
+cooking:
+- name: cooking
+  display_name: r/cooking
+- name: slowcooking
+  display_name: r/slowcooking
+- name: baking
+  display_name: r/baking
+- name: breadit
+  display_name: r/breadit
+- name: cookingforbeginners
+  display_name: r/cookingforbeginners
+- name: smoking
+  display_name: r/smoking
+- name: castiron
+  display_name: r/castiron
+- name: instantpot
+  display_name: r/instantpot
+- name: sousvide
+  display_name: r/sousvide
+diets:
+- name: EatCheapAndHealthy
+  display_name: r/EatCheapAndHealthy
+- name: budgetfood
+  display_name: r/budgetfood
+- name: 1200isplenty
+  display_name: r/1200isplenty
+- name: Cheap_Meals
+  display_name: r/Cheap_Meals
+- name: veganrecipes
+  display_name: r/veganrecipes
+drinks:
+- name: coffee
+  display_name: r/coffee
+- name: tea
+  display_name: r/tea
+recipes:
+- name: recipes
+  display_name: r/recipes
+specific_food:
+- name: pizza
+  display_name: r/pizza
+- name: grilledcheese
+  display_name: r/grilledcheese
+- name: ramen
+  display_name: r/ramen
+- name: bbq
+  display_name: r/bbq
+- name: sushi
+  display_name: r/sushi
+money:
+- name: beermoney
+  display_name: r/beermoney
+- name: finance
+  display_name: r/finance
+- name: economy
+  display_name: r/economy
+- name: apphookup
+  display_name: r/apphookup
+- name: churning
+  display_name: r/churning
+- name: flipping
+  display_name: r/flipping
+- name: antimlm
+  display_name: r/antimlm
+- name: ripple
+  display_name: r/ripple
+- name: Iota
+  display_name: r/Iota
+- name: stellar
+  display_name: r/stellar
+- name: personalfinancecanada
+  display_name: r/personalfinancecanada
+bettinginvestingstocks:
+- name: millionairemakers
+  display_name: r/millionairemakers
+- name: options
+  display_name: r/options
+- name: pennystocks
+  display_name: r/pennystocks
+budget:
+- name: Frugal_Jerk
+  display_name: r/Frugal_Jerk
+consumerism:
+- name: shutupandtakemymoney
+  display_name: r/shutupandtakemymoney
+- name: crappyoffbrands
+  display_name: r/crappyoffbrands
+- name: shouldibuythisgame
+  display_name: r/shouldibuythisgame
+- name: Anticonsumption
+  display_name: r/Anticonsumption
+- name: sbubby
+  display_name: r/sbubby
+- name: Wellworn
+  display_name: r/Wellworn
+- name: ineeeedit
+  display_name: r/ineeeedit
+- name: didntknowiwantedthat
+  display_name: r/didntknowiwantedthat
+cryptocurrency:
+- name: dogecoin
+  display_name: r/dogecoin
+- name: ethtrade
+  display_name: r/ethtrade
+- name: litecoin
+  display_name: r/litecoin
+- name: btc
+  display_name: r/btc
+- name: garlicoin
+  display_name: r/garlicoin
+- name: cardano
+  display_name: r/cardano
+- name: Vechain
+  display_name: r/Vechain
+religionbeliefs:
+- name: Buddhism
+  display_name: r/Buddhism
+- name: Stoicism
+  display_name: r/Stoicism
+- name: occult
+  display_name: r/occult
+atheism:
+- name: atheism
+  display_name: r/atheism
+- name: trueatheism
+  display_name: r/trueatheism
+christianity:
+- name: Christianity
+  display_name: r/Christianity
+- name: dankchristianmemes
+  display_name: r/dankchristianmemes
+- name: exmormon
+  display_name: r/exmormon
+- name: Catholicism
+  display_name: r/Catholicism
+philosophy:
+- name: philosophy
+  display_name: r/philosophy
+relationshipssex:
+- name: socialskills
+  display_name: r/socialskills
+- name: socialengineering
+  display_name: r/socialengineering
+- name: weddingplanning
+  display_name: r/weddingplanning
+family:
+- name: childfree
+  display_name: r/childfree
+- name: incest
+  display_name: r/incest
+- name: justnomil
+  display_name: r/justnomil
+- name: justnofamily
+  display_name: r/justnofamily
+relationships:
+- name: relationships
+  display_name: r/relationships
+- name: dating_advice
+  display_name: r/dating_advice
+- name: breakups
+  display_name: r/breakups
+- name: dating
+  display_name: r/dating
+online_relationships:
+- name: r4r
+  display_name: r/r4r
+- name: dirtyr4r
+  display_name: r/dirtyr4r
+- name: longdistance
+  display_name: r/longdistance
+sex:
+- name: sex
+  display_name: r/sex
+- name: seduction
+  display_name: r/seduction
+- name: nofap
+  display_name: r/nofap
+- name: deadbedrooms
+  display_name: r/deadbedrooms
+selfimprovement:
+- name: QuotesPorn
+  display_name: r/QuotesPorn
+- name: getdisciplined
+  display_name: r/getdisciplined
+- name: happy
+  display_name: r/happy
+- name: DecidingToBeBetter
+  display_name: r/DecidingToBeBetter
+- name: mademesmile
+  display_name: r/mademesmile
+- name: selfimprovement
+  display_name: r/selfimprovement
+- name: iwantout
+  display_name: r/iwantout
+- name: humansbeingbros
+  display_name: r/humansbeingbros
+- name: happycrowds
+  display_name: r/happycrowds
+- name: gatesopencomeonin
+  display_name: r/gatesopencomeonin
+technology:
+- name: pcmasterrace
+  display_name: r/pcmasterrace
+- name: jailbreak
+  display_name: r/jailbreak
+- name: tech
+  display_name: r/tech
+- name: imaginarytechnology
+  display_name: r/imaginarytechnology
+- name: torrents
+  display_name: r/torrents
+- name: networking
+  display_name: r/networking
+- name: infographics
+  display_name: r/infographics
+- name: piracy
+  display_name: r/piracy
+- name: EngineeringPorn
+  display_name: r/EngineeringPorn
+- name: cableporn
+  display_name: r/cableporn
+- name: simulated
+  display_name: r/simulated
+- name: onions
+  display_name: r/onions
+- name: unixporn
+  display_name: r/unixporn
+- name: crackwatch
+  display_name: r/crackwatch
+- name: php
+  display_name: r/php
+- name: aboringdystopia
+  display_name: r/aboringdystopia
+- name: virtualreality
+  display_name: r/virtualreality
+3d_printing:
+- name: 3Dprinting
+  display_name: r/3Dprinting
+- name: functionalprint
+  display_name: r/functionalprint
+business_tech:
+- name: nintendo
+  display_name: r/nintendo
+- name: amd
+  display_name: r/amd
+- name: nvidia
+  display_name: r/nvidia
+- name: photoshop
+  display_name: r/photoshop
+- name: firefox
+  display_name: r/firefox
+android_products:
+- name: Android
+  display_name: r/Android
+- name: AndroidApps
+  display_name: r/AndroidApps
+- name: AndroidGaming
+  display_name: r/AndroidGaming
+- name: AndroidDev
+  display_name: r/AndroidDev
+- name: AndroidThemes
+  display_name: r/AndroidThemes
+- name: oneplus
+  display_name: r/oneplus
+apple_products:
+- name: apple
+  display_name: r/apple
+- name: iphone
+  display_name: r/iphone
+- name: mac
+  display_name: r/mac
+- name: ipad
+  display_name: r/ipad
+- name: applewatch
+  display_name: r/applewatch
+gadgets:
+- name: raspberry_pi
+  display_name: r/raspberry_pi
+- name: electronics
+  display_name: r/electronics
+- name: arduino
+  display_name: r/arduino
+- name: trackers
+  display_name: r/trackers
+- name: gopro
+  display_name: r/gopro
+- name: blender
+  display_name: r/blender
+- name: amazonecho
+  display_name: r/amazonecho
+- name: RetroPie
+  display_name: r/RetroPie
+hardware:
+- name: hardwareswap
+  display_name: r/hardwareswap
+kodi:
+- name: Addons4Kodi
+  display_name: r/Addons4Kodi
+- name: kodi
+  display_name: r/kodi
+google_products:
+- name: chromecast
+  display_name: r/chromecast
+- name: googlepixel
+  display_name: r/googlepixel
+- name: googlehome
+  display_name: r/googlehome
+linux:
+- name: linux_gaming
+  display_name: r/linux_gaming
+- name: linux4noobs
+  display_name: r/linux4noobs
+- name: linuxmasterrace
+  display_name: r/linuxmasterrace
+- name: archlinux
+  display_name: r/archlinux
+microsoft_products:
+- name: Windows10
+  display_name: r/Windows10
+- name: windows
+  display_name: r/windows
+- name: excel
+  display_name: r/excel
+- name: surface
+  display_name: r/surface
+- name: microsoft
+  display_name: r/microsoft
+data:
+- name: dataisbeautiful
+  display_name: r/dataisbeautiful
+digital_currency:
+- name: ethtrader
+  display_name: r/ethtrader
+- name: bitcoinmarkets
+  display_name: r/bitcoinmarkets
+- name: cryptomarkets
+  display_name: r/cryptomarkets
+- name: monero
+  display_name: r/monero
+- name: neo
+  display_name: r/neo
+programming:
+- name: unity3d
+  display_name: r/unity3d
+sound:
+- name: audiophile
+  display_name: r/audiophile
+- name: headphones
+  display_name: r/headphones
+- name: audioengineering
+  display_name: r/audioengineering
+general_humor:
+- name: funny
+  display_name: r/funny
+- name: humor
+  display_name: r/humor
+- name: contagiouslaughter
+  display_name: r/contagiouslaughter
+- name: standupcomedy
+  display_name: r/standupcomedy
+- name: prematurecelebration
+  display_name: r/prematurecelebration
+- name: ChildrenFallingOver
+  display_name: r/ChildrenFallingOver
+- name: dadreflexes
+  display_name: r/dadreflexes
+- name: politicalhumor
+  display_name: r/politicalhumor
+- name: accidentalcomedy
+  display_name: r/accidentalcomedy
+- name: funnyandsad
+  display_name: r/funnyandsad
+- name: kidsarefuckingstupid
+  display_name: r/kidsarefuckingstupid
+- name: notkenm
+  display_name: r/notkenm
+- name: suspiciouslyspecific
+  display_name: r/suspiciouslyspecific
+- name: oddlyspecific
+  display_name: r/oddlyspecific
+- name: rimjob_steve
+  display_name: r/rimjob_steve
+- name: dark_humor
+  display_name: r/dark_humor
+- name: stepdadreflexes
+  display_name: r/stepdadreflexes
+- name: congratslikeimfive
+  display_name: r/congratslikeimfive
+- name: darkhumorandmemes
+  display_name: r/darkhumorandmemes
+comedy:
+- name: ComedyCemetery
+  display_name: r/ComedyCemetery
+- name: comedyheaven
+  display_name: r/comedyheaven
+- name: comedynecromancy
+  display_name: r/comedynecromancy
+- name: comedyhomicide
+  display_name: r/comedyhomicide
+- name: comedynecrophilia
+  display_name: r/comedynecrophilia
+jokes:
+- name: Jokes
+  display_name: r/Jokes
+- name: dadjokes
+  display_name: r/dadjokes
+- name: standupshots
+  display_name: r/standupshots
+- name: punny
+  display_name: r/punny
+- name: antijokes
+  display_name: r/antijokes
+- name: meanjokes
+  display_name: r/meanjokes
+- name: 3amjokes
+  display_name: r/3amjokes
+- name: puns
+  display_name: r/puns
+- name: WordAvalanches
+  display_name: r/WordAvalanches
+- name: darkjokes
+  display_name: r/darkjokes
+animals:
+- name: AnimalReddits
+  display_name: r/AnimalReddits
+- name: AnimalsBeingJerks
+  display_name: r/AnimalsBeingJerks
+- name: AnimalsBeingBros
+  display_name: r/AnimalsBeingBros
+- name: AnimalPorn
+  display_name: r/AnimalPorn
+- name: AnimalsBeingDerps
+  display_name: r/AnimalsBeingDerps
+- name: likeus
+  display_name: r/likeus
+- name: stoppedworking
+  display_name: r/stoppedworking
+- name: animaltextgifs
+  display_name: r/animaltextgifs
+- name: BeforeNAfterAdoption
+  display_name: r/BeforeNAfterAdoption
+- name: sneks
+  display_name: r/sneks
+- name: zoomies
+  display_name: r/zoomies
+- name: brushybrushy
+  display_name: r/brushybrushy
+- name: bigboye
+  display_name: r/bigboye
+- name: curledfeetsies
+  display_name: r/curledfeetsies
+- name: mlem
+  display_name: r/mlem
+- name: Floof
+  display_name: r/Floof
+- name: shittyanimalfacts
+  display_name: r/shittyanimalfacts
+- name: animalsthatlovemagic
+  display_name: r/animalsthatlovemagic
+- name: spiderbro
+  display_name: r/spiderbro
+- name: properanimalnames
+  display_name: r/properanimalnames
+- name: reverseanimalrescue
+  display_name: r/reverseanimalrescue
+- name: animalsdoingstuff
+  display_name: r/animalsdoingstuff
+- name: sploot
+  display_name: r/sploot
+birds:
+- name: birdswitharms
+  display_name: r/birdswitharms
+- name: superbowl
+  display_name: r/superbowl
+- name: birbs
+  display_name: r/birbs
+- name: partyparrot
+  display_name: r/partyparrot
+- name: birdsbeingdicks
+  display_name: r/birdsbeingdicks
+- name: emuwarflashbacks
+  display_name: r/emuwarflashbacks
+- name: birdsarentreal
+  display_name: r/birdsarentreal
+mammals:
+- name: sloths
+  display_name: r/sloths
+- name: foxes
+  display_name: r/foxes
+- name: trashpandas
+  display_name: r/trashpandas
+- name: happycowgifs
+  display_name: r/happycowgifs
+- name: rabbits
+  display_name: r/rabbits
+- name: goatparkour
+  display_name: r/goatparkour
+- name: bearsdoinghumanthings
+  display_name: r/bearsdoinghumanthings
+cats:
+- name: cats
+  display_name: r/cats
+- name: Catsubs
+  display_name: r/Catsubs
+- name: startledcats
+  display_name: r/startledcats
+- name: catpictures
+  display_name: r/catpictures
+- name: catsstandingup
+  display_name: r/catsstandingup
+- name: catpranks
+  display_name: r/catpranks
+- name: meow_irl
+  display_name: r/meow_irl
+- name: holdmycatnip
+  display_name: r/holdmycatnip
+- name: catslaps
+  display_name: r/catslaps
+- name: thecatdimension
+  display_name: r/thecatdimension
+- name: babybigcatgifs
+  display_name: r/babybigcatgifs
+- name: catloaf
+  display_name: r/catloaf
+- name: thisismylifemeow
+  display_name: r/thisismylifemeow
+- name: cattaps
+  display_name: r/cattaps
+- name: teefies
+  display_name: r/teefies
+- name: tuckedinkitties
+  display_name: r/tuckedinkitties
+- name: catsareassholes
+  display_name: r/catsareassholes
+- name: catsisuottatfo
+  display_name: r/catsisuottatfo
+- name: stuffoncats
+  display_name: r/stuffoncats
+- name: bigcatgifs
+  display_name: r/bigcatgifs
+- name: jellybeantoes
+  display_name: r/jellybeantoes
+- name: catsareliquid
+  display_name: r/catsareliquid
+- name: catgifs
+  display_name: r/catgifs
+- name: blackcats
+  display_name: r/blackcats
+- name: supermodelcats
+  display_name: r/supermodelcats
+- name: chonkers
+  display_name: r/chonkers
+- name: tightpussy
+  display_name: r/tightpussy
+- name: catswithjobs
+  display_name: r/catswithjobs
+- name: catswhoyell
+  display_name: r/catswhoyell
+- name: whatswrongwithyourcat
+  display_name: r/whatswrongwithyourcat
+- name: illegallysmolcats
+  display_name: r/illegallysmolcats
+dogs:
+- name: dogs
+  display_name: r/dogs
+- name: dogtraining
+  display_name: r/dogtraining
+- name: woof_irl
+  display_name: r/woof_irl
+- name: WhatsWrongWithYourDog
+  display_name: r/WhatsWrongWithYourDog
+- name: dogberg
+  display_name: r/dogberg
+- name: dogswithjobs
+  display_name: r/dogswithjobs
+- name: masterreturns
+  display_name: r/masterreturns
+- name: barkour
+  display_name: r/barkour
+- name: blop
+  display_name: r/blop
+- name: puppysmiles
+  display_name: r/puppysmiles
+- name: puppies
+  display_name: r/puppies
+- name: petthedamndog
+  display_name: r/petthedamndog
+breeds:
+- name: corgi
+  display_name: r/corgi
+- name: Pitbulls
+  display_name: r/Pitbulls
+- name: goldenretrievers
+  display_name: r/goldenretrievers
+- name: incorgnito
+  display_name: r/incorgnito
+- name: babycorgis
+  display_name: r/babycorgis
+conspiracy:
+- name: conspiracy
+  display_name: r/conspiracy
+- name: skeptic
+  display_name: r/skeptic
+- name: karmaconspiracy
+  display_name: r/karmaconspiracy
+- name: UFOs
+  display_name: r/UFOs
+- name: conspiratard
+  display_name: r/conspiratard
+- name: scp
+  display_name: r/scp
+- name: conspiracytheories
+  display_name: r/conspiracytheories
+cringe:
+- name: cringepics
+  display_name: r/cringepics
+- name: cringe
+  display_name: r/cringe
+- name: instant_regret
+  display_name: r/instant_regret
+- name: blunderyears
+  display_name: r/blunderyears
+- name: fatlogic
+  display_name: r/fatlogic
+- name: publicfreakout
+  display_name: r/publicfreakout
+- name: actualpublicfreakouts
+  display_name: r/actualpublicfreakouts
+- name: lewronggeneration
+  display_name: r/lewronggeneration
+- name: fellowkids
+  display_name: r/fellowkids
+- name: sadcringe
+  display_name: r/sadcringe
+- name: corporatefacepalm
+  display_name: r/corporatefacepalm
+- name: 4PanelCringe
+  display_name: r/4PanelCringe
+- name: amibeingdetained
+  display_name: r/amibeingdetained
+- name: instantbarbarians
+  display_name: r/instantbarbarians
+- name: watchpeopledieinside
+  display_name: r/watchpeopledieinside
+- name: technicallythetruth
+  display_name: r/technicallythetruth
+- name: accidentalracism
+  display_name: r/accidentalracism
+- name: engrish
+  display_name: r/engrish
+- name: wokekids
+  display_name: r/wokekids
+- name: masterhacker
+  display_name: r/masterhacker
+- name: cringetopia
+  display_name: r/cringetopia
+- name: holup
+  display_name: r/holup
+- name: agedlikemilk
+  display_name: r/agedlikemilk
+called_out:
+- name: quityourbullshit
+  display_name: r/quityourbullshit
+- name: thathappened
+  display_name: r/thathappened
+- name: delusionalartists
+  display_name: r/delusionalartists
+- name: oopsdidntmeanto
+  display_name: r/oopsdidntmeanto
+- name: beholdthemasterrace
+  display_name: r/beholdthemasterrace
+- name: murderedbywords
+  display_name: r/murderedbywords
+- name: ihavesex
+  display_name: r/ihavesex
+- name: woooosh
+  display_name: r/woooosh
+- name: badfaketexts
+  display_name: r/badfaketexts
+- name: boneappletea
+  display_name: r/boneappletea
+- name: atetheonion
+  display_name: r/atetheonion
+- name: iamatotalpieceofshit
+  display_name: r/iamatotalpieceofshit
+- name: suicidebywords
+  display_name: r/suicidebywords
+- name: kamikazebywords
+  display_name: r/kamikazebywords
+- name: wowthanksimcured
+  display_name: r/wowthanksimcured
+- name: topmindsofreddit
+  display_name: r/topmindsofreddit
+- name: lostredditors
+  display_name: r/lostredditors
+- name: dontyouknowwhoiam
+  display_name: r/dontyouknowwhoiam
+- name: NobodyAsked
+  display_name: r/NobodyAsked
+- name: dontfundme
+  display_name: r/dontfundme
+- name: nothingeverhappens
+  display_name: r/nothingeverhappens
+- name: vaxxhappened
+  display_name: r/vaxxhappened
+- name: goodfaketexts
+  display_name: r/goodfaketexts
+- name: delusionalcraigslist
+  display_name: r/delusionalcraigslist
+- name: suspiciousquotes
+  display_name: r/suspiciousquotes
+- name: facingtheirparenting
+  display_name: r/facingtheirparenting
+- name: ihadastroke
+  display_name: r/ihadastroke
+- name: untrustworthypoptarts
+  display_name: r/untrustworthypoptarts
+- name: phonesarebad
+  display_name: r/phonesarebad
+- name: rareinsults
+  display_name: r/rareinsults
+- name: clevercomebacks
+  display_name: r/clevercomebacks
+- name: fuckyoukaren
+  display_name: r/fuckyoukaren
+- name: uselessredcircle
+  display_name: r/uselessredcircle
+- name: leopardsatemyface
+  display_name: r/leopardsatemyface
+- name: confidentlyincorrect
+  display_name: r/confidentlyincorrect
+neckbeard:
+- name: niceguys
+  display_name: r/niceguys
+- name: mallninjashit
+  display_name: r/mallninjashit
+- name: ChoosingBeggars
+  display_name: r/ChoosingBeggars
+- name: gatekeeping
+  display_name: r/gatekeeping
+- name: creepyasterisks
+  display_name: r/creepyasterisks
+- name: inceltears
+  display_name: r/inceltears
+- name: humblebrag
+  display_name: r/humblebrag
+- name: nothowdrugswork
+  display_name: r/nothowdrugswork
+- name: whiteknighting
+  display_name: r/whiteknighting
+- name: neckbeardrpg
+  display_name: r/neckbeardrpg
+- name: virginsvschad
+  display_name: r/virginsvschad
+- name: justneckbeardthings
+  display_name: r/justneckbeardthings
+- name: neckbeardnests
+  display_name: r/neckbeardnests
+girls:
+- name: nicegirls
+  display_name: r/nicegirls
+- name: notliketheothergirls
+  display_name: r/notliketheothergirls
+- name: notlikeothergirls
+  display_name: r/notlikeothergirls
+- name: entitledbitch
+  display_name: r/entitledbitch
+i_am_very:
+- name: iamverysmart
+  display_name: r/iamverysmart
+- name: iamverybadass
+  display_name: r/iamverybadass
+- name: iamveryrandom
+  display_name: r/iamveryrandom
+- name: imveryedgy
+  display_name: r/imveryedgy
+parents:
+- name: entitledparents
+  display_name: r/entitledparents
+- name: insaneparents
+  display_name: r/insaneparents
+- name: shitmomgroupssay
+  display_name: r/shitmomgroupssay
+cute:
+- name: aww
+  display_name: r/aww
+- name: thisismylifenow
+  display_name: r/thisismylifenow
+- name: blep
+  display_name: r/blep
+- name: eyebeach
+  display_name: r/eyebeach
+- name: tippytaps
+  display_name: r/tippytaps
+- name: awww
+  display_name: r/awww
+disgustingangeringscaryweird:
+- name: WTF
+  display_name: r/WTF
+- name: fifthworldproblems
+  display_name: r/fifthworldproblems
+- name: awwwtf
+  display_name: r/awwwtf
+- name: wellthatsucks
+  display_name: r/wellthatsucks
+- name: streetfights
+  display_name: r/streetfights
+- name: yesyesyesyesno
+  display_name: r/yesyesyesyesno
+- name: wtfstockphotos
+  display_name: r/wtfstockphotos
+- name: yesyesyesno
+  display_name: r/yesyesyesno
+- name: maybemaybemaybe
+  display_name: r/maybemaybemaybe
+- name: oddlyterrifying
+  display_name: r/oddlyterrifying
+- name: thatlookedexpensive
+  display_name: r/thatlookedexpensive
+- name: wtfgaragesale
+  display_name: r/wtfgaragesale
+- name: Whatthefuckgetitoffme
+  display_name: r/Whatthefuckgetitoffme
+- name: imsorryjon
+  display_name: r/imsorryjon
+angering:
+- name: mildlyinfuriating
+  display_name: r/mildlyinfuriating
+- name: rage
+  display_name: r/rage
+- name: Bad_Cop_No_Donut
+  display_name: r/Bad_Cop_No_Donut
+- name: gifsthatendtoosoon
+  display_name: r/gifsthatendtoosoon
+- name: peoplebeingjerks
+  display_name: r/peoplebeingjerks
+- name: casualchildabuse
+  display_name: r/casualchildabuse
+- name: fuckthesepeople
+  display_name: r/fuckthesepeople
+- name: makemesuffer
+  display_name: r/makemesuffer
+cursed:
+- name: cursedimages
+  display_name: r/cursedimages
+- name: cursedcomments
+  display_name: r/cursedcomments
+- name: tihi
+  display_name: r/tihi
+- name: blursedimages
+  display_name: r/blursedimages
+- name: cursed_images
+  display_name: r/cursed_images
+blessed:
+- name: blessedimages
+  display_name: r/blessedimages
+edgy:
+- name: imgoingtohellforthis
+  display_name: r/imgoingtohellforthis
+- name: toosoon
+  display_name: r/toosoon
+judgy:
+- name: trashy
+  display_name: r/trashy
+- name: awfuleyebrows
+  display_name: r/awfuleyebrows
+- name: awfuleverything
+  display_name: r/awfuleverything
+- name: 13or30
+  display_name: r/13or30
+- name: ghettoglamourshots
+  display_name: r/ghettoglamourshots
+- name: peopleofwalmart
+  display_name: r/peopleofwalmart
+- name: hittablefaces
+  display_name: r/hittablefaces
+- name: punchablefaces
+  display_name: r/punchablefaces
+- name: botchedsurgeries
+  display_name: r/botchedsurgeries
+- name: subwaycreatures
+  display_name: r/subwaycreatures
+scary:
+- name: morbidreality
+  display_name: r/morbidreality
+- name: whatcouldgowrong
+  display_name: r/whatcouldgowrong
+- name: Paranormal
+  display_name: r/Paranormal
+- name: nononono
+  display_name: r/nononono
+- name: horror
+  display_name: r/horror
+- name: lastimages
+  display_name: r/lastimages
+- name: peoplefuckingdying
+  display_name: r/peoplefuckingdying
+- name: serialkillers
+  display_name: r/serialkillers
+- name: WhyWereTheyFilming
+  display_name: r/WhyWereTheyFilming
+- name: WinStupidPrizes
+  display_name: r/WinStupidPrizes
+- name: scarysigns
+  display_name: r/scarysigns
+- name: ghosts
+  display_name: r/ghosts
+- name: crimescene
+  display_name: r/crimescene
+creepy:
+- name: creepy
+  display_name: r/creepy
+- name: creepypasta
+  display_name: r/creepypasta
+- name: creepysigns
+  display_name: r/creepysigns
+- name: megalophobia
+  display_name: r/megalophobia
+- name: creepyencounters
+  display_name: r/creepyencounters
+imaginary:
+- name: ImaginaryMonsters
+  display_name: r/ImaginaryMonsters
+- name: ImaginaryLeviathans
+  display_name: r/ImaginaryLeviathans
+- name: ImaginaryMindscapes
+  display_name: r/ImaginaryMindscapes
+- name: imaginarycharacters
+  display_name: r/imaginarycharacters
+- name: imaginarylandscapes
+  display_name: r/imaginarylandscapes
+- name: imaginarymaps
+  display_name: r/imaginarymaps
+- name: SympatheticMonsters
+  display_name: r/SympatheticMonsters
+- name: imaginarywesteros
+  display_name: r/imaginarywesteros
+- name: imaginarysliceoflife
+  display_name: r/imaginarysliceoflife
+water_is_scary:
+- name: thalassophobia
+  display_name: r/thalassophobia
+- name: TheDepthsBelow
+  display_name: r/TheDepthsBelow
+- name: submechanophobia
+  display_name: r/submechanophobia
+free_stuff:
+- name: freebies
+  display_name: r/freebies
+- name: efreebies
+  display_name: r/efreebies
+- name: randomactsofgaming
+  display_name: r/randomactsofgaming
+- name: freegamesonsteam
+  display_name: r/freegamesonsteam
+- name: googleplaydeals
+  display_name: r/googleplaydeals
+- name: megalinks
+  display_name: r/megalinks
+- name: opendirectories
+  display_name: r/opendirectories
+- name: Random_Acts_Of_Pizza
+  display_name: r/Random_Acts_Of_Pizza
+- name: coupons
+  display_name: r/coupons
+- name: dealsreddit
+  display_name: r/dealsreddit
+- name: freegamefindings
+  display_name: r/freegamefindings
+- name: deals
+  display_name: r/deals
+- name: assistance
+  display_name: r/assistance
+- name: free
+  display_name: r/free
+for_men:
+- name: MensRights
+  display_name: r/MensRights
+- name: trollychromosome
+  display_name: r/trollychromosome
+- name: bigdickproblems
+  display_name: r/bigdickproblems
+- name: mgtow
+  display_name: r/mgtow
+for_women:
+- name: TwoXChromosomes
+  display_name: r/TwoXChromosomes
+- name: LadyBoners
+  display_name: r/LadyBoners
+- name: TrollXChromosomes
+  display_name: r/TrollXChromosomes
+- name: abrathatfits
+  display_name: r/abrathatfits
+- name: badwomensanatomy
+  display_name: r/badwomensanatomy
+- name: nothowgirlswork
+  display_name: r/nothowgirlswork
+- name: menwritingwomen
+  display_name: r/menwritingwomen
+geography:
+- name: LocationReddits
+  display_name: r/LocationReddits
+- name: MapPorn
+  display_name: r/MapPorn
+- name: vexillology
+  display_name: r/vexillology
+africa:
+- name: SouthAfrica
+  display_name: r/SouthAfrica
+europe:
+- name: europe
+  display_name: r/europe
+- name: ireland
+  display_name: r/ireland
+- name: thenetherlands
+  display_name: r/thenetherlands
+- name: denmark
+  display_name: r/denmark
+- name: italy
+  display_name: r/italy
+- name: norge
+  display_name: r/norge
+- name: polska
+  display_name: r/polska
+- name: suomi
+  display_name: r/suomi
+- name: romania
+  display_name: r/romania
+- name: belgium
+  display_name: r/belgium
+- name: scotland
+  display_name: r/scotland
+- name: austria
+  display_name: r/austria
+france:
+- name: france
+  display_name: r/france
+germany:
+- name: de
+  display_name: r/de
+- name: germany
+  display_name: r/germany
+- name: german
+  display_name: r/german
+russia:
+- name: ANormalDayInRussia
+  display_name: r/ANormalDayInRussia
+- name: youseecomrade
+  display_name: r/youseecomrade
+- name: gtaorrussia
+  display_name: r/gtaorrussia
+sweden:
+- name: sweden
+  display_name: r/sweden
+- name: SWARJE
+  display_name: r/SWARJE
+- name: swedishproblems
+  display_name: r/swedishproblems
+- name: intresseklubben
+  display_name: r/intresseklubben
+- name: svenskpolitik
+  display_name: r/svenskpolitik
+- name: Allsvenskan
+  display_name: r/Allsvenskan
+united_kingdom:
+- name: unitedkingdom
+  display_name: r/unitedkingdom
+- name: britishproblems
+  display_name: r/britishproblems
+- name: london
+  display_name: r/london
+- name: ukpolitics
+  display_name: r/ukpolitics
+- name: casualuk
+  display_name: r/casualuk
+canada:
+- name: canada
+  display_name: r/canada
+- name: toronto
+  display_name: r/toronto
+- name: vancouver
+  display_name: r/vancouver
+- name: canadapolitics
+  display_name: r/canadapolitics
+- name: calgary
+  display_name: r/calgary
+mexico:
+- name: mexico
+  display_name: r/mexico
+usa_united_states_of_america:
+- name: MURICA
+  display_name: r/MURICA
+- name: nyc
+  display_name: r/nyc
+- name: chicago
+  display_name: r/chicago
+- name: portland
+  display_name: r/portland
+- name: boston
+  display_name: r/boston
+- name: atlanta
+  display_name: r/atlanta
+- name: washingtondc
+  display_name: r/washingtondc
+- name: philadelphia
+  display_name: r/philadelphia
+- name: newjersey
+  display_name: r/newjersey
+- name: minnesota
+  display_name: r/minnesota
+- name: michigan
+  display_name: r/michigan
+- name: losangeles
+  display_name: r/losangeles
+- name: sanfrancisco
+  display_name: r/sanfrancisco
+- name: bayarea
+  display_name: r/bayarea
+- name: california
+  display_name: r/california
+- name: sandiego
+  display_name: r/sandiego
+- name: disneyland
+  display_name: r/disneyland
+- name: denver
+  display_name: r/denver
+- name: colorado
+  display_name: r/colorado
+- name: floridaman
+  display_name: r/floridaman
+- name: waltdisneyworld
+  display_name: r/waltdisneyworld
+- name: austin
+  display_name: r/austin
+- name: houston
+  display_name: r/houston
+- name: texas
+  display_name: r/texas
+- name: dallas
+  display_name: r/dallas
+- name: seattle
+  display_name: r/seattle
+- name: SeattleWA
+  display_name: r/SeattleWA
+oceania:
+- name: australia
+  display_name: r/australia
+- name: newzealand
+  display_name: r/newzealand
+- name: melbourne
+  display_name: r/melbourne
+- name: sydney
+  display_name: r/sydney
+asia:
+- name: Philippines
+  display_name: r/Philippines
+- name: india
+  display_name: r/india
+- name: singapore
+  display_name: r/singapore
+- name: china
+  display_name: r/china
+- name: hongkong
+  display_name: r/hongkong
+japan:
+- name: japan
+  display_name: r/japan
+- name: japanpics
+  display_name: r/japanpics
+korea:
+- name: pyongyang
+  display_name: r/pyongyang
+- name: korea
+  display_name: r/korea
+south_america:
+- name: brasil
+  display_name: r/brasil
+- name: argentina
+  display_name: r/argentina
+- name: ithadtobebrazil
+  display_name: r/ithadtobebrazil
+meta:
+- name: nocontext
+  display_name: r/nocontext
+- name: tldr
+  display_name: r/tldr
+- name: Enhancement
+  display_name: r/Enhancement
+- name: SecretSanta
+  display_name: r/SecretSanta
+- name: MuseumOfReddit
+  display_name: r/MuseumOfReddit
+- name: theoryofreddit
+  display_name: r/theoryofreddit
+- name: threadkillers
+  display_name: r/threadkillers
+- name: evenwithcontext
+  display_name: r/evenwithcontext
+- name: beetlejuicing
+  display_name: r/beetlejuicing
+- name: redditinreddit
+  display_name: r/redditinreddit
+administrative:
+- name: announcements
+  display_name: r/announcements
+- name: blog
+  display_name: r/blog
+- name: beta
+  display_name: r/beta
+- name: help
+  display_name: r/help
+april_fools:
+- name: sequence
+  display_name: r/sequence
+- name: thebutton
+  display_name: r/thebutton
+- name: circleoftrust
+  display_name: r/circleoftrust
+apps:
+- name: baconreader
+  display_name: r/baconreader
+- name: alienblue
+  display_name: r/alienblue
+- name: baconit
+  display_name: r/baconit
+- name: redditsync
+  display_name: r/redditsync
+- name: relayforreddit
+  display_name: r/relayforreddit
+- name: apolloapp
+  display_name: r/apolloapp
+- name: redditmobile
+  display_name: r/redditmobile
+circlejerks:
+- name: Circlejerk
+  display_name: r/Circlejerk
+drama:
+- name: SubredditDrama
+  display_name: r/SubredditDrama
+- name: drama
+  display_name: r/drama
+- name: hobbydrama
+  display_name: r/hobbydrama
+- name: rbi
+  display_name: r/rbi
+negative:
+- name: ShitRedditSays
+  display_name: r/ShitRedditSays
+- name: undelete
+  display_name: r/undelete
+- name: jesuschristreddit
+  display_name: r/jesuschristreddit
+- name: karmacourt
+  display_name: r/karmacourt
+- name: titlegore
+  display_name: r/titlegore
+- name: ShitAmericansSay
+  display_name: r/ShitAmericansSay
+- name: againsthatesubreddits
+  display_name: r/againsthatesubreddits
+positive:
+- name: bestof
+  display_name: r/bestof
+- name: DepthHub
+  display_name: r/DepthHub
+- name: BestOfReports
+  display_name: r/BestOfReports
+- name: punpatrol
+  display_name: r/punpatrol
+- name: redditsings
+  display_name: r/redditsings
+subreddits:
+- name: subredditoftheday
+  display_name: r/subredditoftheday
+- name: wowthissubexists
+  display_name: r/wowthissubexists
+- name: newreddits
+  display_name: r/newreddits
+- name: ofcoursethatsathing
+  display_name: r/ofcoursethatsathing
+- name: findareddit
+  display_name: r/findareddit
+moderating:
+- name: modnews
+  display_name: r/modnews
+- name: redditrequest
+  display_name: r/redditrequest
+subreddit_simulator:
+- name: subredditsimulator
+  display_name: r/subredditsimulator
+- name: subredditsimmeta
+  display_name: r/subredditsimmeta
+looking_for_something:
+- name: TipOfMyPenis
+  display_name: r/TipOfMyPenis
+mind_blowing:
+- name: woahdude
+  display_name: r/woahdude
+- name: frisson
+  display_name: r/frisson
+- name: asmr
+  display_name: r/asmr
+- name: VaporwaveAesthetics
+  display_name: r/VaporwaveAesthetics
+- name: glitchinthematrix
+  display_name: r/glitchinthematrix
+plantsfungi:
+- name: marijuanaenthusiasts
+  display_name: r/marijuanaenthusiasts
+- name: succulents
+  display_name: r/succulents
+- name: mycology
+  display_name: r/mycology
+- name: bonsai
+  display_name: r/bonsai
+- name: TreesSuckingOnThings
+  display_name: r/TreesSuckingOnThings
+- name: houseplants
+  display_name: r/houseplants
+violent_nature:
+- name: natureismetal
+  display_name: r/natureismetal
+- name: Natureisbrutal
+  display_name: r/Natureisbrutal
+- name: naturewasmetal
+  display_name: r/naturewasmetal
+weather:
+- name: tropicalweather
+  display_name: r/tropicalweather
+news:
+- name: worldnews
+  display_name: r/worldnews
+- name: news
+  display_name: r/news
+- name: nottheonion
+  display_name: r/nottheonion
+- name: UpliftingNews
+  display_name: r/UpliftingNews
+- name: offbeat
+  display_name: r/offbeat
+- name: gamernews
+  display_name: r/gamernews
+- name: energy
+  display_name: r/energy
+- name: syriancivilwar
+  display_name: r/syriancivilwar
+- name: truecrime
+  display_name: r/truecrime
+fake_news:
+- name: TheOnion
+  display_name: r/TheOnion
+nostalgiatime:
+- name: OldSchoolCool
+  display_name: r/OldSchoolCool
+- name: nostalgia
+  display_name: r/nostalgia
+- name: forwardsfromgrandma
+  display_name: r/forwardsfromgrandma
+- name: oldphotosinreallife
+  display_name: r/oldphotosinreallife
+parodies:
+- name: firstworldanarchists
+  display_name: r/firstworldanarchists
+- name: wheredidthesodago
+  display_name: r/wheredidthesodago
+- name: unexpectedthuglife
+  display_name: r/unexpectedthuglife
+- name: youdontsurf
+  display_name: r/youdontsurf
+- name: montageparodies
+  display_name: r/montageparodies
+- name: outside
+  display_name: r/outside
+- name: OSHA
+  display_name: r/OSHA
+- name: hailcorporate
+  display_name: r/hailcorporate
+- name: im14andthisisdeep
+  display_name: r/im14andthisisdeep
+- name: AccidentalRenaissance
+  display_name: r/AccidentalRenaissance
+- name: maliciouscompliance
+  display_name: r/maliciouscompliance
+- name: fakehistoryporn
+  display_name: r/fakehistoryporn
+- name: coaxedintoasnafu
+  display_name: r/coaxedintoasnafu
+- name: irleastereggs
+  display_name: r/irleastereggs
+sfwporn_network:
+- name: sfwpornnetwork
+  display_name: r/sfwpornnetwork
+- name: JusticePorn
+  display_name: r/JusticePorn
+- name: AbandonedPorn
+  display_name: r/AbandonedPorn
+- name: RoomPorn
+  display_name: r/RoomPorn
+- name: CityPorn
+  display_name: r/CityPorn
+- name: humanporn
+  display_name: r/humanporn
+- name: penmanshipporn
+  display_name: r/penmanshipporn
+- name: ThingsCutInHalfPorn
+  display_name: r/ThingsCutInHalfPorn
+- name: ArchitecturePorn
+  display_name: r/ArchitecturePorn
+- name: ExposurePorn
+  display_name: r/ExposurePorn
+- name: futureporn
+  display_name: r/futureporn
+- name: adrenalineporn
+  display_name: r/adrenalineporn
+- name: waterporn
+  display_name: r/waterporn
+- name: machineporn
+  display_name: r/machineporn
+- name: movieposterporn
+  display_name: r/movieposterporn
+- name: illusionporn
+  display_name: r/illusionporn
+- name: destructionporn
+  display_name: r/destructionporn
+- name: adporn
+  display_name: r/adporn
+- name: artefactporn
+  display_name: r/artefactporn
+- name: skyporn
+  display_name: r/skyporn
+- name: powerwashingporn
+  display_name: r/powerwashingporn
+- name: InfrastructurePorn
+  display_name: r/InfrastructurePorn
+- name: VillagePorn
+  display_name: r/VillagePorn
+- name: shockwaveporn
+  display_name: r/shockwaveporn
+- name: productporn
+  display_name: r/productporn
+- name: macroporn
+  display_name: r/macroporn
+- name: cabinporn
+  display_name: r/cabinporn
+- name: houseporn
+  display_name: r/houseporn
+- name: mineralporn
+  display_name: r/mineralporn
+- name: microporn
+  display_name: r/microporn
+shitty:
+- name: shittyadvice
+  display_name: r/shittyadvice
+- name: shittyrobots
+  display_name: r/shittyrobots
+- name: ShittyLifeProTips
+  display_name: r/ShittyLifeProTips
+- name: shittykickstarters
+  display_name: r/shittykickstarters
+- name: shitpost
+  display_name: r/shitpost
+unexpected:
+- name: unexpected
+  display_name: r/unexpected
+- name: unexpectedjihad
+  display_name: r/unexpectedjihad
+- name: blackmagicfuckery
+  display_name: r/blackmagicfuckery
+- name: UnexpectedMulaney
+  display_name: r/UnexpectedMulaney
+visually_appealing:
+- name: OddlySatisfying
+  display_name: r/OddlySatisfying
+- name: nonononoyes
+  display_name: r/nonononoyes
+- name: eyebleach
+  display_name: r/eyebleach
+- name: perfectfit
+  display_name: r/perfectfit
+- name: nevertellmetheodds
+  display_name: r/nevertellmetheodds
+- name: typography
+  display_name: r/typography
+- name: cozyplaces
+  display_name: r/cozyplaces
+- name: breathinginformation
+  display_name: r/breathinginformation
+- name: desirepath
+  display_name: r/desirepath
+- name: tiltshift
+  display_name: r/tiltshift
+- name: mostbeautiful
+  display_name: r/mostbeautiful
+- name: AmateurRoomPorn
+  display_name: r/AmateurRoomPorn
+- name: raining
+  display_name: r/raining
+- name: AccidentalWesAnderson
+  display_name: r/AccidentalWesAnderson
+- name: unstirredpaint
+  display_name: r/unstirredpaint
+- name: thatpeelingfeeling
+  display_name: r/thatpeelingfeeling
+- name: gtage
+  display_name: r/gtage
+- name: satisfyingasfuck
+  display_name: r/satisfyingasfuck
+hold_my:
+- name: holdmybeer
+  display_name: r/holdmybeer
+- name: holdmyjuicebox
+  display_name: r/holdmyjuicebox
+- name: holdmyfries
+  display_name: r/holdmyfries
+- name: holdmybeaker
+  display_name: r/holdmybeaker
+- name: holdmycosmo
+  display_name: r/holdmycosmo
+- name: holdmyredbull
+  display_name: r/holdmyredbull
+- name: holdmyfeedingtube
+  display_name: r/holdmyfeedingtube
+weird_feelingscategorize_later:
+- name: fiftyfifty
+  display_name: r/fiftyfifty
+- name: firstworldproblems
+  display_name: r/firstworldproblems
+- name: idiotsfightingthings
+  display_name: r/idiotsfightingthings
+- name: whatsinthisthing
+  display_name: r/whatsinthisthing
+- name: notinteresting
+  display_name: r/notinteresting
+- name: drunkorakid
+  display_name: r/drunkorakid
+- name: pussypassdenied
+  display_name: r/pussypassdenied
+- name: UNBGBBIIVCHIDCTIICBG
+  display_name: r/UNBGBBIIVCHIDCTIICBG
+- name: Justfuckmyshitup
+  display_name: r/Justfuckmyshitup
+- name: BestOfStreamingVideo
+  display_name: r/BestOfStreamingVideo
+- name: CatastrophicFailure
+  display_name: r/CatastrophicFailure
+- name: evilbuildings
+  display_name: r/evilbuildings
+- name: urbanhell
+  display_name: r/urbanhell
+- name: justiceserved
+  display_name: r/justiceserved
+- name: mypeopleneedme
+  display_name: r/mypeopleneedme
+- name: notmyjob
+  display_name: r/notmyjob
+- name: onejob
+  display_name: r/onejob
+- name: sweatypalms
+  display_name: r/sweatypalms
+- name: therewasanattempt
+  display_name: r/therewasanattempt
+- name: bitchimabus
+  display_name: r/bitchimabus
+- name: greendawn
+  display_name: r/greendawn
+- name: thingsforants
+  display_name: r/thingsforants
+- name: youseeingthisshit
+  display_name: r/youseeingthisshit
+- name: hmmm
+  display_name: r/hmmm
+- name: hadtohurt
+  display_name: r/hadtohurt
+- name: MandelaEffect
+  display_name: r/MandelaEffect
+- name: mildlypenis
+  display_name: r/mildlypenis
+- name: redditdayof
+  display_name: r/redditdayof
+- name: instantkarma
+  display_name: r/instantkarma
+- name: 2healthbars
+  display_name: r/2healthbars
+- name: collapse
+  display_name: r/collapse
+- name: slavs_squatting
+  display_name: r/slavs_squatting
+- name: confusing_perspective
+  display_name: r/confusing_perspective
+- name: the_pack
+  display_name: r/the_pack
+- name: unpopularopinion
+  display_name: r/unpopularopinion
+- name: okbuddyretard
+  display_name: r/okbuddyretard
+- name: nextfuckinglevel
+  display_name: r/nextfuckinglevel
+- name: ooer
+  display_name: r/ooer
+- name: happycryingdads
+  display_name: r/happycryingdads
+- name: FullScorpion
+  display_name: r/FullScorpion
+- name: instantregret
+  display_name: r/instantregret
+- name: MildlyVandalised
+  display_name: r/MildlyVandalised
+- name: watchpeoplesurvive
+  display_name: r/watchpeoplesurvive
+- name: tendies
+  display_name: r/tendies
+- name: dontputyourdickinthat
+  display_name: r/dontputyourdickinthat
+- name: whatintarnation
+  display_name: r/whatintarnation
+- name: tworedditorsonecup
+  display_name: r/tworedditorsonecup
+- name: ExpandDong
+  display_name: r/ExpandDong
+- name: wackytictacs
+  display_name: r/wackytictacs
+- name: halloween
+  display_name: r/halloween
+- name: whatcouldgoright
+  display_name: r/whatcouldgoright
+- name: hmmmgifs
+  display_name: r/hmmmgifs
+- name: bizarrebuildings
+  display_name: r/bizarrebuildings
+- name: inclusiveor
+  display_name: r/inclusiveor
+- name: lostgeneration
+  display_name: r/lostgeneration
+- name: kurzgesagt
+  display_name: r/kurzgesagt
+- name: boop
+  display_name: r/boop
+- name: fightporn
+  display_name: r/fightporn
+- name: tooktoomuch
+  display_name: r/tooktoomuch
+- name: humansaremetal
+  display_name: r/humansaremetal
+- name: theyknew
+  display_name: r/theyknew
+- name: fbiopenup
+  display_name: r/fbiopenup
+- name: fuckyouinparticular
+  display_name: r/fuckyouinparticular
+- name: idiotsnearlydying
+  display_name: r/idiotsnearlydying
+- name: AAAAAAAAAAAAAAAAA
+  display_name: r/AAAAAAAAAAAAAAAAA
+- name: chaoticgood
+  display_name: r/chaoticgood
+- name: prisonwallet
+  display_name: r/prisonwallet
+ex_50k:
+- name: mindcrack
+  display_name: r/mindcrack
+- name: twitchplayspokemon
+  display_name: r/twitchplayspokemon
+- name: battlefield3
+  display_name: r/battlefield3
+- name: csgobetting
+  display_name: r/csgobetting
+- name: historicalwhatif
+  display_name: r/historicalwhatif
