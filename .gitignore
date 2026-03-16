@@ -66,5 +66,10 @@ MONETIZATION_ROADMAP.md
 MARKETING_GTM_PLAN.md
 marketing/
 
+# Screenshots (keep only v0.3 public assets, ignore dev captures)
+screenshots/before/
+screenshots/after/
+screenshots/capture*.py
+
 # Claude Code (session-specific)
 .claude/
