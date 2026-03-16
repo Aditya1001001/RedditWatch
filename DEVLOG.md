@@ -50,6 +50,8 @@ Set up a private/public repo split so SaaS-only features can be developed withou
 - Expanded from 117 → 1,859 subreddits across 287 categories
 - Full import from r/ListOfSubreddits wiki HTML — covers every niche (pets, fitness, cooking, gaming, etc.)
 - TODO: Review and improve category groupings — many wiki categories are oddly named or overly granular
+- TODO: Take fresh screenshots after analysis completes (analytics tab has 4 new Phase 9 visualizations)
+- TODO: Set up Claude API for faster analysis of remaining ~1,400 posts
 
 **Initial Data Collection**
 - Collected posts from 9 subreddits (indiehackers, saas, sideproject, selfhosted, startups, entrepreneur, microsaas, buildinpublic, webdev)
