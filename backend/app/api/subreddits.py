@@ -62,6 +62,7 @@ class CatalogEntry(BaseModel):
     description: Optional[str] = None
     subscribers: Optional[int] = None
     category: str
+    category_display_name: Optional[str] = None
     best_for: Optional[str] = None
 
 
@@ -110,6 +111,7 @@ async def get_subreddit_catalog(category: Optional[str] = None):
             description=s.get("description"),
             subscribers=s.get("subscribers"),
             category=s["category"],
+            category_display_name=s.get("category_display_name"),
             best_for=s.get("best_for"),
         )
         for s in catalog
@@ -118,12 +120,13 @@ async def get_subreddit_catalog(category: Optional[str] = None):
 
 @router.get("/catalog/categories")
 async def get_catalog_categories():
-    """Get list of categories in the catalog."""
+    """Get list of categories with display names and counts."""
     collector = get_collector()
-    catalog = collector.load_subreddit_catalog()
+    categories = collector.get_catalog_categories()
+    total = sum(c["count"] for c in categories)
     return {
-        "categories": list(catalog.keys()),
-        "total_subreddits": sum(len(subs) for subs in catalog.values()),
+        "categories": categories,
+        "total_subreddits": total,
     }
 
 

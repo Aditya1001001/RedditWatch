@@ -433,12 +433,13 @@
                 <div class="flex flex-wrap gap-1.5 mb-5">
                     <button @click="catalogFilter = null"
                             :class="catalogFilter === null ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
-                            class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">All</button>
-                    <template x-for="cat in catalogCategories" :key="cat">
-                        <button @click="catalogFilter = cat"
-                                :class="catalogFilter === cat ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                            class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150"
+                            x-text="'All (' + catalog.length + ')'"></button>
+                    <template x-for="cat in catalogCategories" :key="cat.key">
+                        <button @click="catalogFilter = cat.key"
+                                :class="catalogFilter === cat.key ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
                                 class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150"
-                                x-text="cat.replaceAll('_', ' ')"></button>
+                                x-text="cat.display_name + ' (' + cat.count + ')'"></button>
                     </template>
                 </div>
 
@@ -447,8 +448,11 @@
                         <div class="flex items-center justify-between border border-border rounded-lg px-4 py-3 hover:border-border-light transition-colors duration-150">
                             <div class="min-w-0">
                                 <p class="font-medium text-sm truncate" x-text="sub.display_name"></p>
-                                <p class="text-xs text-text-muted truncate" x-text="sub.best_for"></p>
-                                <p class="text-xs text-text-muted tabular-nums" x-text="(sub.subscribers || 0).toLocaleString() + ' subscribers'"></p>
+                                <p class="text-xs text-text-muted truncate" x-text="sub.best_for || sub.description || ''"></p>
+                                <p class="text-xs text-text-muted tabular-nums">
+                                    <span x-text="(sub.subscribers || 0).toLocaleString() + ' subscribers'"></span>
+                                    <span x-show="!catalogFilter && sub.category_display_name" class="ml-1 text-accent/70" x-text="'· ' + sub.category_display_name"></span>
+                                </p>
                             </div>
                             <button @click="addSubredditFromCatalog(sub.name)"
                                     :disabled="isMonitored(sub.name)"
@@ -1306,6 +1310,7 @@
                         ]);
                         this.catalog = await catalogRes.json();
                         const catData = await catRes.json();
+                        // categories are now {key, display_name, count} objects
                         this.catalogCategories = catData.categories || [];
                     } catch (e) {
                         this.catalog = [];

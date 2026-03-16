@@ -10,7 +10,99 @@
 
 ---
 
+## Pending Work
+
+### Phase 11: Reddit OAuth + Rate Limit Hardening
+
+**Problem**: Currently scraping `old.reddit.com` JSON with no authentication. Unauthenticated rate limit is ~10 req/min per IP. Authenticated OAuth API allows 100 req/min — 10x improvement. This is the root cause of the rate limit failures during data collection (only r/indiehackers got deep collection, others got ~23 posts each).
+
+**Current vulnerabilities:**
+- No OAuth — operating at 1/10th allowed throughput
+- Comment fetching silently fails on 429 (no retry, no backoff)
+- No global rate limiter — concurrent tasks can spike requests
+- No parsing of `X-RateLimit-Remaining`/`X-RateLimit-Reset` headers
+- No retry queue — failed requests are permanently lost
+- `client_id`/`client_secret` exist in config but are never used
+
+**Plan:**
+- [ ] Register Reddit "script" app at reddit.com/prefs/apps
+- [ ] Implement OAuth client credentials flow (bearer token with auto-refresh)
+- [ ] Switch endpoints from `old.reddit.com/*.json` to `oauth.reddit.com/r/*`
+- [ ] Add global token-bucket rate limiter (shared across all concurrent tasks)
+- [ ] Parse `X-RateLimit-*` response headers for precise throttling
+- [ ] Add consistent exponential backoff for comments (match posts behavior)
+- [ ] Add retry queue for failed fetches (persist to DB, retry on next run)
+- [ ] Validate config limits (cap `concurrent_subreddits`, `max_pages_per_sort`)
+- [ ] Re-collect data for 8 subreddits that only got ~23 posts
+- [ ] Retry r/smallbusiness (was fully blocked)
+
+### Phase 12: UI/UX Audit Fixes (Insights + Analytics Tabs)
+
+**Problem**: Insights and Analytics tabs have unclear boundaries, redundant elements, and several items that are developer-facing rather than user-facing.
+
+**Insights tab fixes:**
+- [ ] Replace "Avg Time" stat with actionable metric (e.g. "Products Mentioned")
+- [ ] Replace "Total Posts" + "Analyzed" with insight-oriented metrics (Pain Points, Opportunities, etc.)
+- [ ] Reduce prominence of Analyze bar — show only when unanalyzed posts exist
+- [ ] Drop Insight Types horizontal bar chart (redundant with Analytics doughnut + filter buttons)
+- [ ] Replace opaque theme "combined_score" with plain-language labels
+- [ ] Add pagination to insights list (currently hard-capped at 50)
+- [ ] Replace search similarity % with human-readable relevance indicator
+
+**Analytics tab — remove (redundant or not useful):**
+- [ ] Insight Distribution doughnut (same data as Insights tab filter buttons)
+- [ ] Top Themes bar chart (same data as Insights tab themes list)
+- [ ] Posts by Subreddit bar (already on Dashboard)
+- [ ] Theme Intensity scatter (confusing, redundant encoding)
+- [ ] Collection Timeline (operational, not analytical)
+- [ ] Subscriber Growth (already on Subreddits tab)
+- [ ] Theme Co-occurrence network (rarely actionable, adds D3.js 250KB dependency)
+
+**Analytics tab — keep and improve:**
+- [ ] Theme Trends line chart (most valuable — make more prominent)
+- [ ] Activity Heatmap (useful for posting strategy — add timezone note)
+- [ ] Subreddit × Theme Matrix (simplify to top 5×5, clearer color scale)
+- [ ] Highest Intensity Insights table (good "highlights reel")
+
+**General:**
+- [ ] Wire audience filter to all analytics API calls (currently missing)
+- [ ] Deduplicate summary metrics between tabs
+
+### Other Pending Items
+
+- [ ] Set up Claude API for faster analysis (~1,400 unanalyzed posts)
+- [ ] Take fresh screenshots after analysis + UI fixes
+- [x] Review subreddit catalog category groupings (287 → 46 categories, 1,859 → 263 curated subs)
+- [ ] Address remaining codebase audit items (see audit section below)
+
+---
+
 ## Changelog
+
+### 2026-03-16: Rebuild Subreddit Catalog — Categories & Display
+
+The bulk-imported catalog (1,859 subs across 287 categories from r/ListOfSubreddits wiki) was unusable — categories like `weird_feelingscategorize_later`, `neckbeard`, `sfwporn_network` cluttered the UI, and 287 pill buttons overflowed the screen.
+
+**Catalog rebuild**
+- Consolidated 287 categories → 46 clean categories covering business, tech, and lifestyle verticals
+- Curated 1,859 subs → 263 market-research-relevant subs
+- New YAML structure: `_meta.display_name` per category + `subreddits` list
+- Every sub has `name`, `display_name`, `description`, `subscribers`, `best_for`
+- Dropped purely entertainment/meme subs with zero market research value
+
+**Backend changes**
+- `collector.py`: `get_catalog_flat()` parses new `_meta` + `subreddits` structure, includes `category_display_name`
+- `collector.py`: Added `get_catalog_categories()` returning `{key, display_name, count}` per category
+- `subreddits.py`: `/catalog/categories` endpoint returns category objects instead of string keys
+- `subreddits.py`: `CatalogEntry` model includes `category_display_name` field
+
+**Frontend changes**
+- Category pills show clean display names with counts: "Startups & Founders (8)" instead of "startups_founders"
+- "All" pill shows total sub count
+- Catalog cards show category label when viewing "All" (e.g. "· Marketing & Growth")
+- Cards fall back to `description` if `best_for` is empty
+
+---
 
 ### 2026-03-16: Private Monorepo + Public OSS Mirror
 
@@ -49,7 +141,7 @@ Set up a private/public repo split so SaaS-only features can be developed withou
 **Subreddit Catalog**
 - Expanded from 117 → 1,859 subreddits across 287 categories
 - Full import from r/ListOfSubreddits wiki HTML — covers every niche (pets, fitness, cooking, gaming, etc.)
-- TODO: Review and improve category groupings — many wiki categories are oddly named or overly granular
+- Rebuilt: consolidated 287 wiki categories → 46 clean categories, 1,859 → 263 curated subs (see changelog below)
 - TODO: Take fresh screenshots after analysis completes (analytics tab has 4 new Phase 9 visualizations)
 - TODO: Set up Claude API for faster analysis of remaining ~1,400 posts
 
