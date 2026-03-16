@@ -344,11 +344,15 @@ class AnalyzerService:
         insight_type: Optional[str] = None,
         limit: int = 50,
         sort_by: Optional[str] = None,
+        subreddit_names: Optional[list[str]] = None,
     ) -> list[Insight]:
         """Get insights grouped by theme."""
         from sqlalchemy.orm import joinedload
 
         query = select(Insight).options(joinedload(Insight.post))
+
+        if subreddit_names is not None:
+            query = query.join(Post).where(Post.subreddit.in_(subreddit_names))
 
         # Apply sorting
         if sort_by == "intensity":
@@ -368,7 +372,11 @@ class AnalyzerService:
         result = await session.execute(query)
         return list(result.scalars().unique().all())
 
-    async def get_theme_summary(self, session: AsyncSession) -> list[dict]:
+    async def get_theme_summary(
+        self,
+        session: AsyncSession,
+        subreddit_names: Optional[list[str]] = None,
+    ) -> list[dict]:
         """Get aggregated theme statistics using SQL GROUP BY."""
         from sqlalchemy import case, literal_column
 
@@ -382,6 +390,8 @@ class AnalyzerService:
             .group_by(Insight.theme_key)
             .order_by(func.count(Insight.id).desc())
         )
+        if subreddit_names is not None:
+            theme_query = theme_query.join(Post).where(Post.subreddit.in_(subreddit_names))
         theme_result = await session.execute(theme_query)
         theme_rows = theme_result.all()
 
@@ -390,6 +400,8 @@ class AnalyzerService:
             select(Insight.theme_key, Insight.type)
             .distinct()
         )
+        if subreddit_names is not None:
+            type_query = type_query.join(Post).where(Post.subreddit.in_(subreddit_names))
         type_result = await session.execute(type_query)
         theme_types: dict[str, set[str]] = {}
         for row in type_result:
@@ -401,6 +413,8 @@ class AnalyzerService:
             .where(Insight.quote.isnot(None))
             .order_by(Insight.intensity_score.desc().nullslast())
         )
+        if subreddit_names is not None:
+            quote_query = quote_query.join(Post).where(Post.subreddit.in_(subreddit_names))
         quote_result = await session.execute(quote_query)
         theme_quotes: dict[str, list[dict]] = {}
         for row in quote_result:

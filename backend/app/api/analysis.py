@@ -4,11 +4,32 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
+from app.models import Audience
 from app.services.analyzer import get_analyzer
 from app.services.tasks import get_task_tracker
+
+
+async def resolve_audience_subreddits(
+    session: AsyncSession,
+    audience_id: Optional[int] = None,
+    subreddits: Optional[str] = None,
+) -> Optional[list[str]]:
+    """Resolve audience_id or comma-separated subreddit string to a list of names.
+
+    Returns None if no filtering is requested.
+    """
+    if audience_id:
+        audience = await session.get(Audience, audience_id)
+        if audience:
+            return [s.name for s in audience.subreddits]
+        return []
+    if subreddits:
+        return [s.strip().lower() for s in subreddits.split(",") if s.strip()]
+    return None
 
 router = APIRouter()
 
@@ -94,15 +115,20 @@ async def get_analysis_task(task_id: str):
 
 @router.get("/themes", response_model=list[ThemeSummary])
 async def get_themes(
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
     session: AsyncSession = Depends(get_session),
 ):
     """
     Get aggregated theme summary.
 
     Returns themes sorted by combined score (frequency x intensity).
+    Optionally filter by audience or specific subreddits.
     """
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+
     analyzer = get_analyzer()
-    themes = await analyzer.get_theme_summary(session)
+    themes = await analyzer.get_theme_summary(session, subreddit_names=sub_names)
 
     return [
         ThemeSummary(
@@ -123,11 +149,15 @@ async def get_insights(
     type: Optional[str] = Query(default=None, alias="type"),
     sort: Optional[str] = Query(default=None, description="Sort by: intensity, date"),
     limit: int = Query(default=50, ge=1, le=200),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
     session: AsyncSession = Depends(get_session),
 ):
     """
     Get extracted insights with optional filters.
     """
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+
     analyzer = get_analyzer()
     insights = await analyzer.get_insights_by_theme(
         session,
@@ -135,6 +165,7 @@ async def get_insights(
         insight_type=type,
         limit=limit,
         sort_by=sort,
+        subreddit_names=sub_names,
     )
 
     return [
@@ -160,48 +191,53 @@ async def get_insights(
 
 @router.get("/status")
 async def get_analysis_status(
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
     session: AsyncSession = Depends(get_session),
 ):
     """Get analysis statistics including timing metrics and active task status."""
-    from sqlalchemy import select, func
+    from sqlalchemy import func
     from app.models import Post, Insight
 
-    # Count posts
-    total_posts = await session.execute(select(func.count(Post.id)))
-    total = total_posts.scalar() or 0
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
 
-    analyzed_posts = await session.execute(
-        select(func.count(Post.id)).where(Post.analyzed == True)
-    )
-    analyzed = analyzed_posts.scalar() or 0
+    # Base queries, scoped to audience if specified
+    post_base = select(func.count(Post.id))
+    insight_base = select(func.count(Insight.id))
+    if sub_names is not None:
+        post_base = post_base.where(Post.subreddit.in_(sub_names))
+        insight_base = insight_base.join(Post).where(Post.subreddit.in_(sub_names))
+
+    # Count posts
+    total = (await session.execute(post_base)).scalar() or 0
+    analyzed_q = post_base.where(Post.analyzed == True)
+    analyzed = (await session.execute(analyzed_q)).scalar() or 0
 
     # Count insights
-    total_insights = await session.execute(select(func.count(Insight.id)))
-    insights = total_insights.scalar() or 0
+    insights = (await session.execute(insight_base)).scalar() or 0
 
     # Get timing stats
-    avg_duration = await session.execute(
-        select(func.avg(Post.analysis_duration_ms)).where(Post.analyzed == True)
-    )
-    avg_ms = avg_duration.scalar()
+    avg_q = select(func.avg(Post.analysis_duration_ms)).where(Post.analyzed == True)
+    if sub_names is not None:
+        avg_q = avg_q.where(Post.subreddit.in_(sub_names))
+    avg_ms = (await session.execute(avg_q)).scalar()
 
-    last_analyzed = await session.execute(
-        select(func.max(Post.analyzed_at)).where(Post.analyzed == True)
-    )
-    last_at = last_analyzed.scalar()
+    last_q = select(func.max(Post.analyzed_at)).where(Post.analyzed == True)
+    if sub_names is not None:
+        last_q = last_q.where(Post.subreddit.in_(sub_names))
+    last_at = (await session.execute(last_q)).scalar()
 
     # Count themes
-    theme_count = await session.execute(
-        select(func.count(func.distinct(Insight.theme_key)))
-    )
-    themes = theme_count.scalar() or 0
+    theme_q = select(func.count(func.distinct(Insight.theme_key)))
+    if sub_names is not None:
+        theme_q = theme_q.join(Post).where(Post.subreddit.in_(sub_names))
+    themes = (await session.execute(theme_q)).scalar() or 0
 
     # Count by insight type
-    type_query = (
-        select(Insight.type, func.count(Insight.id))
-        .group_by(Insight.type)
-    )
-    type_result = await session.execute(type_query)
+    type_q = select(Insight.type, func.count(Insight.id)).group_by(Insight.type)
+    if sub_names is not None:
+        type_q = type_q.join(Post).where(Post.subreddit.in_(sub_names))
+    type_result = await session.execute(type_q)
     insights_by_type = {row[0]: row[1] for row in type_result}
 
     # Check for active analysis task

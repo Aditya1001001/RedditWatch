@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api import analysis, collect, export, insights, llm, posts, scheduler, search, subreddits, themes
+from app.api import analysis, audiences, collect, export, insights, llm, posts, scheduler, search, subreddits, themes
 
 # Main API router
 api_router = APIRouter(prefix="/api")
@@ -18,3 +18,4 @@ api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(scheduler.router, prefix="/scheduler", tags=["scheduler"])
+api_router.include_router(audiences.router, prefix="/audiences", tags=["audiences"])

@@ -10,10 +10,12 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import func as sa_func
+
 from app.collectors.reddit import RedditCollector
 from app.config import Config, get_config
 from app.database import async_session_maker
-from app.models import Comment, MonitoredSubreddit, Post
+from app.models import Comment, MonitoredSubreddit, Post, SubscriberSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +212,52 @@ class CollectorService:
         await session.flush()
         return stats
 
+    async def _record_subscriber_snapshot(
+        self,
+        session: AsyncSession,
+        subreddit_name: str,
+    ) -> None:
+        """Record a subscriber count snapshot for growth tracking.
+
+        Fetches current subscriber count from Reddit, updates the
+        MonitoredSubreddit record, and inserts a SubscriberSnapshot
+        (skipping if same count already recorded today).
+        """
+        try:
+            info = await self.reddit.get_subreddit_info(subreddit_name)
+            if not info or not info.get("subscribers"):
+                return
+
+            count = info["subscribers"]
+
+            # Update MonitoredSubreddit with latest count
+            subreddit = await session.get(MonitoredSubreddit, subreddit_name)
+            if subreddit:
+                subreddit.subscribers = count
+
+            # Check if we already have a snapshot with this count today
+            today_start = datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            existing = await session.execute(
+                select(SubscriberSnapshot)
+                .where(SubscriberSnapshot.subreddit_name == subreddit_name)
+                .where(SubscriberSnapshot.recorded_at >= today_start)
+                .where(SubscriberSnapshot.subscriber_count == count)
+            )
+            if existing.scalar_one_or_none():
+                return
+
+            snapshot = SubscriberSnapshot(
+                subreddit_name=subreddit_name,
+                subscriber_count=count,
+            )
+            session.add(snapshot)
+            await session.flush()
+            logger.debug(f"Recorded subscriber snapshot for r/{subreddit_name}: {count}")
+        except Exception as e:
+            logger.warning(f"Failed to record subscriber snapshot for r/{subreddit_name}: {e}")
+
     async def collect_subreddit(
         self,
         session: AsyncSession,
@@ -239,6 +287,9 @@ class CollectorService:
         stats = await self._save_posts_to_db(
             session, subreddit_name, posts, include_comments
         )
+
+        # Record subscriber count snapshot for growth tracking
+        await self._record_subscriber_snapshot(session, subreddit_name)
 
         logger.info(
             f"Collected from r/{subreddit_name}: "
@@ -276,6 +327,9 @@ class CollectorService:
         stats = await self._save_posts_to_db(
             session, subreddit_name, posts, include_comments
         )
+
+        # Record subscriber count snapshot for growth tracking
+        await self._record_subscriber_snapshot(session, subreddit_name)
 
         logger.info(
             f"Deep collected from r/{subreddit_name}: "

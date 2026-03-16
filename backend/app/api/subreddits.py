@@ -1,13 +1,16 @@
 """Subreddit management API endpoints."""
 
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
+from app.models import MonitoredSubreddit, SubscriberSnapshot
 from app.services.collector import get_collector
 
 SUBREDDIT_PATTERN = re.compile(r"^[a-zA-Z0-9_]{2,21}$")
@@ -124,6 +127,51 @@ async def get_catalog_categories():
     }
 
 
+@router.get("/growth/summary")
+async def get_growth_summary(
+    days: int = Query(default=7, ge=1, le=90),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get subscriber growth summary for all monitored subreddits."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Get all monitored subreddits with their current subscriber counts
+    subs_result = await session.execute(
+        select(MonitoredSubreddit).order_by(MonitoredSubreddit.name)
+    )
+    subreddits_list = subs_result.scalars().all()
+
+    growth_data = []
+    for sub in subreddits_list:
+        current_count = sub.subscribers or 0
+
+        # Get oldest snapshot in the period
+        oldest = await session.execute(
+            select(SubscriberSnapshot.subscriber_count)
+            .where(SubscriberSnapshot.subreddit_name == sub.name)
+            .where(SubscriberSnapshot.recorded_at >= cutoff)
+            .order_by(SubscriberSnapshot.recorded_at.asc())
+            .limit(1)
+        )
+        oldest_count = oldest.scalar()
+
+        change = None
+        change_pct = None
+        if oldest_count is not None and oldest_count > 0:
+            change = current_count - oldest_count
+            change_pct = round((change / oldest_count) * 100, 2)
+
+        growth_data.append({
+            "subreddit": sub.name,
+            "current_subscribers": current_count,
+            "change": change,
+            "change_pct": change_pct,
+            "days": days,
+        })
+
+    return growth_data
+
+
 @router.post("", response_model=SubredditResponse)
 async def add_subreddit(
     request: SubredditCreate,
@@ -207,6 +255,66 @@ async def remove_subreddit(
     await session.commit()
 
     return {"message": f"Subreddit r/{name} removed from monitoring"}
+
+
+@router.get("/{name}/growth")
+async def get_subreddit_growth(
+    name: str,
+    days: int = Query(default=30, ge=1, le=365),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get subscriber growth time series for a subreddit."""
+    sub = await session.get(MonitoredSubreddit, name.lower())
+    if not sub:
+        raise HTTPException(status_code=404, detail=f"Subreddit r/{name} not found")
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    result = await session.execute(
+        select(SubscriberSnapshot)
+        .where(SubscriberSnapshot.subreddit_name == name.lower())
+        .where(SubscriberSnapshot.recorded_at >= cutoff)
+        .order_by(SubscriberSnapshot.recorded_at.asc())
+    )
+    snapshots = result.scalars().all()
+
+    time_series = [
+        {
+            "date": s.recorded_at.isoformat(),
+            "subscribers": s.subscriber_count,
+        }
+        for s in snapshots
+    ]
+
+    # Calculate growth metrics
+    current = sub.subscribers or 0
+    change = None
+    change_pct = None
+    change_7d_pct = None
+
+    if snapshots:
+        first_count = snapshots[0].subscriber_count
+        if first_count > 0:
+            change = current - first_count
+            change_pct = round((change / first_count) * 100, 2)
+
+        # 7-day change
+        cutoff_7d = datetime.now(timezone.utc) - timedelta(days=7)
+        recent = [s for s in snapshots if s.recorded_at >= cutoff_7d]
+        if recent and recent[0].subscriber_count > 0:
+            change_7d = current - recent[0].subscriber_count
+            change_7d_pct = round((change_7d / recent[0].subscriber_count) * 100, 2)
+
+    return {
+        "subreddit": name,
+        "current_subscribers": current,
+        "change": change,
+        "change_pct": change_pct,
+        "change_7d_pct": change_7d_pct,
+        "days": days,
+        "data_points": len(time_series),
+        "time_series": time_series,
+    }
 
 
 @router.post("/{name}/collect")

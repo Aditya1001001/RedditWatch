@@ -52,7 +52,7 @@ async def init_db() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     # Import models to register them with Base
-    from app.models import comment, insight, post, subreddit, theme  # noqa: F401
+    from app.models import audience, comment, insight, post, subscriber_snapshot, subreddit, theme  # noqa: F401
 
     async with engine.begin() as conn:
         # Enable foreign keys for SQLite

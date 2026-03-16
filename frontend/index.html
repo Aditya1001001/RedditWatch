@@ -4,231 +4,483 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RedditWatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        serif: ['"Newsreader"', 'Georgia', 'serif'],
+                    },
+                    colors: {
+                        surface: {
+                            0: '#111110',
+                            1: '#1a1a18',
+                            2: '#232320',
+                            3: '#2c2c28',
+                            4: '#363630',
+                        },
+                        text: {
+                            primary: '#e8e5df',
+                            secondary: '#9c9890',
+                            muted: '#6b6760',
+                        },
+                        accent: {
+                            DEFAULT: '#d4a373',
+                            light: '#e8c9a0',
+                            dark: '#a67c52',
+                            subtle: 'rgba(212, 163, 115, 0.12)',
+                        },
+                        insight: {
+                            pain: '#e05252',
+                            solution: '#d4a030',
+                            opportunity: '#4caf6e',
+                            product: '#9c7cdb',
+                        },
+                        border: {
+                            DEFAULT: '#2c2c28',
+                            light: '#363630',
+                        }
+                    },
+                }
+            }
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            font-feature-settings: 'cv11' 1, 'ss01' 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.01em;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #363630; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a4a42; }
+
+        /* Focus */
+        *:focus-visible {
+            outline: 2px solid #d4a373;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        button:focus:not(:focus-visible),
+        input:focus:not(:focus-visible),
+        select:focus:not(:focus-visible) { outline: none; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-in {
+            animation: fadeIn 350ms cubic-bezier(0.25, 1, 0.5, 1) both;
+        }
+        .stagger-1 { animation-delay: 40ms; }
+        .stagger-2 { animation-delay: 80ms; }
+        .stagger-3 { animation-delay: 120ms; }
+        .stagger-4 { animation-delay: 160ms; }
+
+        /* Toast */
+        .toast-enter { animation: fadeInScale 300ms cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .toast-exit { animation: fadeOut 200ms cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: scale(0.97); }
+        }
+
+        /* Tab content transitions */
+        [x-show] { transition: opacity 200ms cubic-bezier(0.25, 1, 0.5, 1); }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .animate-in { animation: none; opacity: 1; }
+            [x-show] { transition: none; }
+            .toast-enter, .toast-exit { animation: none; }
+        }
+
+        /* Intensity bar gradient */
+        .intensity-bar {
+            background: linear-gradient(90deg, #4caf6e 0%, #d4a030 50%, #e05252 100%);
+        }
+
+        /* Quote styling */
+        .quote-mark { font-family: 'Newsreader', Georgia, serif; }
+
+        /* Tabular numbers for data */
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+
+        /* Smooth scrolling within panels */
+        .scroll-smooth { scroll-behavior: smooth; }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div x-data="app()" x-init="init()" class="container mx-auto px-4 py-8 max-w-6xl">
+<body class="bg-surface-0 text-text-primary min-h-screen font-sans">
+    <div x-data="app()" x-init="init()" class="mx-auto max-w-6xl px-6 py-10">
+
         <!-- Header -->
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">RedditWatch</h1>
-            <p class="text-gray-400">Self-hosted Reddit market research tool</p>
+        <header class="mb-10 flex items-end justify-between">
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <h1 class="text-2xl font-bold tracking-tight">RedditWatch</h1>
+                    <span class="text-xs font-medium text-text-muted bg-surface-3 px-2 py-0.5 rounded">v0.2</span>
+                </div>
+                <p class="text-text-secondary text-sm">Market research from Reddit, on your terms</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-text-muted">
+                <div :class="health.status === 'healthy' ? 'bg-insight-opportunity' : 'bg-insight-pain'"
+                     class="w-1.5 h-1.5 rounded-full"></div>
+                <span x-text="health.status === 'healthy' ? 'Connected' : 'Offline'"></span>
+            </div>
         </header>
 
-        <!-- Tabs -->
-        <div class="mb-6 border-b border-gray-700">
-            <nav class="flex space-x-4">
-                <button @click="tab = 'dashboard'"
-                        :class="tab === 'dashboard' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    Dashboard
-                </button>
-                <button @click="tab = 'subreddits'"
-                        :class="tab === 'subreddits' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    Subreddits
-                </button>
-                <button @click="tab = 'posts'"
-                        :class="tab === 'posts' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    Posts
-                </button>
-                <button @click="tab = 'insights'; loadInsights()"
-                        :class="tab === 'insights' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    Insights
-                </button>
-                <button @click="tab = 'llm'"
-                        :class="tab === 'llm' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    LLM
-                </button>
-                <button @click="tab = 'analytics'; loadAnalytics()"
-                        :class="tab === 'analytics' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
-                        class="py-2 px-1 border-b-2 font-medium">
-                    Analytics
-                </button>
-            </nav>
+        <!-- Audience Selector -->
+        <div x-show="audiences.length > 0" class="mb-4 flex items-center gap-2">
+            <span class="text-xs text-text-muted uppercase tracking-wider font-medium">Audience</span>
+            <div class="flex flex-wrap gap-1.5">
+                <button @click="selectAudience(null)"
+                        :class="!activeAudienceId ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                        class="px-3 py-1 rounded-md text-xs font-medium transition-colors duration-150">All</button>
+                <template x-for="aud in audiences" :key="aud.id">
+                    <button @click="selectAudience(aud.id)"
+                            :class="activeAudienceId === aud.id ? 'text-surface-0' : 'text-text-secondary hover:text-text-primary'"
+                            :style="activeAudienceId === aud.id ? 'background-color:' + (aud.color || '#d4a373') : ''"
+                            class="px-3 py-1 rounded-md text-xs font-medium transition-colors duration-150"
+                            :class="activeAudienceId !== aud.id && 'bg-surface-2'"
+                            x-text="aud.name"></button>
+                </template>
+            </div>
         </div>
 
-        <!-- Dashboard Tab -->
-        <div x-show="tab === 'dashboard'" class="space-y-6">
-            <!-- Status Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">System Status</h3>
-                    <div class="flex items-center">
-                        <div :class="health.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'"
-                             class="w-3 h-3 rounded-full mr-2"></div>
-                        <span class="text-xl font-semibold" x-text="health.status || 'checking...'"></span>
+        <!-- Navigation -->
+        <nav class="mb-8 border-b border-border flex gap-0" role="tablist">
+            <template x-for="t in [
+                {id: 'dashboard', label: 'Dashboard'},
+                {id: 'subreddits', label: 'Subreddits'},
+                {id: 'posts', label: 'Posts'},
+                {id: 'insights', label: 'Insights', action: 'loadInsights'},
+                {id: 'llm', label: 'LLM'},
+                {id: 'analytics', label: 'Analytics', action: 'loadAnalytics'}
+            ]" :key="t.id">
+                <button @click="tab = t.id; t.action && $data[t.action]()"
+                        :class="tab === t.id
+                            ? 'text-accent border-accent'
+                            : 'text-text-muted border-transparent hover:text-text-secondary'"
+                        class="relative px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-150"
+                        role="tab"
+                        :aria-selected="tab === t.id"
+                        x-text="t.label">
+                </button>
+            </template>
+        </nav>
+
+        <!-- Toast Notifications -->
+        <div class="fixed top-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" style="max-width: 380px;">
+            <template x-for="toast in toasts" :key="toast.id">
+                <div :class="[
+                    'pointer-events-auto rounded-lg px-4 py-3 text-sm shadow-lg border toast-enter',
+                    toast.type === 'success' ? 'bg-surface-2 border-insight-opportunity/30 text-insight-opportunity' : '',
+                    toast.type === 'error' ? 'bg-surface-2 border-insight-pain/30 text-insight-pain' : '',
+                    toast.type === 'info' ? 'bg-surface-2 border-accent/30 text-accent' : '',
+                ]">
+                    <div class="flex items-start gap-2">
+                        <span class="mt-0.5" x-text="toast.type === 'success' ? '✓' : toast.type === 'error' ? '✗' : '→'"></span>
+                        <div>
+                            <p class="font-medium" x-text="toast.title"></p>
+                            <p x-show="toast.detail" class="text-text-secondary text-xs mt-0.5" x-text="toast.detail"></p>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">LLM Provider</h3>
-                    <div class="text-xl font-semibold" x-text="llmStatus.active_provider || 'none'"></div>
+            </template>
+        </div>
+
+        <!-- ─── Dashboard ─── -->
+        <div x-show="tab === 'dashboard'" x-transition:enter="animate-in" class="space-y-8">
+
+            <!-- Metrics row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden">
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Status</p>
+                    <div class="flex items-center gap-2">
+                        <div :class="health.status === 'healthy' ? 'bg-insight-opportunity' : 'bg-insight-pain'"
+                             class="w-2 h-2 rounded-full"></div>
+                        <span class="text-lg font-semibold tabular-nums" x-text="health.status || 'checking'"></span>
+                    </div>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Total Posts</h3>
-                    <div class="text-xl font-semibold" x-text="postStats.total_posts || 0"></div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">LLM Provider</p>
+                    <span class="text-lg font-semibold" x-text="llmStatus.active_provider || 'none'"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Monitored Subreddits</h3>
-                    <div class="text-xl font-semibold" x-text="subreddits.length"></div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Total Posts</p>
+                    <span class="text-lg font-semibold tabular-nums" x-text="postStats.total_posts || 0"></span>
+                </div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Subreddits</p>
+                    <span class="text-lg font-semibold tabular-nums" x-text="subreddits.length"></span>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+            <!-- Actions -->
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Quick Actions</h2>
                 <div class="flex flex-wrap gap-3">
                     <button @click="collectAll()"
                             :disabled="collecting"
-                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                            class="bg-accent hover:bg-accent-dark active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-surface-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150">
                         <span x-show="!collecting">Collect All Posts</span>
-                        <span x-show="collecting">Collecting...</span>
+                        <span x-show="collecting" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                            Collecting…
+                        </span>
                     </button>
                     <button @click="refreshHotConversations()"
                             :disabled="refreshing"
-                            class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
-                        <span x-show="!refreshing">Refresh Hot Conversations</span>
-                        <span x-show="refreshing">Refreshing...</span>
+                            class="bg-surface-3 hover:bg-surface-4 active:scale-[0.98] disabled:opacity-40 text-text-primary px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                        <span x-show="!refreshing">Refresh Conversations</span>
+                        <span x-show="refreshing" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                            Refreshing…
+                        </span>
                     </button>
                     <button @click="loadPostStats()"
-                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-medium">
+                            class="text-text-secondary hover:text-text-primary px-4 py-2.5 text-sm font-medium transition-colors duration-150">
                         Refresh Stats
                     </button>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">
-                    "Refresh Hot Conversations" re-fetches comments (including nested replies) for high-engagement posts.
+                <p class="text-xs text-text-muted mt-3">Refresh Conversations re-fetches comments for high-engagement posts.</p>
+            </section>
+
+            <!-- Collection result -->
+            <div x-show="collectResult" x-transition class="border border-insight-opportunity/20 rounded-lg p-4 bg-insight-opportunity/5">
+                <p class="text-insight-opportunity font-medium text-sm">Collection complete</p>
+                <p class="text-sm text-text-secondary mt-1">
+                    <span class="tabular-nums" x-text="collectResult.posts_new"></span> new posts,
+                    <span class="tabular-nums" x-text="collectResult.comments_collected"></span> comments
                 </p>
-                <div x-show="collectResult" class="mt-4 p-4 bg-gray-700 rounded">
-                    <p class="text-green-400">Collection complete!</p>
-                    <p class="text-sm text-gray-300">
-                        <span x-text="collectResult.posts_new"></span> new posts,
-                        <span x-text="collectResult.comments_collected"></span> comments
-                    </p>
-                </div>
-                <div x-show="refreshResult" class="mt-4 p-4 bg-gray-700 rounded">
-                    <p class="text-purple-400">Refresh complete!</p>
-                    <p class="text-sm text-gray-300">
-                        <span x-text="refreshResult.posts_refreshed"></span> posts refreshed,
-                        <span x-text="refreshResult.comments_new"></span> new comments,
-                        <span x-text="refreshResult.comments_updated"></span> updated
-                    </p>
-                </div>
+            </div>
+            <div x-show="refreshResult" x-transition class="border border-accent/20 rounded-lg p-4 bg-accent-subtle">
+                <p class="text-accent font-medium text-sm">Refresh complete</p>
+                <p class="text-sm text-text-secondary mt-1">
+                    <span class="tabular-nums" x-text="refreshResult.posts_refreshed"></span> posts refreshed,
+                    <span class="tabular-nums" x-text="refreshResult.comments_new"></span> new comments,
+                    <span class="tabular-nums" x-text="refreshResult.comments_updated"></span> updated
+                </p>
             </div>
 
             <!-- Posts by Subreddit -->
-            <div class="bg-gray-800 rounded-lg p-6" x-show="Object.keys(postStats.posts_by_subreddit || {}).length > 0">
-                <h2 class="text-xl font-semibold mb-4">Posts by Subreddit</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <section x-show="Object.keys(postStats.posts_by_subreddit || {}).length > 0">
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Posts by Subreddit</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     <template x-for="(count, sub) in postStats.posts_by_subreddit" :key="sub">
-                        <div class="bg-gray-700 rounded p-3">
-                            <div class="text-sm text-gray-400" x-text="'r/' + sub"></div>
-                            <div class="text-lg font-semibold" x-text="count"></div>
+                        <div class="flex items-baseline justify-between border border-border rounded-lg px-4 py-3">
+                            <span class="text-sm text-text-secondary" x-text="'r/' + sub"></span>
+                            <span class="text-lg font-semibold tabular-nums" x-text="count"></span>
                         </div>
                     </template>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- Subreddits Tab -->
-        <div x-show="tab === 'subreddits'" class="space-y-6">
-            <!-- Add Subreddit -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Add Subreddit</h2>
-                <div class="flex space-x-4">
-                    <input type="text"
-                           x-model="newSubreddit"
-                           @keyup.enter="addSubreddit()"
-                           class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                           placeholder="Enter subreddit name (e.g., SaaS)">
-                    <button @click="addSubreddit()"
-                            :disabled="!newSubreddit || addingSubreddit"
-                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
-                        Add
+        <!-- ─── Subreddits ─── -->
+        <div x-show="tab === 'subreddits'" x-transition:enter="animate-in" class="space-y-8">
+
+            <!-- Audiences -->
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Audiences</h2>
+                    <button @click="openAudienceForm()"
+                            class="text-accent hover:text-accent-light text-xs font-semibold transition-colors duration-150">
+                        + New Audience
                     </button>
                 </div>
-                <p x-show="addError" class="mt-2 text-red-400 text-sm" x-text="addError"></p>
-            </div>
 
-            <!-- Catalog Browser -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Subreddit Catalog</h2>
-                <p class="text-gray-400 text-sm mb-4">Browse curated subreddits for startup research</p>
+                <div x-show="audiences.length === 0 && !showAudienceForm" class="text-center py-8 border border-dashed border-border rounded-lg">
+                    <p class="text-text-muted text-sm">No audiences yet</p>
+                    <p class="text-text-muted text-xs mt-1">Group subreddits to filter insights by audience</p>
+                </div>
 
-                <!-- Category Filter -->
-                <div class="flex flex-wrap gap-2 mb-4">
-                    <button @click="catalogFilter = null"
-                            :class="catalogFilter === null ? 'bg-blue-600' : 'bg-gray-700'"
-                            class="px-3 py-1 rounded text-sm">All</button>
-                    <template x-for="cat in catalogCategories" :key="cat">
-                        <button @click="catalogFilter = cat"
-                                :class="catalogFilter === cat ? 'bg-blue-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm" x-text="cat.replace('_', ' ')"></button>
+                <!-- Audience Cards -->
+                <div class="space-y-1.5" x-show="audiences.length > 0">
+                    <template x-for="aud in audiences" :key="aud.id">
+                        <div class="flex items-center justify-between border border-border rounded-lg px-4 py-3 hover:border-border-light transition-colors duration-150">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-3 h-3 rounded-full shrink-0" :style="'background-color:' + (aud.color || '#d4a373')"></div>
+                                <div class="min-w-0">
+                                    <p class="font-medium text-sm" x-text="aud.name"></p>
+                                    <p class="text-xs text-text-muted truncate" x-text="aud.subreddit_names.map(s => 'r/' + s).join(', ') || 'No subreddits'"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 ml-3">
+                                <button @click="openAudienceForm(aud)"
+                                        class="text-text-muted hover:text-text-primary text-xs font-medium px-2 py-1 rounded-md hover:bg-surface-3 transition-all duration-150">
+                                    Edit
+                                </button>
+                                <button @click="deleteAudience(aud.id)"
+                                        class="text-insight-pain/60 hover:text-insight-pain text-xs font-medium px-2 py-1 rounded-md hover:bg-insight-pain/10 transition-all duration-150">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
                     </template>
                 </div>
 
-                <!-- Catalog List -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                <!-- Audience Form Modal -->
+                <div x-show="showAudienceForm" x-transition class="mt-3 border border-accent/30 rounded-lg p-5 bg-surface-1">
+                    <h3 class="text-sm font-semibold text-text-primary mb-4" x-text="editingAudience ? 'Edit Audience' : 'New Audience'"></h3>
+                    <div class="space-y-3">
+                        <div class="flex gap-3">
+                            <input type="text" x-model="audienceForm.name"
+                                   class="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent transition-colors duration-150"
+                                   placeholder="Audience name">
+                            <input type="color" x-model="audienceForm.color"
+                                   class="w-10 h-10 rounded-lg border border-border cursor-pointer bg-surface-2" title="Color">
+                        </div>
+                        <input type="text" x-model="audienceForm.description"
+                               class="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent transition-colors duration-150"
+                               placeholder="Description (optional)">
+                        <div>
+                            <p class="text-xs text-text-muted mb-2">Select subreddits:</p>
+                            <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                                <template x-for="sub in subreddits" :key="sub.name">
+                                    <button @click="toggleAudienceSubreddit(sub.name)"
+                                            :class="audienceForm.subreddit_names.includes(sub.name)
+                                                ? 'bg-accent text-surface-0'
+                                                : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                            class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-150"
+                                            x-text="'r/' + sub.name"></button>
+                                </template>
+                            </div>
+                            <p x-show="subreddits.length === 0" class="text-xs text-text-muted">Add subreddits first</p>
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button @click="saveAudience()"
+                                    :disabled="!audienceForm.name"
+                                    class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150">
+                                Save
+                            </button>
+                            <button @click="showAudienceForm = false"
+                                    class="text-text-muted hover:text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Subreddit -->
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Add Subreddit</h2>
+                <div class="flex gap-3">
+                    <input type="text"
+                           x-model="newSubreddit"
+                           @keyup.enter="addSubreddit()"
+                           class="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-text-muted text-sm focus:border-accent transition-colors duration-150"
+                           placeholder="Enter subreddit name (e.g., SaaS)">
+                    <button @click="addSubreddit()"
+                            :disabled="!newSubreddit || addingSubreddit"
+                            class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150">
+                        Add
+                    </button>
+                </div>
+                <p x-show="addError" class="mt-2 text-insight-pain text-sm" x-text="addError"></p>
+            </section>
+
+            <!-- Catalog -->
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Subreddit Catalog</h2>
+                <p class="text-text-muted text-xs mb-4">Curated subreddits for startup research</p>
+
+                <div class="flex flex-wrap gap-1.5 mb-5">
+                    <button @click="catalogFilter = null"
+                            :class="catalogFilter === null ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                            class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">All</button>
+                    <template x-for="cat in catalogCategories" :key="cat">
+                        <button @click="catalogFilter = cat"
+                                :class="catalogFilter === cat ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150"
+                                x-text="cat.replace('_', ' ')"></button>
+                    </template>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[28rem] overflow-y-auto scroll-smooth pr-1">
                     <template x-for="sub in filteredCatalog" :key="sub.name">
-                        <div class="bg-gray-700 rounded p-3 flex justify-between items-start">
-                            <div>
-                                <div class="font-medium" x-text="sub.display_name"></div>
-                                <div class="text-xs text-gray-400" x-text="sub.best_for"></div>
-                                <div class="text-xs text-gray-500" x-text="(sub.subscribers || 0).toLocaleString() + ' subscribers'"></div>
+                        <div class="flex items-center justify-between border border-border rounded-lg px-4 py-3 hover:border-border-light transition-colors duration-150">
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm truncate" x-text="sub.display_name"></p>
+                                <p class="text-xs text-text-muted truncate" x-text="sub.best_for"></p>
+                                <p class="text-xs text-text-muted tabular-nums" x-text="(sub.subscribers || 0).toLocaleString() + ' subscribers'"></p>
                             </div>
                             <button @click="addSubredditFromCatalog(sub.name)"
                                     :disabled="isMonitored(sub.name)"
-                                    :class="isMonitored(sub.name) ? 'bg-green-700 cursor-default' : 'bg-blue-600 hover:bg-blue-700'"
-                                    class="px-3 py-1 rounded text-sm">
-                                <span x-text="isMonitored(sub.name) ? 'Added' : 'Add'"></span>
+                                    :class="isMonitored(sub.name)
+                                        ? 'text-insight-opportunity bg-insight-opportunity/10 cursor-default'
+                                        : 'text-accent bg-accent-subtle hover:bg-accent hover:text-surface-0'"
+                                    class="ml-3 shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150">
+                                <span x-text="isMonitored(sub.name) ? '✓ Added' : 'Add'"></span>
                             </button>
                         </div>
                     </template>
                 </div>
-            </div>
+            </section>
 
-            <!-- Monitored Subreddits -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Monitored Subreddits</h2>
-                <div x-show="subreddits.length === 0" class="text-gray-400">
-                    No subreddits being monitored. Add some above!
+            <!-- Monitored -->
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Monitored Subreddits</h2>
+                <div x-show="subreddits.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
+                    <p class="text-text-muted text-sm">No subreddits monitored yet</p>
+                    <p class="text-text-muted text-xs mt-1">Add from the catalog above to start collecting</p>
                 </div>
-                <div class="space-y-2">
+                <div class="space-y-1.5">
                     <template x-for="sub in subreddits" :key="sub.name">
-                        <div class="bg-gray-700 rounded p-3 flex justify-between items-center">
-                            <div>
-                                <div class="font-medium" x-text="sub.display_name || 'r/' + sub.name"></div>
-                                <div class="text-xs text-gray-400">
-                                    <span x-text="sub.post_count"></span> posts collected
+                        <div class="flex items-center justify-between border border-border rounded-lg px-4 py-3 hover:border-border-light transition-colors duration-150">
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm" x-text="sub.display_name || 'r/' + sub.name"></p>
+                                <p class="text-xs text-text-muted">
+                                    <span class="tabular-nums" x-text="sub.post_count"></span> posts
+                                    <span x-show="sub.subscribers"> · <span class="tabular-nums" x-text="(sub.subscribers || 0).toLocaleString()"></span> subscribers</span>
+                                    <template x-if="getGrowth(sub.name)?.change_pct != null">
+                                        <span :class="getGrowth(sub.name).change_pct >= 0 ? 'text-insight-opportunity' : 'text-insight-pain'"
+                                              class="ml-1 tabular-nums font-medium"
+                                              x-text="(getGrowth(sub.name).change_pct >= 0 ? '↑' : '↓') + Math.abs(getGrowth(sub.name).change_pct) + '%'"></span>
+                                    </template>
                                     <span x-show="sub.last_collected"> · Last: <span x-text="formatDate(sub.last_collected)"></span></span>
-                                </div>
+                                </p>
                             </div>
-                            <div class="flex space-x-2">
+                            <div class="flex items-center gap-2 ml-3">
                                 <button @click="collectSubreddit(sub.name)"
-                                        class="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm">
+                                        class="text-text-muted hover:text-text-primary text-xs font-medium px-3 py-1.5 rounded-md hover:bg-surface-3 transition-all duration-150">
                                     Collect
                                 </button>
                                 <button @click="removeSubreddit(sub.name)"
-                                        class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">
+                                        class="text-insight-pain/60 hover:text-insight-pain text-xs font-medium px-3 py-1.5 rounded-md hover:bg-insight-pain/10 transition-all duration-150">
                                     Remove
                                 </button>
                             </div>
                         </div>
                     </template>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- Posts Tab -->
-        <div x-show="tab === 'posts'" class="space-y-6">
+        <!-- ─── Posts ─── -->
+        <div x-show="tab === 'posts'" x-transition:enter="animate-in" class="space-y-6">
+
             <!-- Filters -->
-            <div class="bg-gray-800 rounded-lg p-4 flex flex-wrap gap-4">
+            <div class="flex flex-wrap gap-3 items-center">
                 <select x-model="postFilter.subreddit"
                         @change="loadPosts()"
-                        class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                        class="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-text-primary">
                     <option value="">All Subreddits</option>
                     <template x-for="sub in subreddits" :key="sub.name">
                         <option :value="sub.name" x-text="'r/' + sub.name"></option>
@@ -236,484 +488,476 @@
                 </select>
                 <select x-model="postFilter.analyzed"
                         @change="loadPosts()"
-                        class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                        class="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-text-primary">
                     <option value="">All Posts</option>
                     <option value="false">Not Analyzed</option>
                     <option value="true">Analyzed</option>
                 </select>
-                <button @click="loadPosts()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                <button @click="loadPosts()" class="text-text-muted hover:text-text-primary text-sm font-medium transition-colors duration-150">
                     Refresh
                 </button>
+                <span class="ml-auto text-xs text-text-muted tabular-nums"><span x-text="postsData.total"></span> posts</span>
             </div>
 
-            <!-- Posts List -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Posts (<span x-text="postsData.total"></span>)</h2>
-                </div>
+            <!-- Post List -->
+            <div x-show="posts.length === 0" class="text-center py-16 border border-dashed border-border rounded-lg">
+                <p class="text-text-muted text-sm">No posts yet</p>
+                <p class="text-text-muted text-xs mt-1">Add subreddits and collect posts to get started</p>
+            </div>
 
-                <div x-show="posts.length === 0" class="text-gray-400 text-center py-8">
-                    No posts yet. Add subreddits and collect posts to get started.
-                </div>
-
-                <div class="space-y-3">
-                    <template x-for="post in posts" :key="post.id">
-                        <div class="bg-gray-700 rounded p-4">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <a :href="post.reddit_url" target="_blank"
-                                       class="font-medium text-blue-400 hover:text-blue-300" x-text="post.title"></a>
-                                    <div class="text-sm text-gray-400 mt-1 flex flex-wrap items-center gap-x-2">
-                                        <span>r/<span x-text="post.subreddit"></span></span>
-                                        <span class="text-gray-500">·</span>
-                                        <span :class="{
-                                            'text-green-400': post.score >= 50,
-                                            'text-yellow-400': post.score >= 10 && post.score < 50,
-                                            'text-gray-400': post.score < 10
-                                        }">
-                                            <span x-text="post.score"></span> pts
+            <div class="space-y-2">
+                <template x-for="post in posts" :key="post.id">
+                    <div class="border border-border rounded-lg px-5 py-4 hover:border-border-light transition-colors duration-150">
+                        <div class="flex justify-between items-start gap-4">
+                            <div class="min-w-0 flex-1">
+                                <a :href="post.reddit_url" target="_blank"
+                                   class="font-medium text-sm text-text-primary hover:text-accent transition-colors duration-150 line-clamp-1" x-text="post.title"></a>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-xs text-text-muted">
+                                    <span class="font-medium text-text-secondary">r/<span x-text="post.subreddit"></span></span>
+                                    <span class="text-border-light">·</span>
+                                    <span :class="{
+                                        'text-insight-opportunity': post.score >= 50,
+                                        'text-insight-solution': post.score >= 10 && post.score < 50,
+                                    }" class="tabular-nums">
+                                        <span x-text="post.score"></span> pts
+                                    </span>
+                                    <span class="text-border-light">·</span>
+                                    <span class="tabular-nums" x-text="post.num_comments + ' comments'"></span>
+                                    <template x-if="post.upvote_ratio">
+                                        <span>
+                                            <span class="text-border-light">·</span>
+                                            <span :class="{
+                                                'text-insight-opportunity': post.upvote_ratio >= 0.8,
+                                                'text-insight-solution': post.upvote_ratio >= 0.6 && post.upvote_ratio < 0.8,
+                                                'text-insight-pain': post.upvote_ratio < 0.6
+                                            }" class="tabular-nums" x-text="Math.round(post.upvote_ratio * 100) + '% upvoted'"></span>
                                         </span>
-                                        <span class="text-gray-500">·</span>
-                                        <span x-text="post.num_comments"></span> comments
-                                        <span x-show="post.upvote_ratio" class="text-gray-500">·</span>
-                                        <span x-show="post.upvote_ratio" :class="{
-                                            'text-green-400': post.upvote_ratio >= 0.8,
-                                            'text-yellow-400': post.upvote_ratio >= 0.6 && post.upvote_ratio < 0.8,
-                                            'text-red-400': post.upvote_ratio < 0.6
-                                        }">
-                                            <span x-text="Math.round(post.upvote_ratio * 100)"></span>% upvoted
-                                        </span>
-                                        <span class="text-gray-500">·</span>
-                                        <span x-text="formatDate(post.created_utc)"></span>
-                                    </div>
-                                    <p x-show="post.body" class="text-sm text-gray-300 mt-2 line-clamp-2" x-text="post.body"></p>
+                                    </template>
+                                    <span class="text-border-light">·</span>
+                                    <span x-text="formatDate(post.created_utc)"></span>
                                 </div>
-                                <div class="ml-4 flex flex-col items-end gap-2">
-                                    <span :class="post.analyzed ? 'bg-green-600' : 'bg-yellow-600'"
-                                          class="px-2 py-1 rounded text-xs" x-text="post.analyzed ? 'Analyzed' : 'Pending'"></span>
-                                    <button @click="refreshPostComments(post.id)"
-                                            class="text-xs text-gray-500 hover:text-gray-300"
-                                            title="Refresh comments">
-                                        ↻ Refresh
-                                    </button>
-                                </div>
+                                <p x-show="post.body" class="text-xs text-text-secondary mt-2 line-clamp-2 leading-relaxed" x-text="post.body"></p>
+                            </div>
+                            <div class="flex flex-col items-end gap-2 shrink-0">
+                                <span :class="post.analyzed
+                                    ? 'text-insight-opportunity bg-insight-opportunity/10'
+                                    : 'text-insight-solution bg-insight-solution/10'"
+                                      class="px-2 py-0.5 rounded text-xs font-medium"
+                                      x-text="post.analyzed ? 'Analyzed' : 'Pending'"></span>
+                                <button @click="refreshPostComments(post.id)"
+                                        class="text-xs text-text-muted hover:text-accent transition-colors duration-150"
+                                        title="Refresh comments">
+                                    ↻ Refresh
+                                </button>
                             </div>
                         </div>
-                    </template>
-                </div>
+                    </div>
+                </template>
+            </div>
 
-                <!-- Pagination -->
-                <div x-show="postsData.total > 20" class="flex justify-center space-x-2 mt-4">
-                    <button @click="postFilter.page--; loadPosts()"
-                            :disabled="postFilter.page <= 1"
-                            class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-3 py-1 rounded">
-                        Previous
-                    </button>
-                    <span class="px-3 py-1">Page <span x-text="postFilter.page"></span></span>
-                    <button @click="postFilter.page++; loadPosts()"
-                            :disabled="!postsData.has_more"
-                            class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-3 py-1 rounded">
-                        Next
-                    </button>
-                </div>
+            <!-- Pagination -->
+            <div x-show="postsData.total > 20" class="flex items-center justify-center gap-2">
+                <button @click="postFilter.page--; loadPosts()"
+                        :disabled="postFilter.page <= 1"
+                        class="bg-surface-2 hover:bg-surface-3 disabled:opacity-30 px-4 py-2 rounded-lg text-sm transition-colors duration-150">
+                    Previous
+                </button>
+                <span class="px-4 py-2 text-sm text-text-muted tabular-nums">Page <span x-text="postFilter.page"></span></span>
+                <button @click="postFilter.page++; loadPosts()"
+                        :disabled="!postsData.has_more"
+                        class="bg-surface-2 hover:bg-surface-3 disabled:opacity-30 px-4 py-2 rounded-lg text-sm transition-colors duration-150">
+                    Next
+                </button>
             </div>
         </div>
 
-        <!-- Insights Tab -->
-        <div x-show="tab === 'insights'" class="space-y-6">
-            <!-- Search Bar -->
-            <div class="bg-gray-800 rounded-lg p-4">
-                <div class="flex gap-4">
-                    <div class="flex-1 relative">
-                        <input type="text"
-                               x-model="searchQuery"
-                               @keyup.enter="performSearch()"
-                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 pr-10"
-                               placeholder="Search insights semantically (e.g., 'users struggling with onboarding')">
-                        <button @click="performSearch()"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </button>
-                    </div>
+        <!-- ─── Insights ─── -->
+        <div x-show="tab === 'insights'" x-transition:enter="animate-in" class="space-y-8">
+
+            <!-- Semantic Search -->
+            <section>
+                <div class="relative">
+                    <input type="text"
+                           x-model="searchQuery"
+                           @keyup.enter="performSearch()"
+                           class="w-full bg-surface-2 border border-border rounded-lg pl-10 pr-4 py-3 text-sm text-text-primary placeholder-text-muted focus:border-accent transition-colors duration-150"
+                           placeholder="Search insights semantically (e.g., 'users struggling with onboarding')">
+                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
                     <button @click="clearSearch()"
                             x-show="searchResults.length > 0"
-                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs font-medium transition-colors duration-150">
                         Clear
                     </button>
                 </div>
+
                 <!-- Search Results -->
-                <div x-show="searchResults.length > 0" class="mt-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-sm text-gray-400">
-                            Found <span x-text="searchResults.length" class="text-white font-medium"></span> results for "<span x-text="lastSearchQuery" class="text-blue-400"></span>"
-                        </span>
-                    </div>
-                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                <div x-show="searchResults.length > 0" x-transition class="mt-3">
+                    <p class="text-xs text-text-muted mb-2">
+                        <span class="text-text-primary tabular-nums" x-text="searchResults.length"></span> results for
+                        "<span class="text-accent" x-text="lastSearchQuery"></span>"
+                    </p>
+                    <div class="space-y-1.5 max-h-60 overflow-y-auto scroll-smooth">
                         <template x-for="result in searchResults" :key="result.insight_id">
                             <div @click="selectInsightFromSearch(result.insight_id)"
-                                 class="bg-gray-700 rounded p-3 cursor-pointer hover:bg-gray-600 transition">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
+                                 class="border border-border rounded-lg p-3 cursor-pointer hover:border-accent/40 transition-colors duration-150">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1 min-w-0">
                                         <span :class="{
-                                            'bg-red-600': result.type === 'pain_point',
-                                            'bg-yellow-600': result.type === 'solution_request',
-                                            'bg-green-600': result.type === 'opportunity',
-                                            'bg-purple-600': result.type === 'product_mention'
-                                        }" class="px-2 py-0.5 rounded text-xs mr-2" x-text="result.type?.replace('_', ' ')"></span>
-                                        <span class="text-sm" x-text="result.text.substring(0, 150) + '...'"></span>
+                                            'text-insight-pain bg-insight-pain/10': result.type === 'pain_point',
+                                            'text-insight-solution bg-insight-solution/10': result.type === 'solution_request',
+                                            'text-insight-opportunity bg-insight-opportunity/10': result.type === 'opportunity',
+                                            'text-insight-product bg-insight-product/10': result.type === 'product_mention'
+                                        }" class="inline-block px-1.5 py-0.5 rounded text-xs font-medium mb-1" x-text="result.type?.replace('_', ' ')"></span>
+                                        <p class="text-sm text-text-secondary line-clamp-2" x-text="result.text.substring(0, 150) + '...'"></p>
                                     </div>
-                                    <div class="ml-3 text-right">
-                                        <div class="text-xs text-gray-400">
-                                            <span x-text="(result.similarity * 100).toFixed(0)"></span>% match
-                                        </div>
-                                    </div>
+                                    <span class="text-xs text-text-muted tabular-nums shrink-0" x-text="(result.similarity * 100).toFixed(0) + '%'"></span>
                                 </div>
                             </div>
                         </template>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Analysis Stats & Actions -->
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Total Posts</h3>
-                    <div class="text-2xl font-semibold" x-text="analysisStatus.total_posts || 0"></div>
+            <!-- Stats -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden">
+                <div class="bg-surface-1 p-4">
+                    <p class="text-xs text-text-muted mb-0.5">Total Posts</p>
+                    <span class="text-xl font-semibold tabular-nums" x-text="analysisStatus.total_posts || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Analyzed</h3>
-                    <div class="text-2xl font-semibold text-green-400" x-text="analysisStatus.analyzed_posts || 0"></div>
+                <div class="bg-surface-1 p-4">
+                    <p class="text-xs text-text-muted mb-0.5">Analyzed</p>
+                    <span class="text-xl font-semibold tabular-nums text-insight-opportunity" x-text="analysisStatus.analyzed_posts || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Insights</h3>
-                    <div class="text-2xl font-semibold text-blue-400" x-text="analysisStatus.total_insights || 0"></div>
+                <div class="bg-surface-1 p-4">
+                    <p class="text-xs text-text-muted mb-0.5">Insights</p>
+                    <span class="text-xl font-semibold tabular-nums text-accent" x-text="analysisStatus.total_insights || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Themes</h3>
-                    <div class="text-2xl font-semibold text-purple-400" x-text="analysisStatus.total_themes || 0"></div>
+                <div class="bg-surface-1 p-4">
+                    <p class="text-xs text-text-muted mb-0.5">Themes</p>
+                    <span class="text-xl font-semibold tabular-nums text-insight-product" x-text="analysisStatus.total_themes || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Avg Analysis Time</h3>
-                    <div class="text-2xl font-semibold">
-                        <span x-text="analysisStatus.avg_analysis_duration_ms ? (analysisStatus.avg_analysis_duration_ms / 1000).toFixed(1) + 's' : '-'"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Analyze Button -->
-            <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
-                <div>
-                    <span x-show="analysisStatus.unanalyzed_posts > 0" class="text-yellow-400">
-                        <span x-text="analysisStatus.unanalyzed_posts"></span> posts waiting for analysis
+                <div class="bg-surface-1 p-4">
+                    <p class="text-xs text-text-muted mb-0.5">Avg Time</p>
+                    <span class="text-xl font-semibold tabular-nums">
+                        <span x-text="analysisStatus.avg_analysis_duration_ms ? (analysisStatus.avg_analysis_duration_ms / 1000).toFixed(1) + 's' : '—'"></span>
                     </span>
-                    <span x-show="analysisStatus.unanalyzed_posts === 0" class="text-green-400">
+                </div>
+            </div>
+
+            <!-- Analyze Bar -->
+            <div class="flex items-center justify-between border border-border rounded-lg px-5 py-3">
+                <div class="text-sm">
+                    <span x-show="analysisStatus.unanalyzed_posts > 0" class="text-insight-solution">
+                        <span class="tabular-nums" x-text="analysisStatus.unanalyzed_posts"></span> posts awaiting analysis
+                    </span>
+                    <span x-show="analysisStatus.unanalyzed_posts === 0" class="text-insight-opportunity">
                         All posts analyzed
                     </span>
                 </div>
                 <button @click="runAnalysis()"
                         :disabled="analyzing || analysisStatus.unanalyzed_posts === 0"
-                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                        class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-150">
                     <span x-show="!analyzing">Analyze Posts</span>
-                    <span x-show="analyzing">Analyzing...</span>
+                    <span x-show="analyzing" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                        Analyzing…
+                    </span>
                 </button>
             </div>
 
             <!-- Analysis Result -->
-            <div x-show="analysisResult" class="bg-green-900/30 border border-green-700 rounded-lg p-4">
-                <p class="text-green-400 font-medium">Analysis complete!</p>
-                <p class="text-sm text-gray-300 mt-1">
-                    <span x-text="analysisResult?.posts_analyzed"></span> posts analyzed,
-                    <span x-text="analysisResult?.insights_extracted"></span> insights extracted
-                    (<span x-text="((analysisResult?.total_duration_ms || 0) / 1000).toFixed(1)"></span>s total)
+            <div x-show="analysisResult" x-transition class="border border-insight-opportunity/20 rounded-lg p-4 bg-insight-opportunity/5">
+                <p class="text-insight-opportunity font-medium text-sm">Analysis complete</p>
+                <p class="text-sm text-text-secondary mt-1">
+                    <span class="tabular-nums" x-text="analysisResult?.posts_analyzed"></span> posts analyzed,
+                    <span class="tabular-nums" x-text="analysisResult?.insights_extracted"></span> insights extracted
+                    (<span class="tabular-nums" x-text="((analysisResult?.total_duration_ms || 0) / 1000).toFixed(1)"></span>s)
                 </p>
             </div>
 
-            <!-- Export Controls -->
-            <div class="bg-gray-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4">
+            <!-- Export -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
-                    <span class="text-gray-400 text-sm">Export:</span>
-                    <button @click="exportInsights('csv')"
-                            :disabled="analysisStatus.total_insights === 0"
-                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
-                        CSV
-                    </button>
-                    <button @click="exportInsights('json')"
-                            :disabled="analysisStatus.total_insights === 0"
-                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
-                        JSON
-                    </button>
-                    <button @click="exportInsights('md')"
-                            :disabled="analysisStatus.total_insights === 0"
-                            class="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 px-3 py-1.5 rounded text-sm">
-                        Markdown
-                    </button>
+                    <span class="text-text-muted text-xs uppercase tracking-wider font-medium">Export</span>
+                    <div class="flex gap-1">
+                        <button @click="exportInsights('csv')"
+                                :disabled="analysisStatus.total_insights === 0"
+                                class="text-text-secondary hover:text-text-primary disabled:opacity-30 px-3 py-1.5 rounded-md text-xs font-medium bg-surface-2 hover:bg-surface-3 transition-all duration-150">
+                            CSV
+                        </button>
+                        <button @click="exportInsights('json')"
+                                :disabled="analysisStatus.total_insights === 0"
+                                class="text-text-secondary hover:text-text-primary disabled:opacity-30 px-3 py-1.5 rounded-md text-xs font-medium bg-surface-2 hover:bg-surface-3 transition-all duration-150">
+                            JSON
+                        </button>
+                        <button @click="exportInsights('md')"
+                                :disabled="analysisStatus.total_insights === 0"
+                                class="text-text-secondary hover:text-text-primary disabled:opacity-30 px-3 py-1.5 rounded-md text-xs font-medium bg-surface-2 hover:bg-surface-3 transition-all duration-150">
+                            Markdown
+                        </button>
+                    </div>
                 </div>
                 <button @click="generateReport()"
                         :disabled="analysisStatus.total_insights === 0"
-                        class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-1.5 rounded text-sm font-medium">
-                    Generate Full Report
+                        class="text-accent hover:text-accent-light disabled:opacity-30 text-xs font-semibold transition-colors duration-150">
+                    Generate Full Report →
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Top Themes -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Top Themes</h2>
-                    <p class="text-sm text-gray-400 mb-4">Sorted by combined score (frequency × intensity)</p>
+            <!-- Themes + Types grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                    <div x-show="themes.length === 0" class="text-gray-400 text-center py-4">
-                        No themes yet. Run analysis to extract insights.
+                <!-- Top Themes -->
+                <section>
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Top Themes</h2>
+                    <p class="text-xs text-text-muted mb-4">Sorted by combined score (frequency × intensity)</p>
+
+                    <div x-show="themes.length === 0" class="text-center py-10 border border-dashed border-border rounded-lg">
+                        <p class="text-text-muted text-sm">No themes yet</p>
+                        <p class="text-text-muted text-xs mt-1">Run analysis to extract insights</p>
                     </div>
 
-                    <div class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="space-y-1.5 max-h-[26rem] overflow-y-auto scroll-smooth pr-1">
                         <template x-for="(theme, idx) in themes.slice(0, 15)" :key="theme.theme_key">
                             <div @click="selectTheme(theme.theme_key)"
-                                 :class="selectedTheme === theme.theme_key ? 'ring-2 ring-blue-500' : ''"
-                                 class="bg-gray-700 rounded p-3 cursor-pointer hover:bg-gray-600 transition">
+                                 :class="selectedTheme === theme.theme_key ? 'border-accent bg-accent-subtle' : 'border-border hover:border-border-light'"
+                                 class="border rounded-lg p-3.5 cursor-pointer transition-all duration-150">
                                 <div class="flex justify-between items-start">
-                                    <div>
-                                        <div class="font-medium" x-text="theme.theme_key.replace(/_/g, ' ')"></div>
-                                        <div class="text-xs text-gray-400 mt-1">
-                                            <span x-text="theme.count"></span> insights ·
-                                            avg intensity: <span x-text="theme.avg_intensity"></span>
-                                        </div>
+                                    <div class="min-w-0">
+                                        <p class="font-medium text-sm capitalize" x-text="theme.theme_key.replace(/_/g, ' ')"></p>
+                                        <p class="text-xs text-text-muted mt-0.5">
+                                            <span class="tabular-nums" x-text="theme.count"></span> insights ·
+                                            avg <span class="tabular-nums" x-text="theme.avg_intensity"></span> intensity
+                                        </p>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="text-lg font-bold text-blue-400" x-text="theme.combined_score"></div>
-                                        <div class="text-xs text-gray-500">score</div>
-                                    </div>
+                                    <span class="text-lg font-bold text-accent tabular-nums" x-text="theme.combined_score"></span>
                                 </div>
-                                <!-- Type badges -->
                                 <div class="flex gap-1 mt-2">
                                     <template x-for="type in theme.types" :key="type">
                                         <span :class="{
-                                            'bg-red-600': type === 'pain_point',
-                                            'bg-yellow-600': type === 'solution_request',
-                                            'bg-green-600': type === 'opportunity',
-                                            'bg-purple-600': type === 'product_mention'
-                                        }" class="px-2 py-0.5 rounded text-xs" x-text="type.replace('_', ' ')"></span>
+                                            'text-insight-pain bg-insight-pain/10': type === 'pain_point',
+                                            'text-insight-solution bg-insight-solution/10': type === 'solution_request',
+                                            'text-insight-opportunity bg-insight-opportunity/10': type === 'opportunity',
+                                            'text-insight-product bg-insight-product/10': type === 'product_mention'
+                                        }" class="px-1.5 py-0.5 rounded text-xs font-medium" x-text="type.replace('_', ' ')"></span>
                                     </template>
                                 </div>
                             </div>
                         </template>
                     </div>
-                </div>
+                </section>
 
-                <!-- Insight Type Distribution -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Insight Types</h2>
+                <!-- Insight Types -->
+                <section>
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Insight Types</h2>
 
                     <div class="space-y-3 mb-6">
                         <template x-for="(count, type) in insightTypeCounts" :key="type">
-                            <div class="flex items-center">
-                                <div class="w-32 text-sm" x-text="type.replace('_', ' ')"></div>
-                                <div class="flex-1 bg-gray-700 rounded h-6 overflow-hidden">
+                            <div class="flex items-center gap-3">
+                                <span class="w-28 text-xs text-text-secondary capitalize" x-text="type.replace('_', ' ')"></span>
+                                <div class="flex-1 bg-surface-2 rounded-full h-2 overflow-hidden">
                                     <div :class="{
-                                        'bg-red-600': type === 'pain_point',
-                                        'bg-yellow-600': type === 'solution_request',
-                                        'bg-green-600': type === 'opportunity',
-                                        'bg-purple-600': type === 'product_mention'
-                                    }" class="h-full transition-all" :style="'width: ' + (count / maxTypeCount * 100) + '%'"></div>
+                                        'bg-insight-pain': type === 'pain_point',
+                                        'bg-insight-solution': type === 'solution_request',
+                                        'bg-insight-opportunity': type === 'opportunity',
+                                        'bg-insight-product': type === 'product_mention'
+                                    }" class="h-full rounded-full transition-all duration-500" :style="'width: ' + (count / maxTypeCount * 100) + '%'"></div>
                                 </div>
-                                <div class="w-12 text-right text-sm" x-text="count"></div>
+                                <span class="w-8 text-right text-xs text-text-muted tabular-nums" x-text="count"></span>
                             </div>
                         </template>
                     </div>
 
-                    <!-- Filter by type -->
-                    <h3 class="font-medium mb-2">Filter by Type</h3>
-                    <div class="flex flex-wrap gap-2">
+                    <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Filter by Type</h3>
+                    <div class="flex flex-wrap gap-1.5">
                         <button @click="insightTypeFilter = null; loadInsightsList()"
-                                :class="insightTypeFilter === null ? 'bg-blue-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm">All</button>
+                                :class="insightTypeFilter === null ? 'bg-accent text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">All</button>
                         <button @click="insightTypeFilter = 'pain_point'; loadInsightsList()"
-                                :class="insightTypeFilter === 'pain_point' ? 'bg-red-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm">Pain Points</button>
+                                :class="insightTypeFilter === 'pain_point' ? 'bg-insight-pain text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">Pain Points</button>
                         <button @click="insightTypeFilter = 'solution_request'; loadInsightsList()"
-                                :class="insightTypeFilter === 'solution_request' ? 'bg-yellow-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm">Solution Requests</button>
+                                :class="insightTypeFilter === 'solution_request' ? 'bg-insight-solution text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">Solutions</button>
                         <button @click="insightTypeFilter = 'opportunity'; loadInsightsList()"
-                                :class="insightTypeFilter === 'opportunity' ? 'bg-green-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm">Opportunities</button>
+                                :class="insightTypeFilter === 'opportunity' ? 'bg-insight-opportunity text-surface-0' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">Opportunities</button>
                         <button @click="insightTypeFilter = 'product_mention'; loadInsightsList()"
-                                :class="insightTypeFilter === 'product_mention' ? 'bg-purple-600' : 'bg-gray-700'"
-                                class="px-3 py-1 rounded text-sm">Product Mentions</button>
+                                :class="insightTypeFilter === 'product_mention' ? 'bg-insight-product text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary'"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">Products</button>
                     </div>
-                </div>
+                </section>
             </div>
 
-            <!-- Selected Theme Details / Insights List -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">
-                        <span x-show="selectedTheme">Theme: <span x-text="selectedTheme?.replace(/_/g, ' ')" class="text-blue-400"></span></span>
-                        <span x-show="!selectedTheme && insightTypeFilter">
-                            <span x-text="insightTypeFilter?.replace('_', ' ')" class="capitalize"></span>s
-                        </span>
+            <!-- Insights List -->
+            <section>
+                <div class="flex items-baseline justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                        <span x-show="selectedTheme" x-text="'Theme: ' + (selectedTheme || '').replace(/_/g, ' ')"></span>
+                        <span x-show="!selectedTheme && insightTypeFilter" x-text="(insightTypeFilter || '').replace('_', ' ') + 's'" class="capitalize"></span>
                         <span x-show="!selectedTheme && !insightTypeFilter">Recent Insights</span>
                     </h2>
                     <button x-show="selectedTheme || insightTypeFilter"
                             @click="selectedTheme = null; insightTypeFilter = null; loadInsightsList()"
-                            class="text-sm text-gray-400 hover:text-white">
+                            class="text-xs text-text-muted hover:text-accent transition-colors duration-150">
                         Clear filter
                     </button>
                 </div>
 
-                <div x-show="insightsList.length === 0" class="text-gray-400 text-center py-8">
-                    No insights yet. Run analysis on collected posts.
+                <div x-show="insightsList.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
+                    <p class="text-text-muted text-sm">No insights yet</p>
+                    <p class="text-text-muted text-xs mt-1">Run analysis on collected posts</p>
                 </div>
 
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <template x-for="insight in insightsList" :key="insight.id">
-                        <div class="bg-gray-700 rounded p-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
+                        <div class="border border-border rounded-lg p-5 hover:border-border-light transition-colors duration-150">
+                            <div class="flex justify-between items-start gap-4 mb-2">
+                                <div class="flex items-center gap-2 flex-wrap">
                                     <span :class="{
-                                        'bg-red-600': insight.type === 'pain_point',
-                                        'bg-yellow-600': insight.type === 'solution_request',
-                                        'bg-green-600': insight.type === 'opportunity',
-                                        'bg-purple-600': insight.type === 'product_mention'
-                                    }" class="px-2 py-0.5 rounded text-xs mr-2" x-text="insight.type.replace('_', ' ')"></span>
-                                    <span class="font-medium" x-text="insight.title"></span>
+                                        'text-insight-pain bg-insight-pain/10': insight.type === 'pain_point',
+                                        'text-insight-solution bg-insight-solution/10': insight.type === 'solution_request',
+                                        'text-insight-opportunity bg-insight-opportunity/10': insight.type === 'opportunity',
+                                        'text-insight-product bg-insight-product/10': insight.type === 'product_mention'
+                                    }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="insight.type.replace('_', ' ')"></span>
+                                    <span class="font-medium text-sm" x-text="insight.title"></span>
                                 </div>
-                                <div x-show="insight.intensity_score" class="text-right">
-                                    <div :class="{
-                                        'text-green-400': insight.intensity_score < 40,
-                                        'text-yellow-400': insight.intensity_score >= 40 && insight.intensity_score < 70,
-                                        'text-red-400': insight.intensity_score >= 70
-                                    }" class="font-bold" x-text="insight.intensity_score"></div>
-                                    <div class="text-xs text-gray-500">intensity</div>
+                                <div x-show="insight.intensity_score" class="text-right shrink-0">
+                                    <span :class="{
+                                        'text-insight-opportunity': insight.intensity_score < 40,
+                                        'text-insight-solution': insight.intensity_score >= 40 && insight.intensity_score < 70,
+                                        'text-insight-pain': insight.intensity_score >= 70
+                                    }" class="text-lg font-bold tabular-nums" x-text="insight.intensity_score"></span>
                                 </div>
                             </div>
 
-                            <p class="text-sm text-gray-300 mb-3" x-text="insight.description"></p>
+                            <p class="text-sm text-text-secondary leading-relaxed mb-3" x-text="insight.description"></p>
 
                             <!-- Quote -->
-                            <div x-show="insight.quote" class="bg-gray-800 rounded p-3 border-l-4 border-blue-500">
-                                <p class="text-sm italic text-gray-300">"<span x-text="insight.quote"></span>"</p>
-                                <p class="text-xs text-gray-500 mt-1">
+                            <div x-show="insight.quote" class="border-l-2 border-accent/40 pl-4 py-2 mb-3">
+                                <p class="text-sm text-text-secondary italic leading-relaxed">
+                                    <span class="quote-mark text-accent text-lg leading-none">"</span><span x-text="insight.quote"></span><span class="quote-mark text-accent text-lg leading-none">"</span>
+                                </p>
+                                <p class="text-xs text-text-muted mt-1">
                                     — <span x-text="insight.quote_author || 'anonymous'"></span>
                                 </p>
                             </div>
 
-                            <!-- Product mention extra info -->
-                            <div x-show="insight.product_name" class="mt-2 text-sm">
-                                <span class="text-gray-400">Product:</span>
-                                <span class="text-purple-400 font-medium" x-text="insight.product_name"></span>
-                                <span x-show="insight.sentiment" class="ml-2">
+                            <!-- Product mention -->
+                            <div x-show="insight.product_name" class="text-sm mb-2">
+                                <span class="text-text-muted">Product:</span>
+                                <span class="text-insight-product font-medium" x-text="insight.product_name"></span>
+                                <span x-show="insight.sentiment" class="ml-1.5">
                                     (<span :class="{
-                                        'text-green-400': insight.sentiment === 'positive',
-                                        'text-red-400': insight.sentiment === 'negative',
-                                        'text-gray-400': insight.sentiment === 'neutral',
-                                        'text-yellow-400': insight.sentiment === 'mixed'
+                                        'text-insight-opportunity': insight.sentiment === 'positive',
+                                        'text-insight-pain': insight.sentiment === 'negative',
+                                        'text-text-muted': insight.sentiment === 'neutral',
+                                        'text-insight-solution': insight.sentiment === 'mixed'
                                     }" x-text="insight.sentiment"></span>)
                                 </span>
                             </div>
 
-                            <!-- Link to Reddit -->
-                            <div class="mt-3 flex justify-between items-center text-xs">
-                                <span class="text-gray-500" x-text="'Theme: ' + insight.theme_key.replace(/_/g, ' ')"></span>
+                            <!-- Footer -->
+                            <div class="flex justify-between items-center text-xs pt-2 border-t border-border">
+                                <span class="text-text-muted capitalize" x-text="insight.theme_key.replace(/_/g, ' ')"></span>
                                 <a :href="'https://reddit.com' + insight.permalink" target="_blank"
-                                   class="text-blue-400 hover:text-blue-300">
+                                   class="text-accent hover:text-accent-light transition-colors duration-150">
                                     View on Reddit →
                                 </a>
                             </div>
                         </div>
                     </template>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- LLM Tab -->
-        <div x-show="tab === 'llm'" class="space-y-6">
-            <!-- Provider Status -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Provider Status</h2>
-                <div class="space-y-3">
+        <!-- ─── LLM ─── -->
+        <div x-show="tab === 'llm'" x-transition:enter="animate-in" class="space-y-8">
+
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Provider Status</h2>
+                <div class="space-y-1.5">
                     <template x-for="(status, name) in llmStatus.providers" :key="name">
-                        <div class="flex items-center justify-between p-3 bg-gray-700 rounded">
-                            <div class="flex items-center">
-                                <div :class="status.available ? 'bg-green-500' : 'bg-gray-500'"
-                                     class="w-2 h-2 rounded-full mr-3"></div>
-                                <span class="font-medium" x-text="name"></span>
-                                <span x-show="status.is_primary" class="ml-2 text-xs bg-blue-600 px-2 py-0.5 rounded">primary</span>
+                        <div class="flex items-center justify-between border border-border rounded-lg px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div :class="status.available ? 'bg-insight-opportunity' : 'bg-surface-4'"
+                                     class="w-2 h-2 rounded-full"></div>
+                                <span class="font-medium text-sm" x-text="name"></span>
+                                <span x-show="status.is_primary" class="text-xs text-accent bg-accent-subtle px-2 py-0.5 rounded font-medium">primary</span>
                             </div>
-                            <div class="text-sm text-gray-400">
+                            <div class="text-xs text-text-muted">
                                 <span x-text="status.model"></span>
-                                <span x-show="!status.available" class="ml-2 text-yellow-500">(unavailable)</span>
+                                <span x-show="!status.available" class="ml-2 text-insight-solution">(unavailable)</span>
                             </div>
                         </div>
                     </template>
                 </div>
-            </div>
+            </section>
 
-            <!-- LLM Test -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Test LLM</h2>
-                <div class="mb-4">
-                    <input type="text"
-                           x-model="testPrompt"
-                           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                           placeholder="Enter a test prompt...">
-                </div>
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Test LLM</h2>
+                <input type="text"
+                       x-model="testPrompt"
+                       class="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:border-accent transition-colors duration-150 mb-3"
+                       placeholder="Enter a test prompt...">
                 <button @click="testLLM()"
                         :disabled="testing"
-                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded font-medium">
+                        class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-150">
                     <span x-show="!testing">Test LLM</span>
-                    <span x-show="testing">Testing...</span>
+                    <span x-show="testing" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                        Testing…
+                    </span>
                 </button>
-                <div x-show="testResult" class="mt-4 p-4 bg-gray-700 rounded">
-                    <div class="flex items-center mb-2">
-                        <span :class="testResult.success ? 'text-green-400' : 'text-red-400'" class="font-medium">
-                            <span x-text="testResult.success ? 'Success' : 'Failed'"></span>
-                        </span>
-                        <span x-show="testResult.latency_ms" class="text-gray-400 text-sm ml-2">
+                <div x-show="testResult" x-transition class="mt-4 border border-border rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-2 text-sm">
+                        <span :class="testResult.success ? 'text-insight-opportunity' : 'text-insight-pain'" class="font-medium"
+                              x-text="testResult.success ? '✓ Success' : '✗ Failed'"></span>
+                        <span x-show="testResult.latency_ms" class="text-text-muted text-xs tabular-nums">
                             (<span x-text="testResult.latency_ms"></span>ms)
                         </span>
                     </div>
-                    <p class="text-gray-300" x-text="testResult.response || testResult.error || testResult.detail"></p>
+                    <p class="text-sm text-text-secondary leading-relaxed" x-text="testResult.response || testResult.error || testResult.detail"></p>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- Analytics Tab -->
-        <div x-show="tab === 'analytics'" class="space-y-6">
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Total Insights</h3>
-                    <div class="text-2xl font-semibold text-blue-400" x-text="analyticsData.totalInsights || 0"></div>
+        <!-- ─── Analytics ─── -->
+        <div x-show="tab === 'analytics'" x-transition:enter="animate-in" class="space-y-8">
+
+            <!-- Summary -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden">
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Total Insights</p>
+                    <span class="text-xl font-semibold tabular-nums text-accent" x-text="analyticsData.totalInsights || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Active Themes</h3>
-                    <div class="text-2xl font-semibold text-purple-400" x-text="analyticsData.totalThemes || 0"></div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Active Themes</p>
+                    <span class="text-xl font-semibold tabular-nums text-insight-product" x-text="analyticsData.totalThemes || 0"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Avg Intensity</h3>
-                    <div class="text-2xl font-semibold text-yellow-400" x-text="analyticsData.avgIntensity || '-'"></div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Avg Intensity</p>
+                    <span class="text-xl font-semibold tabular-nums text-insight-solution" x-text="analyticsData.avgIntensity || '—'"></span>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 mb-1">Top Subreddit</h3>
-                    <div class="text-xl font-semibold text-green-400" x-text="analyticsData.topSubreddit || '-'"></div>
+                <div class="bg-surface-1 p-5">
+                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">Top Subreddit</p>
+                    <span class="text-lg font-semibold text-insight-opportunity" x-text="analyticsData.topSubreddit || '—'"></span>
                 </div>
             </div>
 
             <!-- Charts Row 1 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Insight Type Distribution -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Insight Type Distribution</h2>
-                    <div class="h-64 flex items-center justify-center">
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Insight Distribution</h2>
+                    <div class="h-56 flex items-center justify-center">
                         <canvas id="insightTypeChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Top Themes by Score -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Top Themes by Score</h2>
-                    <div class="h-64">
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Top Themes</h2>
+                    <div class="h-56">
                         <canvas id="topThemesChart"></canvas>
                     </div>
                 </div>
@@ -721,83 +965,96 @@
 
             <!-- Charts Row 2 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Subreddit Activity -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Posts by Subreddit</h2>
-                    <div class="h-64">
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Posts by Subreddit</h2>
+                    <div class="h-56">
                         <canvas id="subredditActivityChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Theme × Type Heatmap -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Theme Intensity Distribution</h2>
-                    <div class="h-64">
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Theme Intensity</h2>
+                    <div class="h-56">
                         <canvas id="themeIntensityChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts Row 3 -->
-            <div class="grid grid-cols-1 gap-6">
-                <!-- Collection Timeline -->
-                <div class="bg-gray-800 rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4">Collection Timeline</h2>
-                    <div class="h-64">
-                        <canvas id="collectionTimelineChart"></canvas>
-                    </div>
+            <!-- Timeline -->
+            <div class="border border-border rounded-lg p-5">
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Collection Timeline</h2>
+                <div class="h-56">
+                    <canvas id="collectionTimelineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Subscriber Growth -->
+            <div class="border border-border rounded-lg p-5">
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Subscriber Growth (7d)</h2>
+                <div x-show="growthSummary.length === 0" class="text-center py-8 text-text-muted text-sm">
+                    Collect subreddits to start tracking growth
+                </div>
+                <div x-show="growthSummary.length > 0" class="space-y-2">
+                    <template x-for="g in growthSummary.filter(g => g.current_subscribers > 0)" :key="g.subreddit">
+                        <div class="flex items-center justify-between py-1.5">
+                            <span class="text-sm text-text-secondary w-32 truncate" x-text="'r/' + g.subreddit"></span>
+                            <span class="text-xs text-text-muted tabular-nums" x-text="g.current_subscribers.toLocaleString()"></span>
+                            <span class="w-20 text-right text-xs font-medium tabular-nums"
+                                  :class="g.change_pct != null ? (g.change_pct >= 0 ? 'text-insight-opportunity' : 'text-insight-pain') : 'text-text-muted'"
+                                  x-text="g.change_pct != null ? ((g.change_pct >= 0 ? '+' : '') + g.change_pct + '%') : '—'"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
 
             <!-- Top Insights Table -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Highest Intensity Insights</h2>
-                <div class="overflow-x-auto">
+            <section>
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Highest Intensity Insights</h2>
+                <div class="border border-border rounded-lg overflow-hidden">
                     <table class="w-full text-sm">
                         <thead>
-                            <tr class="text-gray-400 border-b border-gray-700">
-                                <th class="text-left py-2 px-3">Type</th>
-                                <th class="text-left py-2 px-3">Theme</th>
-                                <th class="text-left py-2 px-3">Title</th>
-                                <th class="text-left py-2 px-3">Subreddit</th>
-                                <th class="text-right py-2 px-3">Intensity</th>
+                            <tr class="bg-surface-1 text-text-muted text-xs uppercase tracking-wider">
+                                <th class="text-left py-3 px-4 font-medium">Type</th>
+                                <th class="text-left py-3 px-4 font-medium">Theme</th>
+                                <th class="text-left py-3 px-4 font-medium">Title</th>
+                                <th class="text-left py-3 px-4 font-medium">Subreddit</th>
+                                <th class="text-right py-3 px-4 font-medium">Intensity</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-for="insight in topIntensityInsights" :key="insight.id">
-                                <tr class="border-b border-gray-700/50 hover:bg-gray-700/50">
-                                    <td class="py-2 px-3">
+                                <tr class="border-t border-border hover:bg-surface-1/50 transition-colors duration-100">
+                                    <td class="py-3 px-4">
                                         <span :class="{
-                                            'bg-red-600': insight.type === 'pain_point',
-                                            'bg-yellow-600': insight.type === 'solution_request',
-                                            'bg-green-600': insight.type === 'opportunity',
-                                            'bg-purple-600': insight.type === 'product_mention'
-                                        }" class="px-2 py-0.5 rounded text-xs" x-text="insight.type?.replace('_', ' ')"></span>
+                                            'text-insight-pain bg-insight-pain/10': insight.type === 'pain_point',
+                                            'text-insight-solution bg-insight-solution/10': insight.type === 'solution_request',
+                                            'text-insight-opportunity bg-insight-opportunity/10': insight.type === 'opportunity',
+                                            'text-insight-product bg-insight-product/10': insight.type === 'product_mention'
+                                        }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="insight.type?.replace('_', ' ')"></span>
                                     </td>
-                                    <td class="py-2 px-3 text-gray-300" x-text="insight.theme_key?.replace(/_/g, ' ')"></td>
-                                    <td class="py-2 px-3 text-gray-100 max-w-xs truncate" x-text="insight.title"></td>
-                                    <td class="py-2 px-3 text-gray-400" x-text="'r/' + insight.subreddit"></td>
-                                    <td class="py-2 px-3 text-right">
+                                    <td class="py-3 px-4 text-text-secondary capitalize text-xs" x-text="insight.theme_key?.replace(/_/g, ' ')"></td>
+                                    <td class="py-3 px-4 text-text-primary max-w-xs truncate text-xs" x-text="insight.title"></td>
+                                    <td class="py-3 px-4 text-text-muted text-xs" x-text="'r/' + insight.subreddit"></td>
+                                    <td class="py-3 px-4 text-right">
                                         <span :class="{
-                                            'text-green-400': insight.intensity_score < 40,
-                                            'text-yellow-400': insight.intensity_score >= 40 && insight.intensity_score < 70,
-                                            'text-red-400': insight.intensity_score >= 70
-                                        }" class="font-bold" x-text="insight.intensity_score"></span>
+                                            'text-insight-opportunity': insight.intensity_score < 40,
+                                            'text-insight-solution': insight.intensity_score >= 40 && insight.intensity_score < 70,
+                                            'text-insight-pain': insight.intensity_score >= 70
+                                        }" class="font-bold tabular-nums" x-text="insight.intensity_score"></span>
                                     </td>
                                 </tr>
                             </template>
                         </tbody>
                     </table>
+                    <p x-show="topIntensityInsights.length === 0" class="text-text-muted text-center py-8 text-sm">
+                        No insights yet. Run analysis to generate data.
+                    </p>
                 </div>
-                <p x-show="topIntensityInsights.length === 0" class="text-gray-500 text-center py-4">
-                    No insights yet. Run analysis to generate data.
-                </p>
-            </div>
+            </section>
         </div>
 
         <!-- Footer -->
-        <footer class="mt-8 text-center text-gray-500 text-sm">
-            <p>RedditWatch v0.1.0 - Phase 8</p>
+        <footer class="mt-12 pt-6 border-t border-border text-center">
+            <p class="text-xs text-text-muted">RedditWatch v0.3 · Audiences & Growth</p>
         </footer>
     </div>
 
@@ -822,10 +1079,18 @@
                 collectResult: null,
                 refreshing: false,
                 refreshResult: null,
+                // Audiences
+                audiences: [],
+                activeAudienceId: null,
+                activeAudienceSubreddits: [],
+                showAudienceForm: false,
+                editingAudience: null,
+                audienceForm: { name: '', description: '', color: '#d4a373', subreddit_names: [] },
+                // Growth
+                growthSummary: [],
                 testPrompt: "What are three common pain points for SaaS founders?",
                 testResult: null,
                 testing: false,
-                // Insights tab
                 analysisStatus: {},
                 themes: [],
                 insightsList: [],
@@ -833,15 +1098,15 @@
                 insightTypeFilter: null,
                 analyzing: false,
                 analysisResult: null,
-                // Search
                 searchQuery: '',
                 searchResults: [],
                 lastSearchQuery: '',
                 searchStats: {},
-                // Analytics
                 analyticsData: {},
                 topIntensityInsights: [],
                 charts: {},
+                toasts: [],
+                _toastId: 0,
 
                 async init() {
                     await Promise.all([
@@ -851,7 +1116,17 @@
                         this.loadCatalog(),
                         this.loadPostStats(),
                         this.loadPosts(),
+                        this.loadAudiences(),
                     ]);
+                },
+
+                // ── Toast system ──
+                showToast(title, detail = '', type = 'info', duration = 4000) {
+                    const id = ++this._toastId;
+                    this.toasts.push({ id, title, detail, type });
+                    setTimeout(() => {
+                        this.toasts = this.toasts.filter(t => t.id !== id);
+                    }, duration);
                 },
 
                 async checkHealth() {
@@ -876,6 +1151,7 @@
                     try {
                         const res = await fetch('/api/subreddits');
                         this.subreddits = await res.json();
+                        this.loadGrowthSummary();
                     } catch (e) {
                         this.subreddits = [];
                     }
@@ -908,6 +1184,7 @@
                     try {
                         const params = new URLSearchParams();
                         if (this.postFilter.subreddit) params.set('subreddit', this.postFilter.subreddit);
+                        else if (this.activeAudienceSubreddits.length > 0) params.set('subreddit', this.activeAudienceSubreddits[0]);
                         if (this.postFilter.analyzed) params.set('analyzed', this.postFilter.analyzed);
                         params.set('page', this.postFilter.page);
                         const res = await fetch('/api/posts?' + params);
@@ -917,6 +1194,110 @@
                     } catch (e) {
                         this.posts = [];
                     }
+                },
+
+                // ── Audience methods ──
+                audienceParam(params) {
+                    if (this.activeAudienceId) params.set('audience_id', this.activeAudienceId);
+                    return params;
+                },
+
+                async loadAudiences() {
+                    try {
+                        const res = await fetch('/api/audiences');
+                        this.audiences = await res.json();
+                    } catch (e) {
+                        this.audiences = [];
+                    }
+                },
+
+                async selectAudience(id) {
+                    if (this.activeAudienceId === id) {
+                        this.activeAudienceId = null;
+                        this.activeAudienceSubreddits = [];
+                    } else {
+                        this.activeAudienceId = id;
+                        const aud = this.audiences.find(a => a.id === id);
+                        this.activeAudienceSubreddits = aud ? aud.subreddit_names : [];
+                    }
+                    // Reload data with new audience filter
+                    await Promise.all([
+                        this.loadPosts(),
+                        this.loadInsights(),
+                    ]);
+                },
+
+                openAudienceForm(audience = null) {
+                    this.editingAudience = audience;
+                    this.audienceForm = audience
+                        ? { name: audience.name, description: audience.description || '', color: audience.color || '#d4a373', subreddit_names: [...audience.subreddit_names] }
+                        : { name: '', description: '', color: '#d4a373', subreddit_names: [] };
+                    this.showAudienceForm = true;
+                },
+
+                toggleAudienceSubreddit(name) {
+                    const idx = this.audienceForm.subreddit_names.indexOf(name);
+                    if (idx >= 0) this.audienceForm.subreddit_names.splice(idx, 1);
+                    else this.audienceForm.subreddit_names.push(name);
+                },
+
+                async saveAudience() {
+                    try {
+                        const body = this.audienceForm;
+                        let res;
+                        if (this.editingAudience) {
+                            res = await fetch(`/api/audiences/${this.editingAudience.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(body)
+                            });
+                        } else {
+                            res = await fetch('/api/audiences', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(body)
+                            });
+                        }
+                        if (res.ok) {
+                            this.showAudienceForm = false;
+                            await this.loadAudiences();
+                            this.showToast(this.editingAudience ? 'Audience updated' : 'Audience created', '', 'success');
+                        } else {
+                            const data = await res.json();
+                            this.showToast('Failed', data.detail || 'Error saving audience', 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('Error', e.message, 'error');
+                    }
+                },
+
+                async deleteAudience(id) {
+                    if (!confirm('Delete this audience?')) return;
+                    try {
+                        await fetch(`/api/audiences/${id}`, { method: 'DELETE' });
+                        if (this.activeAudienceId === id) {
+                            this.activeAudienceId = null;
+                            this.activeAudienceSubreddits = [];
+                        }
+                        await this.loadAudiences();
+                        this.showToast('Audience deleted', '', 'info');
+                    } catch (e) {
+                        this.showToast('Error', e.message, 'error');
+                    }
+                },
+
+                // ── Growth methods ──
+                async loadGrowthSummary() {
+                    try {
+                        const res = await fetch('/api/subreddits/growth/summary?days=7');
+                        this.growthSummary = await res.json();
+                    } catch (e) {
+                        this.growthSummary = [];
+                    }
+                },
+
+                getGrowth(subredditName) {
+                    return this.growthSummary.find(g => g.subreddit === subredditName);
                 },
 
                 async addSubreddit() {
@@ -930,8 +1311,10 @@
                             body: JSON.stringify({ name: this.newSubreddit })
                         });
                         if (res.ok) {
+                            const name = this.newSubreddit;
                             this.newSubreddit = '';
                             await this.loadSubreddits();
+                            this.showToast(`r/${name} added`, '', 'success');
                         } else {
                             const data = await res.json();
                             this.addError = data.detail || 'Failed to add subreddit';
@@ -952,8 +1335,9 @@
                     try {
                         await fetch(`/api/subreddits/${name}`, { method: 'DELETE' });
                         await this.loadSubreddits();
+                        this.showToast(`r/${name} removed`, '', 'info');
                     } catch (e) {
-                        alert('Failed to remove subreddit');
+                        this.showToast('Failed to remove subreddit', e.message, 'error');
                     }
                 },
 
@@ -961,10 +1345,10 @@
                     try {
                         const res = await fetch(`/api/subreddits/${name}/collect`, { method: 'POST' });
                         const data = await res.json();
-                        alert(`Collected ${data.posts_new} new posts from r/${name}`);
+                        this.showToast(`r/${name} collected`, `${data.posts_new} new posts`, 'success');
                         await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
                     } catch (e) {
-                        alert('Collection failed: ' + e.message);
+                        this.showToast('Collection failed', e.message, 'error');
                     }
                 },
 
@@ -978,6 +1362,7 @@
                             await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
                                 this.collectResult = result;
                                 this.collecting = false;
+                                this.showToast('Collection complete', `${result?.posts_new || 0} new posts`, 'success');
                                 Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
                             });
                         } else {
@@ -985,7 +1370,7 @@
                             this.collecting = false;
                         }
                     } catch (e) {
-                        alert('Collection failed: ' + e.message);
+                        this.showToast('Collection failed', e.message, 'error');
                         this.collecting = false;
                     }
                 },
@@ -996,9 +1381,10 @@
                     try {
                         const res = await fetch('/api/collect/refresh?min_score=5&min_comments=3&limit=15', { method: 'POST' });
                         this.refreshResult = await res.json();
+                        this.showToast('Refresh complete', `${this.refreshResult.posts_refreshed} posts refreshed`, 'success');
                         await this.loadPostStats();
                     } catch (e) {
-                        alert('Refresh failed: ' + e.message);
+                        this.showToast('Refresh failed', e.message, 'error');
                     }
                     this.refreshing = false;
                 },
@@ -1007,9 +1393,9 @@
                     try {
                         const res = await fetch(`/api/collect/refresh/${postId}`, { method: 'POST' });
                         const data = await res.json();
-                        alert(`Refreshed: ${data.comments_new} new, ${data.comments_updated} updated`);
+                        this.showToast('Comments refreshed', `${data.comments_new} new, ${data.comments_updated} updated`, 'success');
                     } catch (e) {
-                        alert('Refresh failed: ' + e.message);
+                        this.showToast('Refresh failed', e.message, 'error');
                     }
                 },
 
@@ -1040,7 +1426,6 @@
                     this.insightsList.forEach(i => {
                         counts[i.type] = (counts[i.type] || 0) + 1;
                     });
-                    // Also count from all insights if we have themes
                     if (this.themes.length > 0 && Object.keys(counts).length === 0) {
                         this.themes.forEach(t => {
                             t.types.forEach(type => {
@@ -1065,7 +1450,6 @@
                     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 },
 
-                // Insights methods
                 async loadInsights() {
                     await Promise.all([
                         this.loadAnalysisStatus(),
@@ -1077,7 +1461,9 @@
 
                 async loadAnalysisStatus() {
                     try {
-                        const res = await fetch('/api/analyze/status');
+                        const params = new URLSearchParams();
+                        this.audienceParam(params);
+                        const res = await fetch('/api/analyze/status?' + params);
                         this.analysisStatus = await res.json();
                     } catch (e) {
                         this.analysisStatus = {};
@@ -1086,7 +1472,9 @@
 
                 async loadThemes() {
                     try {
-                        const res = await fetch('/api/analyze/themes');
+                        const params = new URLSearchParams();
+                        this.audienceParam(params);
+                        const res = await fetch('/api/analyze/themes?' + params);
                         this.themes = await res.json();
                     } catch (e) {
                         this.themes = [];
@@ -1099,6 +1487,7 @@
                         if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
                         if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
                         params.set('limit', '50');
+                        this.audienceParam(params);
                         const res = await fetch('/api/analyze/insights?' + params);
                         this.insightsList = await res.json();
                     } catch (e) {
@@ -1122,6 +1511,7 @@
                             await this.pollTask(task.task_id, '/api/analyze/task/', (result) => {
                                 this.analysisResult = result;
                                 this.analyzing = false;
+                                this.showToast('Analysis complete', `${result?.insights_extracted || 0} insights extracted`, 'success');
                                 this.loadInsights();
                                 fetch('/api/search/reindex', { method: 'POST' });
                             });
@@ -1130,12 +1520,11 @@
                             this.analyzing = false;
                         }
                     } catch (e) {
-                        alert('Analysis failed: ' + e.message);
+                        this.showToast('Analysis failed', e.message, 'error');
                         this.analyzing = false;
                     }
                 },
 
-                // Task polling
                 async pollTask(taskId, baseUrl, onComplete) {
                     const poll = async () => {
                         try {
@@ -1144,7 +1533,7 @@
                             if (task.status === 'completed') {
                                 onComplete(task.result || task);
                             } else if (task.status === 'failed') {
-                                alert('Task failed: ' + (task.error || 'Unknown error'));
+                                this.showToast('Task failed', task.error || 'Unknown error', 'error');
                                 onComplete(null);
                             } else {
                                 setTimeout(poll, 2000);
@@ -1157,12 +1546,11 @@
                     setTimeout(poll, 1000);
                 },
 
-                // Search methods
                 async performSearch() {
                     if (!this.searchQuery || this.searchQuery.length < 2) return;
-
                     try {
                         const params = new URLSearchParams({ q: this.searchQuery, limit: '20' });
+                        this.audienceParam(params);
                         const res = await fetch('/api/search?' + params);
                         const data = await res.json();
                         this.searchResults = data.results;
@@ -1180,14 +1568,11 @@
                 },
 
                 async selectInsightFromSearch(insightId) {
-                    // Find the insight in the list or load it
                     const insight = this.insightsList.find(i => i.id === insightId);
                     if (insight) {
-                        // Scroll to or highlight the insight
                         this.selectedTheme = insight.theme_key;
                         await this.loadInsightsList();
                     } else {
-                        // Load insights with this theme
                         const result = this.searchResults.find(r => r.insight_id === insightId);
                         if (result?.theme_key) {
                             this.selectedTheme = result.theme_key;
@@ -1206,11 +1591,11 @@
                     }
                 },
 
-                // Export methods
                 exportInsights(format) {
                     const params = new URLSearchParams({ format, limit: '500' });
                     if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
                     if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
+                    this.audienceParam(params);
                     window.open('/api/export/insights?' + params, '_blank');
                 },
 
@@ -1218,13 +1603,12 @@
                     window.open('/api/export/report', '_blank');
                 },
 
-                // Analytics methods
                 async loadAnalytics() {
                     await Promise.all([
                         this.loadAnalyticsData(),
                         this.loadTopIntensityInsights(),
+                        this.loadGrowthSummary(),
                     ]);
-                    // Small delay to ensure DOM is ready
                     setTimeout(() => this.renderCharts(), 100);
                 },
 
@@ -1239,10 +1623,9 @@
                         const themes = await themesRes.json();
                         const stats = await statsRes.json();
 
-                        // Calculate analytics summary
                         const avgIntensity = themes.length > 0
                             ? (themes.reduce((sum, t) => sum + parseFloat(t.avg_intensity), 0) / themes.length).toFixed(1)
-                            : '-';
+                            : '—';
 
                         const topSub = stats.posts_by_subreddit
                             ? Object.entries(stats.posts_by_subreddit).sort((a, b) => b[1] - a[1])[0]
@@ -1252,7 +1635,7 @@
                             totalInsights: status.total_insights || 0,
                             totalThemes: status.total_themes || 0,
                             avgIntensity: avgIntensity,
-                            topSubreddit: topSub ? 'r/' + topSub[0] : '-',
+                            topSubreddit: topSub ? 'r/' + topSub[0] : '—',
                             themes: themes,
                             postsBySubreddit: stats.posts_by_subreddit || {},
                             insightsByType: status.insights_by_type || {},
@@ -1268,7 +1651,6 @@
                     try {
                         const res = await fetch('/api/analyze/insights?limit=10&sort=intensity');
                         const insights = await res.json();
-                        // Sort by intensity if not already sorted
                         this.topIntensityInsights = insights
                             .filter(i => i.intensity_score)
                             .sort((a, b) => b.intensity_score - a.intensity_score)
@@ -1279,10 +1661,8 @@
                 },
 
                 renderCharts() {
-                    // Destroy existing charts
                     Object.values(this.charts).forEach(chart => chart?.destroy());
                     this.charts = {};
-
                     this.renderInsightTypeChart();
                     this.renderTopThemesChart();
                     this.renderSubredditActivityChart();
@@ -1293,38 +1673,17 @@
                 renderInsightTypeChart() {
                     const ctx = document.getElementById('insightTypeChart');
                     if (!ctx) return;
-
                     const typeData = this.analyticsData.insightsByType || {};
                     const labels = Object.keys(typeData).map(t => t.replace('_', ' '));
                     const data = Object.values(typeData);
-                    const colors = {
-                        'pain_point': '#ef4444',
-                        'solution_request': '#eab308',
-                        'opportunity': '#22c55e',
-                        'product_mention': '#a855f7',
-                    };
-                    const bgColors = Object.keys(typeData).map(t => colors[t] || '#6b7280');
-
+                    const colors = { 'pain_point': '#e05252', 'solution_request': '#d4a030', 'opportunity': '#4caf6e', 'product_mention': '#9c7cdb' };
+                    const bgColors = Object.keys(typeData).map(t => colors[t] || '#6b6760');
                     this.charts.insightType = new Chart(ctx, {
                         type: 'doughnut',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                data: data,
-                                backgroundColor: bgColors,
-                                borderColor: '#1f2937',
-                                borderWidth: 2,
-                            }]
-                        },
+                        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: '#1a1a18', borderWidth: 2 }] },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'right',
-                                    labels: { color: '#9ca3af', padding: 15 }
-                                }
-                            }
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'right', labels: { color: '#9c9890', padding: 15, font: { family: '"Plus Jakarta Sans"' } } } }
                         }
                     });
                 },
@@ -1332,38 +1691,19 @@
                 renderTopThemesChart() {
                     const ctx = document.getElementById('topThemesChart');
                     if (!ctx) return;
-
                     const themes = (this.analyticsData.themes || []).slice(0, 8);
-                    const labels = themes.map(t => t.theme_key.replace(/_/g, ' '));
-                    const scores = themes.map(t => t.combined_score);
-
                     this.charts.topThemes = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Combined Score',
-                                data: scores,
-                                backgroundColor: '#3b82f6',
-                                borderRadius: 4,
-                            }]
+                            labels: themes.map(t => t.theme_key.replace(/_/g, ' ')),
+                            datasets: [{ label: 'Score', data: themes.map(t => t.combined_score), backgroundColor: '#d4a373', borderRadius: 3 }]
                         },
                         options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
+                            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
                             scales: {
-                                x: {
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' }
-                                },
-                                y: {
-                                    grid: { display: false },
-                                    ticks: { color: '#9ca3af' }
-                                }
+                                x: { grid: { color: '#2c2c28' }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } },
+                                y: { grid: { display: false }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"', size: 11 } } }
                             }
                         }
                     });
@@ -1372,38 +1712,19 @@
                 renderSubredditActivityChart() {
                     const ctx = document.getElementById('subredditActivityChart');
                     if (!ctx) return;
-
-                    const subs = this.analyticsData.postsBySubreddit || {};
-                    const sorted = Object.entries(subs).sort((a, b) => b[1] - a[1]).slice(0, 10);
-                    const labels = sorted.map(s => 'r/' + s[0]);
-                    const data = sorted.map(s => s[1]);
-
+                    const sorted = Object.entries(this.analyticsData.postsBySubreddit || {}).sort((a, b) => b[1] - a[1]).slice(0, 10);
                     this.charts.subredditActivity = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Posts',
-                                data: data,
-                                backgroundColor: '#22c55e',
-                                borderRadius: 4,
-                            }]
+                            labels: sorted.map(s => 'r/' + s[0]),
+                            datasets: [{ label: 'Posts', data: sorted.map(s => s[1]), backgroundColor: '#4caf6e', borderRadius: 3 }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
                             scales: {
-                                x: {
-                                    grid: { display: false },
-                                    ticks: { color: '#9ca3af' }
-                                },
-                                y: {
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' }
-                                }
+                                x: { grid: { display: false }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } },
+                                y: { grid: { color: '#2c2c28' }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } }
                             }
                         }
                     });
@@ -1412,58 +1733,29 @@
                 renderThemeIntensityChart() {
                     const ctx = document.getElementById('themeIntensityChart');
                     if (!ctx) return;
-
                     const themes = (this.analyticsData.themes || []).slice(0, 10);
-                    const labels = themes.map(t => t.theme_key.replace(/_/g, ' '));
-                    const intensities = themes.map(t => parseFloat(t.avg_intensity));
-                    const counts = themes.map(t => t.count);
-
                     this.charts.themeIntensity = new Chart(ctx, {
                         type: 'scatter',
                         data: {
                             datasets: [{
                                 label: 'Themes',
-                                data: themes.map((t, i) => ({
-                                    x: t.count,
-                                    y: parseFloat(t.avg_intensity),
-                                    label: t.theme_key.replace(/_/g, ' ')
-                                })),
+                                data: themes.map(t => ({ x: t.count, y: parseFloat(t.avg_intensity), label: t.theme_key.replace(/_/g, ' ') })),
                                 backgroundColor: themes.map(t => {
-                                    const intensity = parseFloat(t.avg_intensity);
-                                    if (intensity >= 70) return '#ef4444';
-                                    if (intensity >= 40) return '#eab308';
-                                    return '#22c55e';
+                                    const i = parseFloat(t.avg_intensity);
+                                    return i >= 70 ? '#e05252' : i >= 40 ? '#d4a030' : '#4caf6e';
                                 }),
                                 pointRadius: themes.map(t => Math.min(Math.max(t.count * 3, 6), 20)),
                             }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
+                            responsive: true, maintainAspectRatio: false,
                             plugins: {
                                 legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: (ctx) => {
-                                            const point = ctx.raw;
-                                            return `${point.label}: ${point.x} insights, ${point.y.toFixed(1)} intensity`;
-                                        }
-                                    }
-                                }
+                                tooltip: { callbacks: { label: (ctx) => { const p = ctx.raw; return `${p.label}: ${p.x} insights, ${p.y.toFixed(1)} intensity`; } } }
                             },
                             scales: {
-                                x: {
-                                    title: { display: true, text: 'Insight Count', color: '#9ca3af' },
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' }
-                                },
-                                y: {
-                                    title: { display: true, text: 'Avg Intensity', color: '#9ca3af' },
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' },
-                                    min: 0,
-                                    max: 100
-                                }
+                                x: { title: { display: true, text: 'Insight Count', color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } }, grid: { color: '#2c2c28' }, ticks: { color: '#9c9890' } },
+                                y: { title: { display: true, text: 'Avg Intensity', color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } }, grid: { color: '#2c2c28' }, ticks: { color: '#9c9890' }, min: 0, max: 100 }
                             }
                         }
                     });
@@ -1472,74 +1764,28 @@
                 renderCollectionTimelineChart() {
                     const ctx = document.getElementById('collectionTimelineChart');
                     if (!ctx) return;
-
-                    const dateData = this.analyticsData.postsByDate || {};
-                    const sorted = Object.entries(dateData).sort((a, b) => a[0].localeCompare(b[0]));
+                    const sorted = Object.entries(this.analyticsData.postsByDate || {}).sort((a, b) => a[0].localeCompare(b[0]));
                     const labels = sorted.map(d => d[0]);
                     const data = sorted.map(d => d[1]);
-
-                    // Calculate cumulative
                     let cumulative = 0;
                     const cumulativeData = data.map(d => cumulative += d);
-
                     this.charts.collectionTimeline = new Chart(ctx, {
                         type: 'line',
                         data: {
-                            labels: labels,
+                            labels,
                             datasets: [
-                                {
-                                    label: 'Posts per Day',
-                                    data: data,
-                                    borderColor: '#3b82f6',
-                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                    fill: true,
-                                    tension: 0.3,
-                                    yAxisID: 'y',
-                                },
-                                {
-                                    label: 'Cumulative Posts',
-                                    data: cumulativeData,
-                                    borderColor: '#22c55e',
-                                    backgroundColor: 'transparent',
-                                    borderDash: [5, 5],
-                                    tension: 0.3,
-                                    yAxisID: 'y1',
-                                }
+                                { label: 'Daily', data, borderColor: '#d4a373', backgroundColor: 'rgba(212, 163, 115, 0.08)', fill: true, tension: 0.3, yAxisID: 'y' },
+                                { label: 'Cumulative', data: cumulativeData, borderColor: '#4caf6e', backgroundColor: 'transparent', borderDash: [5, 5], tension: 0.3, yAxisID: 'y1' }
                             ]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: {
-                                mode: 'index',
-                                intersect: false,
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: { color: '#9ca3af' }
-                                }
-                            },
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: { legend: { labels: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } } },
                             scales: {
-                                x: {
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' }
-                                },
-                                y: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'left',
-                                    grid: { color: '#374151' },
-                                    ticks: { color: '#9ca3af' },
-                                    title: { display: true, text: 'Daily Posts', color: '#9ca3af' }
-                                },
-                                y1: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'right',
-                                    grid: { drawOnChartArea: false },
-                                    ticks: { color: '#22c55e' },
-                                    title: { display: true, text: 'Total Posts', color: '#22c55e' }
-                                }
+                                x: { grid: { color: '#2c2c28' }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } },
+                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#2c2c28' }, ticks: { color: '#9c9890' }, title: { display: true, text: 'Daily', color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } } },
+                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#4caf6e' }, title: { display: true, text: 'Total', color: '#4caf6e', font: { family: '"Plus Jakarta Sans"' } } }
                             }
                         }
                     });

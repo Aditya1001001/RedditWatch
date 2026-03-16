@@ -53,22 +53,46 @@ async def search_insights(
     type: Optional[str] = Query(default=None, description="Filter by insight type"),
     theme_key: Optional[str] = Query(default=None, description="Filter by theme"),
     min_intensity: Optional[int] = Query(default=None, ge=0, le=100),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Semantic search across all insights.
 
     Uses vector similarity to find relevant insights even if
-    exact keywords don't match.
+    exact keywords don't match. Optionally filter by audience.
     """
+    from app.api.analysis import resolve_audience_subreddits
+
     search_service = get_search_service()
+
+    # Fetch more results if we need to post-filter by subreddit
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+    fetch_limit = limit * 3 if sub_names is not None else limit
 
     results = search_service.search(
         query=q,
-        limit=limit,
+        limit=fetch_limit,
         type_filter=type,
         theme_filter=theme_key,
         min_intensity=min_intensity,
     )
+
+    # Post-filter by subreddit if audience specified
+    if sub_names is not None:
+        # Look up subreddit for each result's post_id
+        from app.models import Post
+        filtered = []
+        for r in results:
+            post_id = r["metadata"].get("post_id")
+            if post_id:
+                post = await session.get(Post, post_id)
+                if post and post.subreddit in sub_names:
+                    filtered.append(r)
+            if len(filtered) >= limit:
+                break
+        results = filtered
 
     return SearchResponse(
         query=q,
@@ -82,7 +106,7 @@ async def search_insights(
                 intensity_score=r["metadata"].get("intensity_score"),
                 post_id=r["metadata"].get("post_id"),
             )
-            for r in results
+            for r in results[:limit]
         ],
         total=len(results),
     )

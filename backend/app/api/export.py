@@ -220,6 +220,7 @@ async def get_filtered_insights(
     min_intensity: Optional[int] = None,
     max_intensity: Optional[int] = None,
     subreddit: Optional[str] = None,
+    subreddit_names: Optional[list[str]] = None,
     ids: Optional[list[int]] = None,
     limit: int = 500,
 ) -> list[Insight]:
@@ -238,6 +239,8 @@ async def get_filtered_insights(
         query = query.where(Insight.intensity_score <= max_intensity)
     if subreddit:
         query = query.where(Post.subreddit == subreddit.lower())
+    elif subreddit_names is not None:
+        query = query.where(Post.subreddit.in_(subreddit_names))
 
     query = query.order_by(Insight.intensity_score.desc().nullslast())
     query = query.limit(limit)
@@ -254,6 +257,7 @@ async def export_insights(
     min_intensity: Optional[int] = Query(default=None, ge=0, le=100),
     max_intensity: Optional[int] = Query(default=None, ge=0, le=100),
     subreddit: Optional[str] = None,
+    audience_id: Optional[int] = Query(default=None),
     limit: int = Query(default=500, ge=1, le=2000),
     session: AsyncSession = Depends(get_session),
 ):
@@ -272,15 +276,34 @@ async def export_insights(
     Returns:
         Insights in requested format
     """
-    insights = await get_filtered_insights(
-        session,
-        type_filter=type,
-        theme_key=theme_key,
-        min_intensity=min_intensity,
-        max_intensity=max_intensity,
-        subreddit=subreddit,
-        limit=limit,
-    )
+    # Resolve audience to subreddit filter
+    effective_subreddit = subreddit
+    if audience_id and not subreddit:
+        from app.api.analysis import resolve_audience_subreddits
+        sub_names = await resolve_audience_subreddits(session, audience_id)
+        if sub_names:
+            # get_filtered_insights only supports single subreddit, so we pass the list directly
+            insights = await get_filtered_insights(
+                session,
+                type_filter=type,
+                theme_key=theme_key,
+                min_intensity=min_intensity,
+                max_intensity=max_intensity,
+                subreddit_names=sub_names,
+                limit=limit,
+            )
+        else:
+            insights = []
+    else:
+        insights = await get_filtered_insights(
+            session,
+            type_filter=type,
+            theme_key=theme_key,
+            min_intensity=min_intensity,
+            max_intensity=max_intensity,
+            subreddit=effective_subreddit,
+            limit=limit,
+        )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
