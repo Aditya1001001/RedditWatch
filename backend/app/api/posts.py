@@ -189,6 +189,36 @@ async def get_post_stats(session: AsyncSession = Depends(get_session)):
     )
 
 
+@router.get("/activity")
+async def get_activity_heatmap(
+    session: AsyncSession = Depends(get_session),
+):
+    """Post activity heatmap — counts by day-of-week and hour (UTC)."""
+    from sqlalchemy import extract
+
+    rows = await session.execute(
+        select(
+            extract("dow", Post.created_utc).label("dow"),
+            extract("hour", Post.created_utc).label("hour"),
+            func.count(Post.id).label("cnt"),
+        )
+        .where(Post.created_utc.isnot(None))
+        .group_by("dow", "hour")
+    )
+
+    heatmap = {}
+    for row in rows:
+        dow = int(row.dow)  # 0=Sunday in SQLite
+        hour = int(row.hour)
+        heatmap.setdefault(dow, {})[hour] = row.cnt
+
+    return {
+        "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        "hours": list(range(24)),
+        "data": heatmap,
+    }
+
+
 @router.get("/{post_id}", response_model=PostDetailResponse)
 async def get_post(
     post_id: str,

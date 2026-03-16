@@ -51,6 +51,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         body {
@@ -1019,6 +1020,110 @@
                 </div>
             </div>
 
+            <!-- Theme Popularity Timeline -->
+            <div class="border border-border rounded-lg p-5">
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Theme Trends</h2>
+                <div class="h-64">
+                    <canvas id="themeTimelineChart"></canvas>
+                </div>
+                <p x-show="!themeTimeline.themes?.length" class="text-text-muted text-center py-8 text-sm">
+                    No theme data yet. Run analysis to see trends.
+                </p>
+            </div>
+
+            <!-- Activity Heatmap + Theme Network -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Activity Heatmap -->
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Posting Activity (UTC)</h2>
+                    <div x-show="activityHeatmap.data" class="overflow-x-auto">
+                        <table class="text-xs w-full">
+                            <thead>
+                                <tr>
+                                    <th class="py-1 px-1 text-text-muted font-medium text-left w-10"></th>
+                                    <template x-for="h in [0,3,6,9,12,15,18,21]" :key="h">
+                                        <th class="py-1 text-text-muted font-normal" x-text="h + ':00'" :colspan="3"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(day, di) in (activityHeatmap.days || [])" :key="di">
+                                    <tr>
+                                        <td class="py-0.5 pr-2 text-text-muted text-right text-xs" x-text="day"></td>
+                                        <template x-for="h in 24" :key="h">
+                                            <td class="p-0">
+                                                <div class="w-full aspect-square rounded-sm min-w-[14px]"
+                                                     :style="'background-color:' + getHeatColor(activityHeatmap.data?.[di]?.[h-1] || 0)"
+                                                     :title="day + ' ' + (h-1) + ':00 — ' + (activityHeatmap.data?.[di]?.[h-1] || 0) + ' posts'">
+                                                </div>
+                                            </td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div class="flex items-center justify-end gap-1 mt-2 text-xs text-text-muted">
+                            <span>Less</span>
+                            <div class="w-3 h-3 rounded-sm" style="background:#1a1a18"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#2d4a2d"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#3d7a3d"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#4caf6e"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#6fd88e"></div>
+                            <span>More</span>
+                        </div>
+                    </div>
+                    <p x-show="!activityHeatmap.data" class="text-text-muted text-center py-8 text-sm">
+                        Collect posts to see activity patterns.
+                    </p>
+                </div>
+
+                <!-- Theme Network Graph -->
+                <div class="border border-border rounded-lg p-5">
+                    <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Theme Co-occurrence</h2>
+                    <div id="themeNetworkContainer" class="h-64 w-full"></div>
+                    <p x-show="!themeCoOccurrence.nodes?.length" class="text-text-muted text-center py-8 text-sm">
+                        Needs multiple themes per post to show connections.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Subreddit × Theme Matrix -->
+            <div class="border border-border rounded-lg p-5">
+                <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Subreddit &times; Theme Matrix</h2>
+                <div x-show="themeMatrix.subreddits?.length" class="overflow-x-auto">
+                    <table class="text-xs w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-2 text-text-muted font-medium text-left sticky left-0 bg-surface-0 z-10"></th>
+                                <template x-for="t in (themeMatrix.themes || [])" :key="t">
+                                    <th class="py-2 px-2 text-text-muted font-normal text-center max-w-[80px]">
+                                        <span class="block truncate capitalize" x-text="t.replace(/_/g, ' ')"></span>
+                                    </th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="sub in (themeMatrix.subreddits || [])" :key="sub">
+                                <tr class="border-t border-border/50">
+                                    <td class="py-1.5 px-2 text-text-secondary font-medium sticky left-0 bg-surface-0 z-10" x-text="'r/' + sub"></td>
+                                    <template x-for="t in (themeMatrix.themes || [])" :key="t">
+                                        <td class="py-1.5 px-2 text-center">
+                                            <span x-show="themeMatrix.matrix?.[sub]?.[t]"
+                                                  class="inline-block min-w-[24px] rounded-full px-1.5 py-0.5 text-xs tabular-nums font-medium"
+                                                  :style="'background-color:' + getMatrixColor(themeMatrix.matrix?.[sub]?.[t] || 0) + ';color:#fff'"
+                                                  x-text="themeMatrix.matrix?.[sub]?.[t]"></span>
+                                        </td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p x-show="!themeMatrix.subreddits?.length" class="text-text-muted text-center py-8 text-sm">
+                    Needs insights across multiple subreddits.
+                </p>
+            </div>
+
             <!-- Subscriber Growth -->
             <div class="border border-border rounded-lg p-5">
                 <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">Subscriber Growth (7d)</h2>
@@ -1136,6 +1241,10 @@
                 searchStats: {},
                 analyticsData: {},
                 topIntensityInsights: [],
+                themeTimeline: {},
+                activityHeatmap: {},
+                themeCoOccurrence: {},
+                themeMatrix: {},
                 charts: {},
                 toasts: [],
                 _toastId: 0,
@@ -1670,6 +1779,10 @@
                         this.loadAnalyticsData(),
                         this.loadTopIntensityInsights(),
                         this.loadGrowthSummary(),
+                        this.loadThemeTimeline(),
+                        this.loadActivityHeatmap(),
+                        this.loadThemeCoOccurrence(),
+                        this.loadThemeMatrix(),
                     ]);
                     setTimeout(() => this.renderCharts(), 100);
                 },
@@ -1730,6 +1843,8 @@
                     this.renderSubredditActivityChart();
                     this.renderThemeIntensityChart();
                     this.renderCollectionTimelineChart();
+                    this.renderThemeTimelineChart();
+                    this.renderThemeNetwork();
                 },
 
                 renderInsightTypeChart() {
@@ -1850,6 +1965,138 @@
                                 y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#4caf6e' }, title: { display: true, text: 'Total', color: '#4caf6e', font: { family: '"Plus Jakarta Sans"' } } }
                             }
                         }
+                    });
+                },
+
+                // --- Phase 9: Advanced Visualizations ---
+
+                async loadThemeTimeline() {
+                    try {
+                        const res = await fetch('/api/analyze/themes/timeline?days=30&top_n=8');
+                        this.themeTimeline = await res.json();
+                    } catch (e) { this.themeTimeline = {}; }
+                },
+
+                async loadActivityHeatmap() {
+                    try {
+                        const res = await fetch('/api/posts/activity');
+                        this.activityHeatmap = await res.json();
+                    } catch (e) { this.activityHeatmap = {}; }
+                },
+
+                async loadThemeCoOccurrence() {
+                    try {
+                        const res = await fetch('/api/analyze/themes/co-occurrence?min_weight=1&top_n=15');
+                        this.themeCoOccurrence = await res.json();
+                    } catch (e) { this.themeCoOccurrence = {}; }
+                },
+
+                async loadThemeMatrix() {
+                    try {
+                        const res = await fetch('/api/analyze/themes/matrix?top_themes=10&top_subreddits=10');
+                        this.themeMatrix = await res.json();
+                    } catch (e) { this.themeMatrix = {}; }
+                },
+
+                getHeatColor(count) {
+                    if (!count) return '#1a1a18';
+                    const max = Math.max(...Object.values(this.activityHeatmap.data || {}).flatMap(d => Object.values(d)));
+                    const ratio = max > 0 ? count / max : 0;
+                    if (ratio > 0.75) return '#6fd88e';
+                    if (ratio > 0.5) return '#4caf6e';
+                    if (ratio > 0.25) return '#3d7a3d';
+                    if (ratio > 0) return '#2d4a2d';
+                    return '#1a1a18';
+                },
+
+                getMatrixColor(count) {
+                    if (!count) return 'transparent';
+                    if (count >= 10) return '#d4a373';
+                    if (count >= 5) return '#b08050';
+                    if (count >= 2) return '#7a5a3a';
+                    return '#4a3a28';
+                },
+
+                renderThemeTimelineChart() {
+                    const ctx = document.getElementById('themeTimelineChart');
+                    if (!ctx || !this.themeTimeline.themes?.length) return;
+                    const colors = ['#d4a373', '#e05252', '#4caf6e', '#9c7cdb', '#d4a030', '#5b9bd5', '#ff7f50', '#88d498'];
+                    const datasets = this.themeTimeline.themes.map((theme, i) => ({
+                        label: theme.replace(/_/g, ' '),
+                        data: this.themeTimeline.series[theme],
+                        borderColor: colors[i % colors.length],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                    }));
+                    this.charts.themeTimeline = new Chart(ctx, {
+                        type: 'line',
+                        data: { labels: this.themeTimeline.dates, datasets },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: { legend: { position: 'bottom', labels: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"', size: 11 }, boxWidth: 12, padding: 12 } } },
+                            scales: {
+                                x: { grid: { color: '#2c2c28' }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' }, maxTicksLimit: 10 } },
+                                y: { grid: { color: '#2c2c28' }, ticks: { color: '#9c9890', font: { family: '"Plus Jakarta Sans"' } }, beginAtZero: true }
+                            }
+                        }
+                    });
+                },
+
+                renderThemeNetwork() {
+                    const container = document.getElementById('themeNetworkContainer');
+                    if (!container || !this.themeCoOccurrence.nodes?.length) return;
+                    container.innerHTML = '';
+                    const width = container.clientWidth;
+                    const height = 256;
+
+                    const svg = d3.select(container).append('svg')
+                        .attr('width', width).attr('height', height);
+
+                    const nodes = this.themeCoOccurrence.nodes.map(n => ({...n}));
+                    const edges = this.themeCoOccurrence.edges.map(e => ({...e}));
+                    const maxCount = Math.max(...nodes.map(n => n.count), 1);
+
+                    const simulation = d3.forceSimulation(nodes)
+                        .force('link', d3.forceLink(edges).id(d => d.id).distance(80))
+                        .force('charge', d3.forceManyBody().strength(-120))
+                        .force('center', d3.forceCenter(width / 2, height / 2))
+                        .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.count / maxCount) * 20 + 10));
+
+                    const link = svg.append('g').selectAll('line').data(edges).join('line')
+                        .attr('stroke', '#4a3a28')
+                        .attr('stroke-width', d => Math.min(d.weight, 5))
+                        .attr('stroke-opacity', 0.6);
+
+                    const node = svg.append('g').selectAll('g').data(nodes).join('g');
+
+                    node.append('circle')
+                        .attr('r', d => Math.sqrt(d.count / maxCount) * 16 + 5)
+                        .attr('fill', '#d4a373')
+                        .attr('fill-opacity', 0.7)
+                        .attr('stroke', '#d4a373')
+                        .attr('stroke-width', 1);
+
+                    node.append('text')
+                        .text(d => d.label.length > 14 ? d.label.slice(0, 12) + '..' : d.label)
+                        .attr('text-anchor', 'middle')
+                        .attr('dy', '0.35em')
+                        .attr('fill', '#e8e4de')
+                        .attr('font-size', '9px')
+                        .attr('font-family', '"Plus Jakarta Sans"');
+
+                    node.append('title').text(d => `${d.label}: ${d.count} insights`);
+
+                    simulation.on('tick', () => {
+                        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                        node.attr('transform', d => {
+                            d.x = Math.max(30, Math.min(width - 30, d.x));
+                            d.y = Math.max(30, Math.min(height - 30, d.y));
+                            return `translate(${d.x},${d.y})`;
+                        });
                     });
                 }
             };

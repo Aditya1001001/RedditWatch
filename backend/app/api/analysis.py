@@ -1,14 +1,16 @@
 """Analysis API endpoints."""
 
+from collections import defaultdict
+from itertools import combinations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
-from app.models import Audience
+from app.models import Audience, Insight, Post
 from app.services.analyzer import get_analyzer
 from app.services.tasks import get_task_tracker
 
@@ -255,4 +257,187 @@ async def get_analysis_status(
         "last_analyzed_at": last_at.isoformat() if last_at else None,
         "status": active_task.status.value if active_task else "idle",
         "active_task": active_task.to_dict() if active_task else None,
+    }
+
+
+@router.get("/themes/timeline")
+async def get_theme_timeline(
+    days: int = Query(default=30, ge=1, le=90),
+    top_n: int = Query(default=8, ge=1, le=20),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Theme popularity over time — insight counts per theme per day."""
+    from datetime import datetime, timedelta, timezone
+
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Get top N themes by total count
+    top_q = (
+        select(Insight.theme_key, func.count(Insight.id).label("cnt"))
+        .where(Insight.created_at >= cutoff)
+    )
+    if sub_names is not None:
+        top_q = top_q.join(Post).where(Post.subreddit.in_(sub_names))
+    top_q = top_q.group_by(Insight.theme_key).order_by(func.count(Insight.id).desc()).limit(top_n)
+    top_result = await session.execute(top_q)
+    top_themes = [row.theme_key for row in top_result]
+
+    if not top_themes:
+        return {"themes": [], "dates": [], "series": {}}
+
+    # Get daily counts for those themes
+    daily_q = (
+        select(
+            Insight.theme_key,
+            func.date(Insight.created_at).label("day"),
+            func.count(Insight.id).label("cnt"),
+        )
+        .where(Insight.created_at >= cutoff)
+        .where(Insight.theme_key.in_(top_themes))
+    )
+    if sub_names is not None:
+        daily_q = daily_q.join(Post).where(Post.subreddit.in_(sub_names))
+    daily_q = daily_q.group_by(Insight.theme_key, func.date(Insight.created_at))
+    daily_result = await session.execute(daily_q)
+
+    # Build series keyed by theme
+    series = defaultdict(dict)
+    all_dates = set()
+    for row in daily_result:
+        date_str = str(row.day)
+        series[row.theme_key][date_str] = row.cnt
+        all_dates.add(date_str)
+
+    dates = sorted(all_dates)
+
+    return {
+        "themes": top_themes,
+        "dates": dates,
+        "series": {
+            theme: [series[theme].get(d, 0) for d in dates]
+            for theme in top_themes
+        },
+    }
+
+
+@router.get("/themes/co-occurrence")
+async def get_theme_co_occurrence(
+    min_weight: int = Query(default=2, ge=1),
+    top_n: int = Query(default=15, ge=5, le=30),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Theme co-occurrence network — themes that appear together in the same post."""
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+
+    # Get top themes by frequency
+    top_q = (
+        select(Insight.theme_key, func.count(Insight.id).label("cnt"))
+    )
+    if sub_names is not None:
+        top_q = top_q.join(Post).where(Post.subreddit.in_(sub_names))
+    top_q = top_q.group_by(Insight.theme_key).order_by(func.count(Insight.id).desc()).limit(top_n)
+    top_result = await session.execute(top_q)
+    theme_counts = {row.theme_key: row.cnt for row in top_result}
+    top_themes = set(theme_counts.keys())
+
+    if len(top_themes) < 2:
+        return {"nodes": [], "edges": []}
+
+    # Get all (post_id, theme_key) pairs for top themes
+    pairs_q = select(Insight.post_id, Insight.theme_key).where(
+        Insight.theme_key.in_(top_themes)
+    )
+    if sub_names is not None:
+        pairs_q = pairs_q.join(Post).where(Post.subreddit.in_(sub_names))
+    pairs_result = await session.execute(pairs_q)
+
+    # Group themes by post
+    post_themes = defaultdict(set)
+    for row in pairs_result:
+        post_themes[row.post_id].add(row.theme_key)
+
+    # Count co-occurrences
+    edge_counts = defaultdict(int)
+    for themes in post_themes.values():
+        for a, b in combinations(sorted(themes), 2):
+            edge_counts[(a, b)] += 1
+
+    nodes = [
+        {"id": t, "label": t.replace("_", " ").title(), "count": theme_counts[t]}
+        for t in top_themes
+    ]
+    edges = [
+        {"source": a, "target": b, "weight": w}
+        for (a, b), w in edge_counts.items()
+        if w >= min_weight
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+@router.get("/themes/matrix")
+async def get_theme_subreddit_matrix(
+    top_themes: int = Query(default=10, ge=1, le=25),
+    top_subreddits: int = Query(default=10, ge=1, le=25),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Subreddit x Theme matrix — insight counts per (subreddit, theme) pair."""
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+
+    # Get top themes
+    theme_q = (
+        select(Insight.theme_key, func.count(Insight.id).label("cnt"))
+    )
+    if sub_names is not None:
+        theme_q = theme_q.join(Post).where(Post.subreddit.in_(sub_names))
+    theme_q = theme_q.group_by(Insight.theme_key).order_by(func.count(Insight.id).desc()).limit(top_themes)
+    theme_result = await session.execute(theme_q)
+    theme_keys = [row.theme_key for row in theme_result]
+
+    if not theme_keys:
+        return {"themes": [], "subreddits": [], "matrix": {}}
+
+    # Get top subreddits by insight count
+    sub_q = (
+        select(Post.subreddit, func.count(Insight.id).label("cnt"))
+        .join(Insight)
+    )
+    if sub_names is not None:
+        sub_q = sub_q.where(Post.subreddit.in_(sub_names))
+    sub_q = sub_q.group_by(Post.subreddit).order_by(func.count(Insight.id).desc()).limit(top_subreddits)
+    sub_result = await session.execute(sub_q)
+    sub_keys = [row.subreddit for row in sub_result]
+
+    # Get cross-tab counts
+    matrix_q = (
+        select(
+            Post.subreddit,
+            Insight.theme_key,
+            func.count(Insight.id).label("cnt"),
+        )
+        .join(Insight)
+        .where(Insight.theme_key.in_(theme_keys))
+        .where(Post.subreddit.in_(sub_keys))
+        .group_by(Post.subreddit, Insight.theme_key)
+    )
+    matrix_result = await session.execute(matrix_q)
+
+    matrix = defaultdict(dict)
+    for row in matrix_result:
+        matrix[row.subreddit][row.theme_key] = row.cnt
+
+    return {
+        "themes": theme_keys,
+        "subreddits": sub_keys,
+        "matrix": {
+            sub: {t: matrix[sub].get(t, 0) for t in theme_keys}
+            for sub in sub_keys
+        },
     }

@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 10 in progress (Historical Data + UI Polish) | Monorepo split done | Phases 1-9 complete
+**Status**: Phase 10 in progress (Historical Data + UI Polish) | Phase 9 complete | Monorepo split done
 
 ---
 
@@ -41,6 +41,38 @@ Set up a private/public repo split so SaaS-only features can be developed withou
 - `tenancy/` — user-scoped DB queries (placeholder)
 - `historical/` — Arctic Shift collector (placeholder)
 - `billing/` — Stripe/quotas (placeholder)
+
+---
+
+### 2026-03-16: Phase 9 — Advanced Visualizations
+
+Added 4 new analytics visualizations with backend endpoints and frontend rendering.
+
+**Theme Popularity Timeline**
+- Line chart showing top 8 themes over time (daily insight counts)
+- Backend: `GET /api/analyze/themes/timeline?days=30&top_n=8`
+- Supports audience filtering
+
+**Subreddit Activity Heatmap**
+- Grid showing post counts by day-of-week × hour (UTC)
+- Backend: `GET /api/posts/activity`
+- GitHub-style green color scale
+
+**Theme Co-occurrence Network**
+- D3.js force-directed graph showing themes that appear together in the same post
+- Backend: `GET /api/analyze/themes/co-occurrence?min_weight=1&top_n=15`
+- Node size proportional to insight count, edge width proportional to co-occurrence weight
+
+**Subreddit × Theme Matrix**
+- Heatmap table showing insight counts per (subreddit, theme) pair
+- Backend: `GET /api/analyze/themes/matrix?top_themes=10&top_subreddits=10`
+- Color intensity scales with count
+
+**Performance Fixes (from audit)**
+- Fixed N+1 query in search API — batch SELECT instead of per-result session.get()
+- Fixed N+1 in subreddit growth — single GROUP BY instead of per-subreddit loop
+- Added composite indexes: (analyzed, created_utc), (subreddit, analyzed), comment_id, theme_id
+- Narrowed exception handling in analyzer
 
 ---
 
