@@ -296,6 +296,19 @@
         <!-- ─── Subreddits ─── -->
         <div x-show="tab === 'subreddits'" x-transition:enter="animate-in" class="space-y-8">
 
+            <!-- Collection-in-progress banner -->
+            <div x-show="bgCollection.active" x-transition:enter="animate-in"
+                 class="flex items-center gap-3 bg-accent-subtle border border-accent/20 rounded-lg px-4 py-3">
+                <svg class="animate-spin h-4 w-4 text-accent flex-shrink-0" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"
+                            stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+                <p class="text-sm text-text-primary">
+                    Collecting fresh data<span x-show="bgCollection.postsNew > 0">…
+                    <span class="tabular-nums font-medium" x-text="bgCollection.postsNew"></span> new posts so far</span><span x-show="bgCollection.postsNew === 0">…</span>
+                </p>
+            </div>
+
             <!-- Audiences -->
             <section>
                 <div class="flex items-center justify-between mb-4">
@@ -1252,6 +1265,7 @@
                 charts: {},
                 toasts: [],
                 _toastId: 0,
+                bgCollection: { active: false, taskId: null, postsNew: 0 },
 
                 async init() {
                     await Promise.all([
@@ -1263,6 +1277,7 @@
                         this.loadPosts(),
                         this.loadAudiences(),
                     ]);
+                    this.checkBgCollection();
                 },
 
                 // ── Toast system ──
@@ -1272,6 +1287,46 @@
                     setTimeout(() => {
                         this.toasts = this.toasts.filter(t => t.id !== id);
                     }, duration);
+                },
+
+                async checkBgCollection() {
+                    try {
+                        const res = await fetch('/api/collect/status');
+                        const data = await res.json();
+                        if (data.status === 'running' || data.status === 'pending') {
+                            this.bgCollection = { active: true, taskId: data.task_id, postsNew: 0 };
+                            this._pollBgCollection(data.task_id);
+                        }
+                    } catch (e) { /* ignore */ }
+                },
+
+                _pollBgCollection(taskId) {
+                    const poll = async () => {
+                        try {
+                            const res = await fetch('/api/collect/task/' + taskId);
+                            const task = await res.json();
+                            if (task.status === 'completed') {
+                                const newPosts = task.result?.posts_new || 0;
+                                this.bgCollection = { active: false, taskId: null, postsNew: 0 };
+                                if (newPosts > 0) {
+                                    this.showToast('Collection complete', `${newPosts} new posts collected`, 'success');
+                                }
+                                await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                                return;
+                            } else if (task.status === 'failed') {
+                                this.bgCollection = { active: false, taskId: null, postsNew: 0 };
+                                return;
+                            }
+                            // Still running — update progress
+                            if (task.result?.posts_new != null) {
+                                this.bgCollection.postsNew = task.result.posts_new;
+                            }
+                            setTimeout(poll, 3000);
+                        } catch (e) {
+                            setTimeout(poll, 5000);
+                        }
+                    };
+                    setTimeout(poll, 2000);
                 },
 
                 async checkHealth() {
@@ -1535,9 +1590,11 @@
                         const res = await fetch('/api/collect', { method: 'POST' });
                         const task = await res.json();
                         if (task.task_id) {
+                            this.bgCollection = { active: true, taskId: task.task_id, postsNew: 0 };
                             await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
                                 this.collectResult = result;
                                 this.collecting = false;
+                                this.bgCollection = { active: false, taskId: null, postsNew: 0 };
                                 this.showToast('Collection complete', `${result?.posts_new || 0} new posts`, 'success');
                                 Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
                             });
@@ -1548,6 +1605,7 @@
                     } catch (e) {
                         this.showToast('Collection failed', e.message, 'error');
                         this.collecting = false;
+                        this.bgCollection = { active: false, taskId: null, postsNew: 0 };
                     }
                 },
 

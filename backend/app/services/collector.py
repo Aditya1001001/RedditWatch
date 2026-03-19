@@ -306,6 +306,51 @@ class CollectorService:
         except Exception as e:
             logger.warning(f"Failed to record subscriber snapshot for r/{subreddit_name}: {e}")
 
+    async def get_staleness(self, threshold_hours: float) -> dict:
+        """Check how stale the collection data is.
+
+        Returns {stale: bool, oldest_collection_hours: float | None,
+                 subreddits_never_collected: int, total_subreddits: int}
+        """
+        async with async_session_maker() as session:
+            subreddits = await self.get_monitored_subreddits(session, enabled_only=True)
+
+        if not subreddits:
+            return {
+                "stale": False,
+                "oldest_collection_hours": None,
+                "subreddits_never_collected": 0,
+                "total_subreddits": 0,
+            }
+
+        never_collected = sum(1 for s in subreddits if s.last_collected is None)
+        collected_times = [
+            s.last_collected for s in subreddits if s.last_collected is not None
+        ]
+
+        if not collected_times:
+            # All subs are never-collected
+            return {
+                "stale": True,
+                "oldest_collection_hours": None,
+                "subreddits_never_collected": never_collected,
+                "total_subreddits": len(subreddits),
+            }
+
+        oldest = min(collected_times)
+        # Ensure timezone-aware comparison
+        now = datetime.now(timezone.utc)
+        if oldest.tzinfo is None:
+            oldest = oldest.replace(tzinfo=timezone.utc)
+        hours_ago = (now - oldest).total_seconds() / 3600
+
+        return {
+            "stale": hours_ago > threshold_hours or never_collected > 0,
+            "oldest_collection_hours": round(hours_ago, 1),
+            "subreddits_never_collected": never_collected,
+            "total_subreddits": len(subreddits),
+        }
+
     async def collect_subreddit(
         self,
         session: AsyncSession,

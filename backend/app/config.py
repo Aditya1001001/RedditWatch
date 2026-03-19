@@ -86,6 +86,10 @@ class CollectionConfig(BaseModel):
     # Scheduling
     auto_schedule: bool = False
 
+    # Startup catch-up collection
+    collect_on_startup: bool = True       # Auto-collect if data is stale when app starts
+    stale_threshold_hours: float = 12.0   # Hours before data is considered stale
+
 
 class AnalysisConfig(BaseModel):
     """Analysis settings."""

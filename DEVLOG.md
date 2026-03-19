@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 10 in progress (Historical Data + UI Polish) | Phase 9 complete | Monorepo split done
+**Status**: Phase 12 complete (Smart Startup Collection) | Mac app planned (Phase 13)
 
 ---
 
@@ -68,6 +68,28 @@
 - [ ] Wire audience filter to all analytics API calls (currently missing)
 - [ ] Deduplicate summary metrics between tabs
 
+### Phase 13: Native Mac App
+
+**Goal**: Package RedditWatch as a native macOS app so it can run persistently in the background — collecting data, running analysis — without the user needing a terminal or browser tab open.
+
+**Why**:
+- Desktop app can run collection on a schedule in the background (menu bar agent)
+- No need for `python -m uvicorn` — double-click to launch
+- Startup catch-up collection (Phase 12) becomes even better: the app is always warm
+- Natural distribution path: `.dmg` download, drag to Applications
+
+**Options to evaluate**:
+- **Tauri** — native macOS window (WebKit), Python backend as sidecar. Tiny binary, best UX.
+- **PyWebView** — pure Python, wraps native WebKit. Simplest to ship, no JS toolchain.
+- **Swift + WKWebView** — fully native wrapper, best macOS integration (menu bar, notifications)
+
+**Key features for Mac app**:
+- [ ] Menu bar icon with status (idle / collecting / analyzing)
+- [ ] Background collection on configurable schedule
+- [ ] Native notifications on collection/analysis completion
+- [ ] Launch at login option
+- [ ] Bundled Python runtime (no system Python dependency)
+
 ### Other Pending Items
 
 - [ ] Set up Claude API for faster analysis (~1,400 unanalyzed posts)
@@ -78,6 +100,20 @@
 ---
 
 ## Changelog
+
+### 2026-03-19: Smart Startup Collection for Intermittent Users
+
+**Problem**: Most self-hosted users run RedditWatch intermittently — open it, check insights, close it. Data goes stale between sessions, and setting up cron jobs or external schedulers is friction nobody wants.
+
+**Solution**: On app startup, automatically check how stale the data is. If any monitored subreddit hasn't been collected in >12 hours (configurable), trigger a background collection. Non-blocking — the app is immediately usable with existing data while fresh data streams in.
+
+**Changes**:
+- Added `collect_on_startup` (default: true) and `stale_threshold_hours` (default: 12) config options
+- Added `CollectorService.get_staleness()` — checks oldest `last_collected` timestamp and never-collected count
+- Added `_startup_collect_if_stale()` in lifespan — runs as background task via `TaskTracker` so frontend can track it
+- Added collection-in-progress banner on Subreddits tab: "Collecting fresh data... X new posts so far"
+- Banner auto-dismisses on completion and reloads data
+- Coexists with existing `auto_schedule` — both can be active independently
 
 ### 2026-03-16: Rebuild Subreddit Catalog — Categories & Display
 

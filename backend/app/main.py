@@ -1,5 +1,6 @@
 """RedditWatch FastAPI application."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -10,10 +11,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import api_router
-from app.config import get_config
+from app.config import Config, get_config
 from app.database import init_db
-from app.services.collector import shutdown_collector
+from app.services.collector import get_collector, shutdown_collector
 from app.services.scheduler import get_scheduler, shutdown_scheduler
+from app.services.tasks import get_task_tracker
 
 # Configure logging
 logging.basicConfig(
@@ -43,6 +45,10 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         logger.info("Collection scheduler started (auto_schedule=true)")
 
+    # Startup catch-up: collect if data is stale
+    if config.collection.collect_on_startup:
+        asyncio.create_task(_startup_collect_if_stale(config))
+
     yield
 
     # Shutdown
@@ -50,6 +56,46 @@ async def lifespan(app: FastAPI):
     await shutdown_scheduler()
     await shutdown_collector()
     logger.info("Cleanup complete")
+
+
+async def _startup_collect_if_stale(config: Config):
+    """Check data staleness and trigger background collection if needed."""
+    try:
+        collector = get_collector()
+        staleness = await collector.get_staleness(config.collection.stale_threshold_hours)
+
+        if not staleness["total_subreddits"]:
+            logger.info("No monitored subreddits — skipping startup collection")
+            return
+
+        if not staleness["stale"]:
+            hours = staleness["oldest_collection_hours"]
+            logger.info(f"Data is fresh (collected {hours}h ago), skipping startup collection")
+            return
+
+        # Build a human-readable reason
+        parts = []
+        if staleness["oldest_collection_hours"] is not None:
+            parts.append(f"{staleness['oldest_collection_hours']}h since last collection")
+        if staleness["subreddits_never_collected"]:
+            parts.append(f"{staleness['subreddits_never_collected']} never collected")
+        reason = ", ".join(parts)
+
+        logger.info(f"Data is stale ({reason}), starting background collection...")
+
+        # Register with TaskTracker so the frontend can show progress
+        tracker = get_task_tracker()
+        active = tracker.get_active_task("collection")
+        if active:
+            logger.info("Collection already running, skipping startup collection")
+            return
+
+        task_info = tracker.create_task("collection")
+        tracker.run_background(task_info, collector.collect_all(deep=False))
+
+        logger.info(f"Startup collection started (task_id={task_info.task_id})")
+    except Exception:
+        logger.exception("Startup collection check failed (non-fatal)")
 
 
 # Create FastAPI app

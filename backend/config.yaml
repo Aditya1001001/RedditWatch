@@ -65,6 +65,10 @@ collection:
   # Scheduling
   auto_schedule: false
 
+  # Startup catch-up: auto-collect when data is stale on app start
+  collect_on_startup: true
+  stale_threshold_hours: 12
+
 # Analysis settings
 analysis:
   auto_analyze: true
