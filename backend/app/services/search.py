@@ -1,5 +1,6 @@
 """Semantic search service using ChromaDB."""
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Optional
@@ -10,6 +11,9 @@ from chromadb.config import Settings
 from app.config import get_config
 
 logger = logging.getLogger(__name__)
+
+# Timeout for ChromaDB operations (seconds)
+CHROMA_TIMEOUT = 30
 
 
 class SearchService:
@@ -123,27 +127,15 @@ class SearchService:
         logger.info(f"Added {len(insights)} insights to ChromaDB")
         return len(insights)
 
-    def search(
+    def _search_sync(
         self,
         query: str,
-        limit: int = 10,
-        type_filter: Optional[str] = None,
-        theme_filter: Optional[str] = None,
-        min_intensity: Optional[int] = None,
+        limit: int,
+        type_filter: Optional[str],
+        theme_filter: Optional[str],
+        min_intensity: Optional[int],
     ) -> list[dict]:
-        """
-        Semantic search for insights.
-
-        Args:
-            query: Search query text
-            limit: Maximum results to return
-            type_filter: Filter by insight type
-            theme_filter: Filter by theme_key
-            min_intensity: Minimum intensity score
-
-        Returns:
-            List of matching insights with scores
-        """
+        """Synchronous search implementation."""
         collection = self._get_collection()
 
         # Build where clause for filtering
@@ -184,6 +176,50 @@ class SearchService:
                 })
 
         return formatted
+
+    def search(
+        self,
+        query: str,
+        limit: int = 10,
+        type_filter: Optional[str] = None,
+        theme_filter: Optional[str] = None,
+        min_intensity: Optional[int] = None,
+    ) -> list[dict]:
+        """
+        Semantic search for insights (sync).
+
+        Args:
+            query: Search query text
+            limit: Maximum results to return
+            type_filter: Filter by insight type
+            theme_filter: Filter by theme_key
+            min_intensity: Minimum intensity score
+
+        Returns:
+            List of matching insights with scores
+        """
+        return self._search_sync(query, limit, type_filter, theme_filter, min_intensity)
+
+    async def search_async(
+        self,
+        query: str,
+        limit: int = 10,
+        type_filter: Optional[str] = None,
+        theme_filter: Optional[str] = None,
+        min_intensity: Optional[int] = None,
+    ) -> list[dict]:
+        """
+        Semantic search with timeout protection.
+
+        Runs ChromaDB query in a thread to avoid blocking the event loop,
+        with a timeout to prevent indefinite hangs.
+        """
+        return await asyncio.wait_for(
+            asyncio.to_thread(
+                self._search_sync, query, limit, type_filter, theme_filter, min_intensity
+            ),
+            timeout=CHROMA_TIMEOUT,
+        )
 
     def find_similar(
         self,

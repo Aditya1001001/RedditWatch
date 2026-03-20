@@ -54,6 +54,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         body {
@@ -126,6 +127,21 @@
 
         /* Smooth scrolling within panels */
         .scroll-smooth { scroll-behavior: smooth; }
+
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #232320 25%, #2c2c28 50%, #232320 75%);
+            background-size: 200% 100%;
+            animation: skeleton-pulse 1.5s ease-in-out infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-pulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton { animation: none; background: #232320; }
+        }
     </style>
 </head>
 <body class="bg-surface-0 text-text-primary min-h-screen font-sans">
@@ -148,7 +164,7 @@
         </header>
 
         <!-- Toast Notifications -->
-        <div class="fixed top-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" style="max-width: 380px;">
+        <div class="fixed top-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" style="max-width: 380px;" aria-live="polite">
             <template x-for="toast in toasts" :key="toast.id">
                 <div :class="[
                     'pointer-events-auto rounded-lg px-4 py-3 text-sm shadow-lg border toast-enter',
@@ -168,10 +184,12 @@
         </div>
 
         <!-- Audience Form Modal -->
-        <div x-show="showAudienceForm" x-transition.opacity class="fixed inset-0 z-40" style="display:none;">
+        <div x-show="showAudienceForm" x-transition.opacity class="fixed inset-0 z-40" style="display:none;"
+             @keydown.escape.window="showAudienceForm = false" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-black/50" @click="showAudienceForm = false"></div>
             <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
-                <div class="pointer-events-auto w-full max-w-md border border-accent/30 rounded-lg p-5 bg-surface-1 shadow-2xl" @click.stop>
+                <div class="pointer-events-auto w-full max-w-md border border-accent/30 rounded-lg p-5 bg-surface-1 shadow-2xl" @click.stop
+                     x-trap.noscroll="showAudienceForm">
                     <h3 class="text-sm font-semibold text-text-primary mb-4" x-text="editingAudience ? 'Edit Audience' : 'New Audience'"></h3>
                     <div class="space-y-3">
                         <div>
@@ -302,7 +320,7 @@
                 <!-- Header -->
                 <div class="px-5 py-4 border-b border-border bg-surface-1 flex items-center justify-between shrink-0">
                     <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider" x-text="getThemeTypeLabel(selectedThemeType)"></h3>
-                    <button @click="selectedThemeType = null" class="text-text-muted hover:text-text-primary transition-colors duration-150 p-1 rounded-lg hover:bg-surface-2">
+                    <button @click="selectedThemeType = null" aria-label="Close panel" class="text-text-muted hover:text-text-primary transition-colors duration-150 p-1 rounded-lg hover:bg-surface-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -531,6 +549,7 @@
                 <div x-show="audiences.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template x-for="aud in audiences" :key="aud.id">
                         <div @click="selectAudience(aud.id)"
+                             x-data="{ _g: getAudienceGrowth(aud.subreddit_names) }"
                              class="border border-border rounded-lg p-5 cursor-pointer hover:border-accent/40 transition-all duration-150 group">
                             <h3 class="font-semibold text-base text-text-primary group-hover:text-accent transition-colors duration-150 mb-4" x-text="aud.name"></h3>
 
@@ -543,13 +562,13 @@
                                 <div>
                                     <p class="text-text-muted text-[11px] uppercase tracking-wider mb-0.5">Members</p>
                                     <p class="text-text-primary text-sm font-semibold tabular-nums"
-                                       x-text="getAudienceGrowth(aud.subreddit_names)?.total_subscribers ? formatSubscribers(getAudienceGrowth(aud.subreddit_names).total_subscribers) : '—'"></p>
+                                       x-text="_g?.total_subscribers ? formatSubscribers(_g.total_subscribers) : '—'"></p>
                                 </div>
                                 <div>
                                     <p class="text-text-muted text-[11px] uppercase tracking-wider mb-0.5">Growth</p>
                                     <p class="text-sm font-semibold tabular-nums"
-                                       :class="(getAudienceGrowth(aud.subreddit_names)?.change_pct ?? 0) >= 0 ? 'text-insight-opportunity' : 'text-insight-pain'"
-                                       x-text="getAudienceGrowth(aud.subreddit_names)?.change_pct != null ? (getAudienceGrowth(aud.subreddit_names).change_pct >= 0 ? '+' : '') + getAudienceGrowth(aud.subreddit_names).change_pct + '%/wk' : '—'"></p>
+                                       :class="(_g?.change_pct ?? 0) >= 0 ? 'text-insight-opportunity' : 'text-insight-pain'"
+                                       x-text="_g?.change_pct != null ? (_g.change_pct >= 0 ? '+' : '') + _g.change_pct + '%/wk' : '—'"></p>
                                 </div>
                             </div>
 
@@ -899,7 +918,7 @@
                     {id: 'topics', label: 'Topics', badge: () => themes.length},
                     {id: 'posts', label: 'Posts', action: 'loadPosts', badge: () => postsData.total || 0},
                 ]" :key="t.id">
-                    <button @click="tab = t.id; t.action && $data[t.action]()"
+                    <button @click="Object.values(charts).forEach(c => c?.destroy()); charts = {}; tab = t.id; t.action && $data[t.action]()"
                             :class="tab === t.id
                                 ? 'text-accent border-accent'
                                 : 'text-text-muted border-transparent hover:text-text-secondary'"
@@ -920,6 +939,7 @@
                         class="ml-auto px-3 py-2.5 border-b-2 transition-colors duration-150"
                         role="tab"
                         :aria-selected="tab === 'analytics'"
+                        aria-label="Analytics"
                         title="Analytics">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -1218,8 +1238,22 @@
                     <span class="text-xs text-text-muted tabular-nums ml-auto" x-text="insightsList.length + ' insights'"></span>
                 </div>
 
+                <!-- Loading skeleton for insights -->
+                <div x-show="loadingAudience" class="space-y-3">
+                    <template x-for="i in 4" :key="'skel-insight-'+i">
+                        <div class="border border-border rounded-lg p-5">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="skeleton h-5 w-16 rounded-full"></div>
+                                <div class="skeleton h-4 w-48"></div>
+                            </div>
+                            <div class="skeleton h-3 w-full mb-2"></div>
+                            <div class="skeleton h-3 w-3/4"></div>
+                        </div>
+                    </template>
+                </div>
+
                 <!-- Insights list -->
-                <div x-show="insightsList.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
+                <div x-show="!loadingAudience && insightsList.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
                     <p class="text-text-muted text-sm">No insights yet</p>
                     <p class="text-text-muted text-xs mt-1">Run analysis on collected posts</p>
                 </div>
@@ -1421,8 +1455,22 @@
                     <span class="ml-auto text-xs text-text-muted tabular-nums"><span x-text="postsData.total"></span> posts</span>
                 </div>
 
+                <!-- Loading skeleton for posts -->
+                <div x-show="loadingAudience" class="space-y-2">
+                    <template x-for="i in 5" :key="'skel-post-'+i">
+                        <div class="border border-border rounded-lg px-5 py-4">
+                            <div class="skeleton h-4 w-3/4 mb-2"></div>
+                            <div class="flex gap-3">
+                                <div class="skeleton h-3 w-16"></div>
+                                <div class="skeleton h-3 w-12"></div>
+                                <div class="skeleton h-3 w-20"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
                 <!-- Post List -->
-                <div x-show="posts.length === 0" class="text-center py-16 border border-dashed border-border rounded-lg">
+                <div x-show="!loadingAudience && posts.length === 0" class="text-center py-16 border border-dashed border-border rounded-lg">
                     <p class="text-text-muted text-sm">No posts yet</p>
                     <p class="text-text-muted text-xs mt-1">Add subreddits and collect posts to get started</p>
                 </div>
@@ -1730,6 +1778,8 @@
                 toasts: [],
                 _toastId: 0,
                 bgCollection: { active: false, taskId: null, postsNew: 0 },
+                _audienceAbort: null,
+                loadingAudience: false,
                 // Landing page tabs
                 landingTab: 'saved',
                 trendingSort: 'largest',
@@ -1760,7 +1810,8 @@
                 },
 
                 // ── Toast system ──
-                showToast(title, detail = '', type = 'info', duration = 4000) {
+                showToast(title, detail = '', type = 'info', duration = null) {
+                    if (duration === null) duration = type === 'error' ? 8000 : 4000;
                     const id = ++this._toastId;
                     this.toasts.push({ id, title, detail, type });
                     setTimeout(() => {
@@ -1780,9 +1831,16 @@
                 },
 
                 _pollBgCollection(taskId) {
+                    let retries = 0;
+                    const maxRetries = 120;
                     const poll = async () => {
+                        if (retries++ > maxRetries) {
+                            this.bgCollection = { active: false, taskId: null, postsNew: 0 };
+                            return;
+                        }
                         try {
                             const res = await fetch('/api/collect/task/' + taskId);
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
                             const task = await res.json();
                             if (task.status === 'completed') {
                                 const newPosts = task.result?.posts_new || 0;
@@ -1819,9 +1877,11 @@
                 async loadSubreddits() {
                     try {
                         const res = await fetch('/api/subreddits');
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.subreddits = await res.json();
                         this.loadGrowthSummary();
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load subreddits', 'error');
                         this.subreddits = [];
                     }
                 },
@@ -1832,10 +1892,12 @@
                             fetch('/api/subreddits/catalog'),
                             fetch('/api/subreddits/catalog/categories'),
                         ]);
+                        if (!catalogRes.ok || !catRes.ok) throw new Error('HTTP error');
                         this.catalog = await catalogRes.json();
                         const catData = await catRes.json();
                         this.catalogCategories = catData.categories || [];
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load catalog', 'error');
                         this.catalog = [];
                     }
                 },
@@ -1843,24 +1905,30 @@
                 async loadPostStats() {
                     try {
                         const res = await fetch('/api/posts/stats');
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.postStats = await res.json();
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load post stats', 'error');
                         this.postStats = {};
                     }
                 },
 
-                async loadPosts() {
+                async loadPosts(signal) {
                     try {
                         const params = new URLSearchParams();
                         if (this.postFilter.subreddit) params.set('subreddit', this.postFilter.subreddit);
                         if (this.postFilter.analyzed) params.set('analyzed', this.postFilter.analyzed);
                         params.set('page', this.postFilter.page);
                         this.audienceParam(params);
-                        const res = await fetch('/api/posts?' + params);
+                        const res = await fetch('/api/posts?' + params, signal ? { signal } : {});
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         const data = await res.json();
+                        if (signal?.aborted) return;
                         this.posts = data.posts;
                         this.postsData = data;
                     } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        this.showToast('Load failed', 'Could not load posts', 'error');
                         this.posts = [];
                     }
                 },
@@ -1878,13 +1946,20 @@
                 async loadAudiences() {
                     try {
                         const res = await fetch('/api/audiences');
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.audiences = await res.json();
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load audiences', 'error');
                         this.audiences = [];
                     }
                 },
 
                 async selectAudience(id) {
+                    // Abort any in-flight audience loads to prevent stale data
+                    if (this._audienceAbort) this._audienceAbort.abort();
+                    this._audienceAbort = new AbortController();
+                    const signal = this._audienceAbort.signal;
+
                     this.activeAudienceId = id;
                     const aud = this.audiences.find(a => a.id === id);
                     this.activeAudienceSubreddits = aud ? aud.subreddit_names : [];
@@ -1896,10 +1971,18 @@
                     this.showAddSubToAudience = false;
                     this.askHistory = [];
                     this.askAnswer = '';
-                    await Promise.all([
-                        this.loadPosts(),
-                        this.loadInsights(),
-                    ]);
+                    this.loadingAudience = true;
+                    try {
+                        await Promise.all([
+                            this.loadPosts(signal),
+                            this.loadInsights(signal),
+                        ]);
+                    } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        throw e;
+                    } finally {
+                        if (!signal.aborted) this.loadingAudience = false;
+                    }
                 },
 
                 backToAudiences() {
@@ -2057,6 +2140,7 @@
                 async loadGrowthSummary() {
                     try {
                         const res = await fetch('/api/subreddits/growth/summary?days=7');
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.growthSummary = await res.json();
                     } catch (e) {
                         this.growthSummary = [];
@@ -2221,46 +2305,58 @@
                     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 },
 
-                async loadInsights() {
+                async loadInsights(signal) {
                     await Promise.all([
-                        this.loadAnalysisStatus(),
-                        this.loadThemes(),
-                        this.loadInsightsList(),
+                        this.loadAnalysisStatus(signal),
+                        this.loadThemes(signal),
+                        this.loadInsightsList(signal),
                     ]);
                 },
 
-                async loadAnalysisStatus() {
+                async loadAnalysisStatus(signal) {
                     try {
                         const params = new URLSearchParams();
                         this.audienceParam(params);
-                        const res = await fetch('/api/analyze/status?' + params);
+                        const res = await fetch('/api/analyze/status?' + params, signal ? { signal } : {});
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        if (signal?.aborted) return;
                         this.analysisStatus = await res.json();
                     } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        this.showToast('Load failed', 'Could not load analysis status', 'error');
                         this.analysisStatus = {};
                     }
                 },
 
-                async loadThemes() {
+                async loadThemes(signal) {
                     try {
                         const params = new URLSearchParams();
                         this.audienceParam(params);
-                        const res = await fetch('/api/analyze/themes?' + params);
+                        const res = await fetch('/api/analyze/themes?' + params, signal ? { signal } : {});
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        if (signal?.aborted) return;
                         this.themes = await res.json();
                     } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        this.showToast('Load failed', 'Could not load themes', 'error');
                         this.themes = [];
                     }
                 },
 
-                async loadInsightsList() {
+                async loadInsightsList(signal) {
                     try {
                         const params = new URLSearchParams();
                         if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
                         if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
                         params.set('limit', '50');
                         this.audienceParam(params);
-                        const res = await fetch('/api/analyze/insights?' + params);
+                        const res = await fetch('/api/analyze/insights?' + params, signal ? { signal } : {});
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        if (signal?.aborted) return;
                         this.insightsList = await res.json();
                     } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        this.showToast('Load failed', 'Could not load insights', 'error');
                         this.insightsList = [];
                     }
                 },
@@ -2278,12 +2374,12 @@
                         const res = await fetch('/api/analyze?limit=10&min_score=0', { method: 'POST' });
                         const task = await res.json();
                         if (task.task_id) {
-                            await this.pollTask(task.task_id, '/api/analyze/task/', (result) => {
+                            await this.pollTask(task.task_id, '/api/analyze/task/', async (result) => {
                                 this.analysisResult = result;
                                 this.analyzing = false;
                                 this.showToast('Analysis complete', `${result?.insights_extracted || 0} insights extracted`, 'success');
-                                this.loadInsights();
-                                fetch('/api/search/reindex', { method: 'POST' });
+                                await this.loadInsights();
+                                try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
                             });
                         } else {
                             this.analysisResult = task;
@@ -2303,12 +2399,12 @@
                         const res = await fetch('/api/analyze/themes/consolidate?' + params, { method: 'POST' });
                         const task = await res.json();
                         if (task.task_id) {
-                            await this.pollTask(task.task_id, '/api/analyze/task/', (result) => {
+                            await this.pollTask(task.task_id, '/api/analyze/task/', async (result) => {
                                 this.consolidating = false;
                                 const merged = result?.groups_merged || 0;
                                 this.showToast('Consolidation complete', `${merged} group${merged !== 1 ? 's' : ''} merged`, 'success');
-                                this.loadInsights();
-                                fetch('/api/search/reindex', { method: 'POST' });
+                                await this.loadInsights();
+                                try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
                             });
                         } else {
                             this.consolidating = false;
@@ -2320,9 +2416,17 @@
                 },
 
                 async pollTask(taskId, baseUrl, onComplete) {
+                    let retries = 0;
+                    const maxRetries = 120;
                     const poll = async () => {
+                        if (retries++ > maxRetries) {
+                            this.showToast('Timeout', 'Task is taking too long', 'error');
+                            onComplete(null);
+                            return;
+                        }
                         try {
                             const res = await fetch(baseUrl + taskId);
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
                             const task = await res.json();
                             if (task.status === 'completed') {
                                 onComplete(task.result || task);
@@ -2539,6 +2643,7 @@
                             fetch('/api/analyze/themes' + suffix),
                             fetch('/api/posts/stats' + suffix),
                         ]);
+                        if (!statusRes.ok || !themesRes.ok || !statsRes.ok) throw new Error('HTTP error');
                         const status = await statusRes.json();
                         const themes = await themesRes.json();
                         const stats = await statsRes.json();
@@ -2562,7 +2667,7 @@
                             postsByDate: stats.posts_by_date || {},
                         };
                     } catch (e) {
-                        console.error('Failed to load analytics:', e);
+                        this.showToast('Load failed', 'Could not load analytics data', 'error');
                         this.analyticsData = {};
                     }
                 },
@@ -2572,12 +2677,14 @@
                         const params = new URLSearchParams({ limit: '10', sort: 'intensity' });
                         this.audienceParam(params);
                         const res = await fetch('/api/analyze/insights?' + params);
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         const insights = await res.json();
                         this.topIntensityInsights = insights
                             .filter(i => i.intensity_score)
                             .sort((a, b) => b.intensity_score - a.intensity_score)
                             .slice(0, 10);
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load top insights', 'error');
                         this.topIntensityInsights = [];
                     }
                 },
@@ -2595,8 +2702,12 @@
                         const params = new URLSearchParams({ days: '30', top_n: '8' });
                         this.audienceParam(params);
                         const res = await fetch('/api/analyze/themes/timeline?' + params);
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.themeTimeline = await res.json();
-                    } catch (e) { this.themeTimeline = {}; }
+                    } catch (e) {
+                        this.showToast('Load failed', 'Could not load theme timeline', 'error');
+                        this.themeTimeline = {};
+                    }
                 },
 
                 async loadActivityHeatmap() {
@@ -2605,8 +2716,12 @@
                         this.audienceParam(params);
                         const qs = params.toString();
                         const res = await fetch('/api/posts/activity' + (qs ? '?' + qs : ''));
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.activityHeatmap = await res.json();
-                    } catch (e) { this.activityHeatmap = {}; }
+                    } catch (e) {
+                        this.showToast('Load failed', 'Could not load activity data', 'error');
+                        this.activityHeatmap = {};
+                    }
                 },
 
                 async loadThemeMatrix() {
@@ -2614,8 +2729,12 @@
                         const params = new URLSearchParams({ top_themes: '10', top_subreddits: '10' });
                         this.audienceParam(params);
                         const res = await fetch('/api/analyze/themes/matrix?' + params);
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.themeMatrix = await res.json();
-                    } catch (e) { this.themeMatrix = {}; }
+                    } catch (e) {
+                        this.showToast('Load failed', 'Could not load theme matrix', 'error');
+                        this.themeMatrix = {};
+                    }
                 },
 
                 getHeatColor(count) {
@@ -2671,8 +2790,10 @@
                     this.trendingLoading = true;
                     try {
                         const res = await fetch('/api/subreddits/growth/multi');
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
                         this.trendingData = await res.json();
                     } catch (e) {
+                        this.showToast('Load failed', 'Could not load trending data', 'error');
                         this.trendingData = [];
                     }
                     this.trendingLoading = false;

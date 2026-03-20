@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -152,7 +152,7 @@ async def delete_audience(
 
 
 class AskRequest(BaseModel):
-    question: str
+    question: str = Field(..., min_length=3, max_length=500)
 
 
 @router.post("/{audience_id}/ask")

@@ -152,6 +152,10 @@ async def search_subreddits(
     session: AsyncSession = Depends(get_session),
 ):
     """Search subreddits across local catalog and Reddit's live search."""
+    q_clean = q.strip()
+    if len(q_clean) < 2:
+        raise HTTPException(status_code=400, detail="Query too short")
+    q = q_clean
     collector = get_collector()
 
     # Get monitored names for marking results
@@ -400,7 +404,8 @@ async def get_subreddit_growth(
     session: AsyncSession = Depends(get_session),
 ):
     """Get subscriber growth time series for a subreddit."""
-    sub = await session.get(MonitoredSubreddit, name.lower())
+    name = name.lower()
+    sub = await session.get(MonitoredSubreddit, name)
     if not sub:
         raise HTTPException(status_code=404, detail=f"Subreddit r/{name} not found")
 
@@ -408,7 +413,7 @@ async def get_subreddit_growth(
 
     result = await session.execute(
         select(SubscriberSnapshot)
-        .where(SubscriberSnapshot.subreddit_name == name.lower())
+        .where(SubscriberSnapshot.subreddit_name == name)
         .where(SubscriberSnapshot.recorded_at >= cutoff)
         .order_by(SubscriberSnapshot.recorded_at.asc())
     )

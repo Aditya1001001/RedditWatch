@@ -95,11 +95,31 @@
 - [ ] Set up Claude API for faster analysis (~1,400 unanalyzed posts)
 - [ ] Take fresh screenshots after analysis + UI fixes
 - [x] Review subreddit catalog category groupings (287 → 46 categories, 1,859 → 263 curated subs)
-- [ ] Address remaining codebase audit items (see audit section below)
+- [ ] Address remaining codebase audit items (see audit section below) — 27/~60 fixed after two hardening passes
 
 ---
 
 ## Changelog
+
+### 2026-03-20: Audit Hardening Pass #2 — 11 Remaining User-Facing Fixes
+
+Second round of fixes from the March 16 codebase audit. Targets race conditions, silent failures, accessibility gaps, and missing error feedback. Combined with the 10-fix first pass, 27 of ~60 audit issues are now resolved.
+
+**Backend (4 fixes)**
+- **B2 — Session commit logging** (`database.py`): `get_session()` now logs full traceback on commit/rollback via `logger.exception()`, replacing silent re-raise that produced opaque 500s
+- **B3 — ChromaDB timeout** (`services/search.py`, `api/search.py`): Added `search_async()` that runs ChromaDB queries in a thread pool with 30s timeout via `asyncio.wait_for`. Search API endpoint returns 504 on timeout instead of hanging indefinitely
+- **B4 — Audience eager loading**: Already handled — `lazy="selectin"` was on the relationship, no change needed
+- **B5 — Case normalization** (`api/subreddits.py`): `get_subreddit_growth()` now normalizes `name = name.lower()` at function entry. Previously used `.lower()` inconsistently — lookup worked but response echoed original case
+
+**Frontend (7 fixes, all in `index.html`)**
+- **F1/B1 — Race condition on audience switching**: Added `AbortController` to `selectAudience()`. Rapid clicks abort previous in-flight fetches. Signal propagated through `loadPosts()`, `loadInsights()`, `loadAnalysisStatus()`, `loadThemes()`, `loadInsightsList()`
+- **F2 — Error toast duration**: Error toasts now auto-dismiss at 8s (was 4s, same as success). Success/info toasts unchanged at 4s
+- **F3 — Modal focus trap + Escape**: Audience form modal now closes on Escape key, has `role="dialog"` + `aria-modal="true"`, and traps focus via Alpine Focus plugin (`x-trap.noscroll`)
+- **F4 — Loading skeletons**: Added pulsing skeleton placeholders for insights list (4 cards) and posts table (5 rows) during audience load, preventing "No data" flash / CLS
+- **F5 — `loadAudiences()` silent failure**: Now checks `res.ok` and shows error toast (was completely silent)
+- **F6 — `loadAnalyticsData()` + `loadTopIntensityInsights()` silent failures**: Both now check `res.ok` and show error toasts
+
+**Audit status**: 27 of ~60 issues fixed. Remaining items are architectural (monolithic HTML, API versioning) or low-impact for a solo project (color contrast, pinned deps, micro-optimizations).
 
 ### 2026-03-20: Subreddit Discovery — Search API + Community Directory Scraper
 

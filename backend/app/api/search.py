@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,13 +71,16 @@ async def search_insights(
     sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
     fetch_limit = limit * 3 if sub_names is not None else limit
 
-    results = search_service.search(
-        query=q,
-        limit=fetch_limit,
-        type_filter=type,
-        theme_filter=theme_key,
-        min_intensity=min_intensity,
-    )
+    try:
+        results = await search_service.search_async(
+            query=q,
+            limit=fetch_limit,
+            type_filter=type,
+            theme_filter=theme_key,
+            min_intensity=min_intensity,
+        )
+    except TimeoutError:
+        raise HTTPException(status_code=504, detail="Search timed out")
 
     # Post-filter by subreddit if audience specified
     if sub_names is not None:

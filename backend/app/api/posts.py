@@ -32,6 +32,7 @@ class PostResponse(BaseModel):
     subreddit: str
     title: str
     body: Optional[str] = None
+    body_truncated: bool = False
     author: Optional[str] = None
     score: int = 0
     upvote_ratio: Optional[float] = None
@@ -126,7 +127,8 @@ async def list_posts(
                 id=p.id,
                 subreddit=p.subreddit,
                 title=p.title,
-                body=p.body[:500] if p.body else None,  # Truncate body in list
+                body=p.body[:500] if p.body else None,
+                body_truncated=bool(p.body and len(p.body) > 500),
                 author=p.author,
                 score=p.score,
                 upvote_ratio=p.upvote_ratio,

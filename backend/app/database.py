@@ -1,5 +1,6 @@
 """Database setup and session management for RedditWatch."""
 
+import logging
 import sys
 from pathlib import Path
 from typing import AsyncGenerator
@@ -7,6 +8,8 @@ from typing import AsyncGenerator
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+
+logger = logging.getLogger(__name__)
 
 # Database path
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
@@ -42,6 +45,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             yield session
             await session.commit()
         except Exception:
+            logger.exception("Session error, rolling back")
             await session.rollback()
             raise
 
