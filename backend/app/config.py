@@ -88,7 +88,7 @@ class CollectionConfig(BaseModel):
 
     # Startup catch-up collection
     collect_on_startup: bool = True       # Auto-collect if data is stale when app starts
-    stale_threshold_hours: float = 12.0   # Hours before data is considered stale
+    stale_threshold_hours: float = 6.0    # Hours before data is considered stale
 
 
 class AnalysisConfig(BaseModel):

@@ -137,6 +137,9 @@ def insights_to_markdown(insights: list[Insight], include_summary: bool = True) 
                 "solution_request": "🟡",
                 "opportunity": "🟢",
                 "product_mention": "🟣",
+                "advice_request": "🔵",
+                "idea": "🟠",
+                "money_talk": "🩵",
             }.get(insight.type, "⚪")
 
             lines.append(f"#### {type_emoji} {insight.title}")
@@ -494,6 +497,7 @@ async def export_themes(
 
 @router.get("/report")
 async def generate_report(
+    audience_id: Optional[int] = Query(default=None),
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -503,9 +507,15 @@ async def generate_report(
     """
     analyzer = get_analyzer()
 
+    # Resolve audience filter
+    sub_names = None
+    if audience_id:
+        from app.api.analysis import resolve_audience_subreddits
+        sub_names = await resolve_audience_subreddits(session, audience_id)
+
     # Get all data
-    themes = await analyzer.get_theme_summary(session)
-    insights = await get_filtered_insights(session, limit=1000)
+    themes = await analyzer.get_theme_summary(session, subreddit_names=sub_names)
+    insights = await get_filtered_insights(session, subreddit_names=sub_names, limit=1000)
 
     # Get stats
     from sqlalchemy import func
@@ -533,7 +543,7 @@ async def generate_report(
 
     lines.append("\n### Insight Breakdown\n")
     for t, count in sorted(type_counts.items(), key=lambda x: -x[1]):
-        emoji = {"pain_point": "🔴", "solution_request": "🟡", "opportunity": "🟢", "product_mention": "🟣"}.get(t, "⚪")
+        emoji = {"pain_point": "🔴", "solution_request": "🟡", "opportunity": "🟢", "product_mention": "🟣", "advice_request": "🔵", "idea": "🟠", "money_talk": "🩵"}.get(t, "⚪")
         lines.append(f"- {emoji} **{t.replace('_', ' ').title()}**: {count}")
 
     # Top Themes

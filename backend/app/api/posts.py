@@ -78,6 +78,7 @@ async def list_posts(
     category: Optional[str] = None,
     analyzed: Optional[bool] = None,
     min_score: int = 0,
+    audience_id: Optional[int] = Query(default=None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
@@ -87,11 +88,20 @@ async def list_posts(
 
     Supports filtering by subreddit, category, analysis status, and minimum score.
     """
-    # Build query
-    query = select(Post)
+    # Resolve audience to subreddit filter
+    if audience_id and not subreddit:
+        from app.api.analysis import resolve_audience_subreddits
+        sub_names = await resolve_audience_subreddits(session, audience_id)
+        if sub_names:
+            # Build query with audience subreddits
+            query = select(Post).where(Post.subreddit.in_(sub_names))
+        else:
+            query = select(Post).where(False)  # No matching subs
+    else:
+        query = select(Post)
+        if subreddit:
+            query = query.where(Post.subreddit == subreddit.lower().replace("r/", ""))
 
-    if subreddit:
-        query = query.where(Post.subreddit == subreddit.lower().replace("r/", ""))
     if category:
         query = query.where(Post.category == category)
     if analyzed is not None:

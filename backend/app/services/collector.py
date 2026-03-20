@@ -88,6 +88,62 @@ class CollectorService:
 
         return categories
 
+    async def search_subreddits(
+        self,
+        query: str,
+        limit: int = 20,
+        monitored_names: Optional[set] = None,
+    ) -> list[dict]:
+        """Search subreddits across local catalog and Reddit's API.
+
+        Returns merged, deduplicated results with source and monitored status.
+        """
+        if monitored_names is None:
+            monitored_names = set()
+        query_lower = query.lower()
+
+        # 1. Catalog search (instant)
+        catalog_results = []
+        for entry in self.get_catalog_flat():
+            name_lower = entry["name"].lower()
+            desc_lower = (entry.get("description") or "").lower()
+            best_for_lower = (entry.get("best_for") or "").lower()
+            if (
+                query_lower in name_lower
+                or query_lower in desc_lower
+                or query_lower in best_for_lower
+            ):
+                catalog_results.append({
+                    "name": entry["name"],
+                    "display_name": entry.get("display_name", f"r/{entry['name']}"),
+                    "description": entry.get("description", ""),
+                    "subscribers": entry.get("subscribers"),
+                    "icon_url": entry.get("icon_url"),
+                    "source": "catalog",
+                    "category": entry.get("category"),
+                    "is_monitored": entry["name"].lower() in monitored_names,
+                })
+
+        # 2. Reddit search (network)
+        reddit_results = await self.reddit.search_subreddits(query, limit)
+        for r in reddit_results:
+            r["source"] = "reddit"
+            r["category"] = None
+            r["is_monitored"] = r["name"].lower() in monitored_names
+
+        # 3. Merge: catalog first, then reddit, deduplicate by lowercased name
+        seen = set()
+        merged = []
+        for item in catalog_results + reddit_results:
+            key = item["name"].lower()
+            if key not in seen:
+                seen.add(key)
+                merged.append(item)
+            if len(merged) >= limit:
+                break
+
+        return merged
+
     async def test_reddit_connection(self) -> dict:
         """Test Reddit API connection."""
         return await self.reddit.test_connection()
@@ -123,6 +179,7 @@ class CollectorService:
             display_name=info["display_name"],
             description=info["description"],
             subscribers=info["subscribers"],
+            icon_url=info.get("icon_url"),
             category=category,
             enabled=True,
         )
@@ -278,10 +335,12 @@ class CollectorService:
 
             count = info["subscribers"]
 
-            # Update MonitoredSubreddit with latest count
+            # Update MonitoredSubreddit with latest count + icon
             subreddit = await session.get(MonitoredSubreddit, subreddit_name)
             if subreddit:
                 subreddit.subscribers = count
+                if not subreddit.icon_url and info.get("icon_url"):
+                    subreddit.icon_url = info["icon_url"]
 
             # Check if we already have a snapshot with this count today
             today_start = datetime.now(timezone.utc).replace(

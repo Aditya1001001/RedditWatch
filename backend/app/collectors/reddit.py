@@ -105,11 +105,21 @@ class RedditCollector:
             data = response.json()
             sub_data = data.get("data", {})
 
+            # Extract icon URL: prefer community_icon, fall back to icon_img
+            icon_url = None
+            community_icon = sub_data.get("community_icon") or ""
+            # community_icon often has query params appended after the URL
+            if community_icon:
+                icon_url = community_icon.split("?")[0]
+            if not icon_url:
+                icon_url = sub_data.get("icon_img") or None
+
             return {
                 "name": sub_data.get("display_name", subreddit_name),
                 "display_name": f"r/{sub_data.get('display_name', subreddit_name)}",
                 "description": (sub_data.get("public_description") or "")[:500],
                 "subscribers": sub_data.get("subscribers", 0),
+                "icon_url": icon_url,
                 "created_utc": datetime.fromtimestamp(
                     sub_data.get("created_utc", 0), tz=timezone.utc
                 ) if sub_data.get("created_utc") else None,
@@ -118,6 +128,99 @@ class RedditCollector:
         except Exception as e:
             logger.error(f"Failed to get subreddit info for r/{subreddit_name}: {e}")
             return None
+
+    async def search_subreddits(self, query: str, limit: int = 25) -> list[dict]:
+        """Search for subreddits by name/topic via Reddit's search API."""
+        try:
+            response = await self._request(
+                f"{self.base_url}/subreddits/search.json",
+                params={"q": query, "limit": limit, "include_over_18": "false"},
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Subreddit search failed: HTTP {response.status_code}")
+                return []
+
+            data = response.json()
+            results = []
+            for item in data.get("data", {}).get("children", []):
+                sub_data = item.get("data", {})
+                icon_url = None
+                community_icon = sub_data.get("community_icon") or ""
+                if community_icon:
+                    icon_url = community_icon.split("?")[0]
+                if not icon_url:
+                    icon_url = sub_data.get("icon_img") or None
+
+                results.append({
+                    "name": sub_data.get("display_name", ""),
+                    "display_name": f"r/{sub_data.get('display_name', '')}",
+                    "description": (sub_data.get("public_description") or "")[:500],
+                    "subscribers": sub_data.get("subscribers", 0),
+                    "icon_url": icon_url,
+                })
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Subreddit search failed for query '{query}': {e}")
+            return []
+
+    async def fetch_popular_subreddits(
+        self, max_pages: int = 10, per_page: int = 100
+    ) -> list[dict]:
+        """Fetch popular subreddits with pagination."""
+        all_subs = []
+        after_cursor = None
+
+        for page in range(max_pages):
+            params = {"limit": min(per_page, 100)}
+            if after_cursor:
+                params["after"] = after_cursor
+
+            try:
+                response = await self._request(
+                    f"{self.base_url}/subreddits/popular.json",
+                    params=params,
+                )
+
+                if response.status_code != 200:
+                    logger.error(
+                        f"Popular subreddits page {page + 1} failed: "
+                        f"HTTP {response.status_code}"
+                    )
+                    break
+
+                data = response.json()
+                listing = data.get("data", {})
+                after_cursor = listing.get("after")
+
+                for item in listing.get("children", []):
+                    sub_data = item.get("data", {})
+                    icon_url = None
+                    community_icon = sub_data.get("community_icon") or ""
+                    if community_icon:
+                        icon_url = community_icon.split("?")[0]
+                    if not icon_url:
+                        icon_url = sub_data.get("icon_img") or None
+
+                    all_subs.append({
+                        "name": sub_data.get("display_name", ""),
+                        "display_name": f"r/{sub_data.get('display_name', '')}",
+                        "description": (sub_data.get("public_description") or "")[:500],
+                        "subscribers": sub_data.get("subscribers", 0),
+                        "icon_url": icon_url,
+                    })
+
+                if not after_cursor:
+                    break
+
+            except Exception as e:
+                logger.error(f"Popular subreddits page {page + 1} failed: {e}")
+                break
+
+        logger.info(f"Fetched {len(all_subs)} popular subreddits ({page + 1} pages)")
+        return all_subs
 
     async def collect_posts(
         self,

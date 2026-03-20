@@ -17,8 +17,8 @@ from app.models import Comment, Insight, Post
 logger = logging.getLogger(__name__)
 
 # Valid insight types
-VALID_INSIGHT_TYPES = {"pain_point", "solution_request", "product_mention", "opportunity"}
-VALID_CATEGORIES = {"pain_point", "solution_request", "product_mention", "opportunity", "general"}
+VALID_INSIGHT_TYPES = {"pain_point", "solution_request", "product_mention", "opportunity", "advice_request", "idea", "money_talk"}
+VALID_CATEGORIES = {"pain_point", "solution_request", "product_mention", "opportunity", "advice_request", "idea", "money_talk", "general"}
 VALID_SENTIMENTS = {"positive", "negative", "neutral", "mixed"}
 
 # System prompt for post analysis
@@ -29,6 +29,9 @@ Your task is to extract actionable insights from posts and comments. Focus on:
 2. Solution requests - People actively looking for tools/products
 3. Product mentions - References to existing products (with sentiment)
 4. Opportunities - Gaps in the market or underserved needs
+5. Advice requests - People asking for guidance, tips, how-to help, resource recommendations
+6. Ideas - People suggesting tools/products that should exist, or ways things could work
+7. Money talk - Discussions about pricing, spending, willingness to pay, budget constraints
 
 Be specific and quote directly from the source when possible."""
 
@@ -47,10 +50,10 @@ TOP COMMENTS:
 
 Extract insights in this exact JSON format:
 {{
-    "category": "pain_point" | "solution_request" | "product_mention" | "opportunity" | "general",
+    "category": "pain_point" | "solution_request" | "product_mention" | "opportunity" | "advice_request" | "idea" | "money_talk" | "general",
     "insights": [
         {{
-            "type": "pain_point" | "solution_request" | "product_mention" | "opportunity",
+            "type": "pain_point" | "solution_request" | "product_mention" | "opportunity" | "advice_request" | "idea" | "money_talk",
             "theme_key": "lowercase_underscore_theme",
             "title": "Short descriptive title",
             "description": "Detailed description of the insight",
@@ -63,13 +66,44 @@ Extract insights in this exact JSON format:
     ]
 }}
 
+{existing_themes_block}
+
 Rules:
-- theme_key must be lowercase with underscores (e.g., "pricing_confusion", "onboarding_friction")
+- theme_key: PREFER reusing an existing theme from the list above. Only create a new theme_key if none of the existing ones fit. New keys must be lowercase with underscores.
 - intensity_score: 0-30 mild annoyance, 31-60 moderate frustration, 61-80 significant pain, 81-100 severe/urgent
 - Only include product_name and sentiment for product_mention type
 - Quote must be verbatim from the text
 - Return empty insights array if nothing actionable found
 - Maximum 5 insights per post
+
+Return ONLY valid JSON, no other text."""
+
+
+# Consolidation prompts
+CONSOLIDATION_SYSTEM_PROMPT = """You are a data analyst consolidating topic labels. Your job is to find genuine semantic duplicates in a list of theme keys and group them under a single canonical name."""
+
+CONSOLIDATION_PROMPT = """Below is a list of theme_keys with their occurrence counts:
+
+{theme_list}
+
+Find groups of theme_keys that are genuine semantic duplicates (e.g. "honest_marketing" and "honesty_in_marketing", or "pricing_frustration" and "price_frustration").
+
+Return JSON in this exact format:
+{{
+    "groups": [
+        {{
+            "canonical": "the_best_key_to_keep",
+            "members": ["the_best_key_to_keep", "duplicate_key_1", "duplicate_key_2"]
+        }}
+    ]
+}}
+
+Rules:
+- Only group genuine semantic duplicates — do NOT merge merely related topics
+- Each group must have 2 or more members
+- "canonical" must be one of the members (prefer the highest-count or clearest name)
+- A theme_key can only appear in one group
+- If no duplicates exist, return {{"groups": []}}
 
 Return ONLY valid JSON, no other text."""
 
@@ -140,6 +174,25 @@ class AnalysisOutput(BaseModel):
         return v[:5]  # Max 5 per post
 
 
+class ThemeMergeGroup(BaseModel):
+    """A group of duplicate theme_keys to merge."""
+    canonical: str
+    members: list[str]
+
+    @field_validator("canonical")
+    @classmethod
+    def normalize_canonical(cls, v: str) -> str:
+        v = v.lower().strip()
+        v = re.sub(r"[\s\-]+", "_", v)
+        v = re.sub(r"[^a-z0-9_]", "", v)
+        return v[:100] if v else "unknown"
+
+
+class ConsolidationOutput(BaseModel):
+    """Validated LLM consolidation output."""
+    groups: list[ThemeMergeGroup] = Field(default_factory=list)
+
+
 def validate_llm_output(raw: dict) -> AnalysisOutput:
     """Validate and normalize LLM JSON output using Pydantic."""
     try:
@@ -161,11 +214,24 @@ class AnalyzerService:
             self._llm = await get_llm_provider()
         return self._llm
 
+    async def _get_existing_themes(self, session: AsyncSession, subreddit: str) -> list[str]:
+        """Get existing theme_keys relevant to this subreddit's context."""
+        result = await session.execute(
+            select(Insight.theme_key)
+            .join(Post)
+            .where(Post.subreddit == subreddit)
+            .group_by(Insight.theme_key)
+            .order_by(func.count(Insight.id).desc())
+            .limit(30)
+        )
+        return [row[0] for row in result]
+
     async def analyze_post(
         self,
         session: AsyncSession,
         post: Post,
         include_comments: bool = True,
+        existing_themes: Optional[list[str]] = None,
     ) -> list[Insight]:
         """
         Analyze a single post and extract insights.
@@ -191,12 +257,24 @@ class AnalyzerService:
                     for c in comments
                 ])
 
+        # Fetch existing themes if not provided
+        if existing_themes is None:
+            existing_themes = await self._get_existing_themes(session, post.subreddit)
+
+        # Build existing themes block for prompt
+        if existing_themes:
+            themes_list = ", ".join(f'"{t}"' for t in existing_themes)
+            existing_themes_block = f"EXISTING THEMES (reuse these when they fit, only create new ones if truly novel):\n{themes_list}"
+        else:
+            existing_themes_block = "No existing themes yet — create new theme_keys as needed (lowercase with underscores)."
+
         # Build prompt
         prompt = ANALYZE_POST_PROMPT.format(
             subreddit=post.subreddit,
             title=post.title,
             body=post.body[:2000] if post.body else "(no body text)",
             comments=comments_text or "(no comments)",
+            existing_themes_block=existing_themes_block,
         )
 
         try:
@@ -305,11 +383,22 @@ class AnalyzerService:
             )
             posts = result.scalars().all()
 
+            # Pre-fetch existing themes per subreddit (avoid redundant queries)
+            themes_cache: dict[str, list[str]] = {}
+            for post in posts:
+                if post.subreddit not in themes_cache:
+                    themes_cache[post.subreddit] = await self._get_existing_themes(session, post.subreddit)
+
             for post in posts:
                 try:
                     # Use savepoint per post for isolation
                     async with session.begin_nested():
-                        insights = await self.analyze_post(session, post)
+                        existing_themes = themes_cache.get(post.subreddit, [])
+                        insights = await self.analyze_post(session, post, existing_themes=existing_themes)
+                        # Accumulate newly created themes so subsequent posts can reuse them
+                        for ins in insights:
+                            if ins.theme_key and ins.theme_key not in existing_themes:
+                                existing_themes.append(ins.theme_key)
                         stats["posts_analyzed"] += 1
                         stats["insights_extracted"] += len(insights)
                         if post.analysis_duration_ms:
@@ -336,6 +425,95 @@ class AnalyzerService:
         )
 
         return stats
+
+    async def consolidate_themes(
+        self,
+        subreddit_names: Optional[list[str]] = None,
+    ) -> dict:
+        """Use LLM to find and merge semantically duplicate theme_keys."""
+        from sqlalchemy import update, text
+
+        async with async_session_maker() as session:
+            # Fetch distinct theme_key counts, scoped to subreddits
+            theme_query = (
+                select(Insight.theme_key, func.count(Insight.id).label("cnt"))
+                .group_by(Insight.theme_key)
+                .order_by(func.count(Insight.id).desc())
+            )
+            if subreddit_names is not None:
+                theme_query = theme_query.join(Post).where(Post.subreddit.in_(subreddit_names))
+            result = await session.execute(theme_query)
+            theme_rows = result.all()
+
+            if len(theme_rows) < 2:
+                return {"groups_merged": 0, "themes_before": len(theme_rows), "themes_after": len(theme_rows), "merges": []}
+
+            themes_before = len(theme_rows)
+            theme_counts = {row[0]: row[1] for row in theme_rows}
+
+            # Format for LLM
+            theme_list = "\n".join(f"{key} (count: {cnt})" for key, cnt in theme_counts.items())
+            prompt = CONSOLIDATION_PROMPT.format(theme_list=theme_list)
+
+            llm = await self._get_llm()
+            raw_result = await llm.generate_json(prompt, system=CONSOLIDATION_SYSTEM_PROMPT)
+
+            # Validate
+            try:
+                validated = ConsolidationOutput(**raw_result)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Consolidation output validation failed: {e}")
+                return {"groups_merged": 0, "themes_before": themes_before, "themes_after": themes_before, "merges": []}
+
+            # Apply merges
+            merges = []
+            merged_keys = set()
+            for group in validated.groups:
+                # Validate: 2+ members, canonical in members, all members exist
+                if len(group.members) < 2:
+                    continue
+                if group.canonical not in group.members:
+                    continue
+                if not all(m in theme_counts for m in group.members):
+                    continue
+                # Skip if any member already merged
+                if any(m in merged_keys for m in group.members):
+                    continue
+
+                old_keys = [m for m in group.members if m != group.canonical]
+                merged_keys.update(old_keys)
+
+                # Update insights: remap old keys to canonical
+                if subreddit_names is not None:
+                    # Scoped update: only remap insights whose post is in the audience subreddits
+                    stmt = (
+                        update(Insight)
+                        .where(Insight.theme_key.in_(old_keys))
+                        .where(Insight.post_id.in_(
+                            select(Post.id).where(Post.subreddit.in_(subreddit_names))
+                        ))
+                        .values(theme_key=group.canonical)
+                    )
+                else:
+                    stmt = (
+                        update(Insight)
+                        .where(Insight.theme_key.in_(old_keys))
+                        .values(theme_key=group.canonical)
+                    )
+                await session.execute(stmt)
+                merges.append({"canonical": group.canonical, "merged": old_keys})
+
+            await session.commit()
+
+        themes_after = themes_before - len(merged_keys)
+        result = {
+            "groups_merged": len(merges),
+            "themes_before": themes_before,
+            "themes_after": themes_after,
+            "merges": merges,
+        }
+        logger.info(f"Theme consolidation: {result}")
+        return result
 
     async def get_insights_by_theme(
         self,

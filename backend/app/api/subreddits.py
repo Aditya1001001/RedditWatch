@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.models import MonitoredSubreddit, SubscriberSnapshot
+from app.models.post import Post
 from app.services.collector import get_collector
 
 SUBREDDIT_PATTERN = re.compile(r"^[a-zA-Z0-9_]{2,21}$")
@@ -41,6 +42,7 @@ class SubredditResponse(BaseModel):
     display_name: Optional[str] = None
     description: Optional[str] = None
     subscribers: Optional[int] = None
+    icon_url: Optional[str] = None
     category: Optional[str] = None
     enabled: bool = True
     post_count: int = 0
@@ -66,6 +68,18 @@ class CatalogEntry(BaseModel):
     best_for: Optional[str] = None
 
 
+class SubredditSearchResult(BaseModel):
+    """Search result for subreddit discovery."""
+    name: str
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    subscribers: Optional[int] = None
+    icon_url: Optional[str] = None
+    source: str  # "catalog" or "reddit"
+    category: Optional[str] = None
+    is_monitored: bool = False
+
+
 @router.get("", response_model=list[SubredditResponse])
 async def list_subreddits(
     enabled_only: bool = False,
@@ -81,6 +95,7 @@ async def list_subreddits(
             display_name=s.display_name,
             description=s.description,
             subscribers=s.subscribers,
+            icon_url=getattr(s, 'icon_url', None),
             category=s.category,
             enabled=s.enabled,
             post_count=s.post_count,
@@ -128,6 +143,23 @@ async def get_catalog_categories():
         "categories": categories,
         "total_subreddits": total,
     }
+
+
+@router.get("/search", response_model=list[SubredditSearchResult])
+async def search_subreddits(
+    q: str = Query(..., min_length=2, max_length=100),
+    limit: int = Query(default=20, ge=1, le=50),
+    session: AsyncSession = Depends(get_session),
+):
+    """Search subreddits across local catalog and Reddit's live search."""
+    collector = get_collector()
+
+    # Get monitored names for marking results
+    monitored = await collector.get_monitored_subreddits(session)
+    monitored_names = {s.name.lower() for s in monitored}
+
+    results = await collector.search_subreddits(q, limit, monitored_names)
+    return [SubredditSearchResult(**r) for r in results]
 
 
 @router.get("/growth/summary")
@@ -190,6 +222,90 @@ async def get_growth_summary(
     return growth_data
 
 
+@router.get("/growth/multi")
+async def get_growth_multi(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get all monitored subs with multi-timeframe growth and activity metrics."""
+    from sqlalchemy import and_
+
+    now = datetime.now(timezone.utc)
+
+    # Get all monitored subreddits
+    subs_result = await session.execute(
+        select(MonitoredSubreddit).order_by(MonitoredSubreddit.name)
+    )
+    subreddits_list = subs_result.scalars().all()
+
+    if not subreddits_list:
+        return []
+
+    # Batch query oldest snapshot per subreddit for each timeframe
+    timeframes = {"1d": 1, "7d": 7, "30d": 30, "365d": 365}
+    oldest_maps = {}
+
+    for label, days in timeframes.items():
+        cutoff = now - timedelta(days=days)
+        oldest_subq = (
+            select(
+                SubscriberSnapshot.subreddit_name,
+                func.min(SubscriberSnapshot.recorded_at).label("min_recorded_at"),
+            )
+            .where(SubscriberSnapshot.recorded_at >= cutoff)
+            .group_by(SubscriberSnapshot.subreddit_name)
+            .subquery()
+        )
+        oldest_result = await session.execute(
+            select(SubscriberSnapshot.subreddit_name, SubscriberSnapshot.subscriber_count)
+            .join(
+                oldest_subq,
+                and_(
+                    SubscriberSnapshot.subreddit_name == oldest_subq.c.subreddit_name,
+                    SubscriberSnapshot.recorded_at == oldest_subq.c.min_recorded_at,
+                ),
+            )
+        )
+        oldest_maps[label] = {row.subreddit_name: row.subscriber_count for row in oldest_result}
+
+    # Posts per day over last 30 days
+    cutoff_30d = now - timedelta(days=30)
+    posts_count_result = await session.execute(
+        select(Post.subreddit, func.count(Post.id))
+        .where(Post.created_utc >= cutoff_30d)
+        .group_by(Post.subreddit)
+    )
+    posts_count_map = {row[0]: row[1] for row in posts_count_result}
+
+    result = []
+    for sub in subreddits_list:
+        current = sub.subscribers or 0
+
+        def calc_pct(label):
+            oldest = oldest_maps[label].get(sub.name)
+            if oldest is not None and oldest > 0:
+                return round(((current - oldest) / oldest) * 100, 2)
+            return None
+
+        post_count_30d = posts_count_map.get(sub.name, 0)
+        posts_per_day = round(post_count_30d / 30, 1)
+
+        result.append({
+            "subreddit": sub.name,
+            "display_name": sub.display_name or f"r/{sub.name}",
+            "subscribers": current,
+            "icon_url": getattr(sub, 'icon_url', None),
+            "post_count": sub.post_count,
+            "posts_per_day": posts_per_day,
+            "growth_1d_pct": calc_pct("1d"),
+            "growth_7d_pct": calc_pct("7d"),
+            "growth_30d_pct": calc_pct("30d"),
+            "growth_365d_pct": calc_pct("365d"),
+            "last_collected": sub.last_collected.isoformat() if sub.last_collected else None,
+        })
+
+    return result
+
+
 @router.post("", response_model=SubredditResponse)
 async def add_subreddit(
     request: SubredditCreate,
@@ -215,6 +331,7 @@ async def add_subreddit(
             display_name=subreddit.display_name,
             description=subreddit.description,
             subscribers=subreddit.subscribers,
+            icon_url=getattr(subreddit, 'icon_url', None),
             category=subreddit.category,
             enabled=subreddit.enabled,
             post_count=subreddit.post_count,
@@ -246,6 +363,7 @@ async def toggle_subreddit(
         display_name=subreddit.display_name,
         description=subreddit.description,
         subscribers=subreddit.subscribers,
+        icon_url=getattr(subreddit, 'icon_url', None),
         category=subreddit.category,
         enabled=subreddit.enabled,
         post_count=subreddit.post_count,

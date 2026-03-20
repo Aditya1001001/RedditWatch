@@ -21,6 +21,7 @@ class MonitoredSubreddit(Base):
     display_name: Mapped[Optional[str]] = mapped_column(String(100))
     description: Mapped[Optional[str]] = mapped_column(Text)
     subscribers: Mapped[Optional[int]] = mapped_column(Integer)
+    icon_url: Mapped[Optional[str]] = mapped_column(String(500))
 
     # Categorization
     category: Mapped[Optional[str]] = mapped_column(

@@ -67,7 +67,7 @@ collection:
 
   # Startup catch-up: auto-collect when data is stale on app start
   collect_on_startup: true
-  stale_threshold_hours: 12
+  stale_threshold_hours: 6
 
 # Analysis settings
 analysis:

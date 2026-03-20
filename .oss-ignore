@@ -1,3 +1,4 @@
 backend/app/cloud/
+scripts/private/
 .oss-ignore
 .github/workflows/sync-oss.yml

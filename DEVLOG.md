@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 12 complete (Smart Startup Collection) | Mac app planned (Phase 13)
+**Status**: Phase 14 in progress (Subreddit Discovery) | Enrichment running | Mac app planned
 
 ---
 
@@ -100,6 +100,45 @@
 ---
 
 ## Changelog
+
+### 2026-03-20: Subreddit Discovery — Search API + Community Directory Scraper
+
+**Problem**: The audience creation form only shows ~11 monitored subreddits as pills with up to 8 catalog suggestions. Users need a way to discover and add subreddits from Reddit's full directory — not just the 263 in our curated catalog.
+
+**Solution**: Two-part approach — a live search-as-you-type API and a bulk scraper for Reddit's community directory.
+
+**Backend — Search API**
+- `RedditCollector.search_subreddits()`: hits `/subreddits/search.json` with query, returns name, description, subscribers, icon
+- `RedditCollector.fetch_popular_subreddits()`: paginates `/subreddits/popular.json` for bulk discovery
+- `CollectorService.search_subreddits()`: merges local catalog results (instant, matched against name/description/best_for) with Reddit live search, deduplicates, marks monitored status
+- `GET /api/subreddits/search?q=...&limit=20`: new endpoint returning `SubredditSearchResult` with source ("catalog" or "reddit") and `is_monitored` flag
+- Endpoint placed before `/{name}` routes to avoid path capture
+
+**Frontend — Audience form rebuild**
+- Selected subreddits shown as removable pills with × buttons (was: toggle-style buttons for all monitored subs)
+- Search-as-you-type input with 300ms debounce, loading spinner, absolute-positioned dropdown
+- Results show subreddit name, subscriber count, source badge (catalog/reddit), checkmark for already-selected
+- Clicking a search result auto-adds it to monitoring (if not already) and selects it for the audience
+- Quick-add row shows monitored subs not yet selected as small pills
+- Catalog suggestions section preserved
+- Search state resets when form opens
+
+**Community Directory Scraper** (`scripts/private/scrape_popular.py`)
+- Three-phase scraper for Reddit's `/best/communities/{page}` directory:
+  - Phase 1: Scrape subreddit names from HTML pages (~250 per page, ~905 pages total)
+  - Phase 2: Enrich each sub via `/r/{name}/about.json` (description, subscribers, icon, NSFW flag)
+  - Phase 3: Check latest post date for activity flags (`post_in_last_week`, `post_in_last_month`)
+- All phases save progress incrementally (resumable via Ctrl+C)
+- Supports `--start-page`, `--names-only`, `--enrich-only`, `--activity-only`, `--rpm` flags
+- Graceful SIGINT handling, atomic JSON writes, per-sub logging with flush
+- **Results**: 225,905 subreddits scraped (phase 1 complete), enrichment in progress at 9 RPM
+- Added `scripts/private/` to `.oss-ignore` to keep scraper out of public OSS mirror
+
+**Also in this commit (prior uncommitted work)**
+- Audience "ask" endpoint (`POST /api/audiences/{id}/ask`) for AI Q&A about an audience
+- Theme consolidation endpoint (`POST /api/analyze/themes/consolidate`) for merging semantic duplicates
+- Insight responses enriched with post metadata (title, score, Reddit URL)
+- Frontend v0.3 UI overhaul (~1,675 lines added)
 
 ### 2026-03-19: Smart Startup Collection for Intermittent Users
 

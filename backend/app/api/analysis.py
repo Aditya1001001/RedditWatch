@@ -71,6 +71,12 @@ class InsightResponse(BaseModel):
     sentiment: Optional[str] = None
     created_at: Optional[str] = None
     subreddit: Optional[str] = None
+    post_title: Optional[str] = None
+    post_body_snippet: Optional[str] = None
+    post_score: Optional[int] = None
+    post_num_comments: Optional[int] = None
+    post_created_utc: Optional[str] = None
+    post_reddit_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -102,6 +108,34 @@ async def trigger_analysis(
         )
 
     tracker.run_background(task_info, _run_analysis())
+    return task_info.to_dict()
+
+
+@router.post("/themes/consolidate")
+async def consolidate_themes(
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Trigger LLM-based theme consolidation to merge semantic duplicates.
+
+    Returns immediately with a task_id. Poll /task/{task_id} for progress.
+    """
+    tracker = get_task_tracker()
+
+    active = tracker.get_active_task("consolidation")
+    if active:
+        return active.to_dict()
+
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+    task_info = tracker.create_task("consolidation")
+    analyzer = get_analyzer()
+
+    async def _run_consolidation():
+        return await analyzer.consolidate_themes(subreddit_names=sub_names)
+
+    tracker.run_background(task_info, _run_consolidation())
     return task_info.to_dict()
 
 
@@ -186,6 +220,12 @@ async def get_insights(
             sentiment=i.sentiment,
             created_at=i.created_at.isoformat() if i.created_at else None,
             subreddit=i.post.subreddit if i.post else None,
+            post_title=i.post.title if i.post else None,
+            post_body_snippet=(i.post.body[:200] if i.post.body else None) if i.post else None,
+            post_score=i.post.score if i.post else None,
+            post_num_comments=i.post.num_comments if i.post else None,
+            post_created_utc=i.post.created_utc.isoformat() if i.post and i.post.created_utc else None,
+            post_reddit_url=('https://reddit.com' + i.post.permalink) if i.post and i.post.permalink else None,
         )
         for i in insights
     ]
@@ -257,6 +297,45 @@ async def get_analysis_status(
         "last_analyzed_at": last_at.isoformat() if last_at else None,
         "status": active_task.status.value if active_task else "idle",
         "active_task": active_task.to_dict() if active_task else None,
+    }
+
+
+@router.get("/insights/type-breakdown")
+async def get_insights_type_breakdown(
+    type: str = Query(..., description="Insight type (e.g. pain_point)"),
+    audience_id: Optional[int] = Query(default=None),
+    subreddits: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get breakdown of topics and subreddits for a specific insight type."""
+    sub_names = await resolve_audience_subreddits(session, audience_id, subreddits)
+
+    # Topics breakdown
+    topics_q = (
+        select(Insight.theme_key, func.count(Insight.id).label("cnt"))
+        .where(Insight.type == type)
+    )
+    if sub_names is not None:
+        topics_q = topics_q.join(Post).where(Post.subreddit.in_(sub_names))
+    topics_q = topics_q.group_by(Insight.theme_key).order_by(func.count(Insight.id).desc()).limit(20)
+    topics_result = await session.execute(topics_q)
+    topics = [{"theme_key": row.theme_key, "count": row.cnt} for row in topics_result]
+
+    # Subreddits breakdown
+    subs_q = (
+        select(Post.subreddit, func.count(Insight.id).label("cnt"))
+        .join(Insight)
+        .where(Insight.type == type)
+    )
+    if sub_names is not None:
+        subs_q = subs_q.where(Post.subreddit.in_(sub_names))
+    subs_q = subs_q.group_by(Post.subreddit).order_by(func.count(Insight.id).desc()).limit(20)
+    subs_result = await session.execute(subs_q)
+    subreddit_breakdown = [{"subreddit": row.subreddit, "count": row.cnt} for row in subs_result]
+
+    return {
+        "topics": topics,
+        "subreddits": subreddit_breakdown,
     }
 
 

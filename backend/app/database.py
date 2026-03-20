@@ -61,6 +61,14 @@ async def init_db() -> None:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
 
+        # Add columns that may not exist in older databases
+        try:
+            await conn.execute(text(
+                "ALTER TABLE monitored_subreddits ADD COLUMN icon_url VARCHAR(500)"
+            ))
+        except Exception:
+            pass  # Column already exists
+
     print(f"Database initialized at {DATABASE_PATH}")
 
 
