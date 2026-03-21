@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 14 in progress (Subreddit Discovery) | Enrichment running | Mac app planned
+**Status**: Phase 15 complete (UX Simplification) | Enrichment running | Mac app planned
 
 ---
 
@@ -100,6 +100,40 @@
 ---
 
 ## Changelog
+
+### 2026-03-21: UX Simplification — Reduce Noise, Surface Value
+
+Designer feedback: "reduce and simplify." 18+ data sections across 9 navigation surfaces was too much noise between the user and the value. Core loop: pick audience → see insights → drill down → act.
+
+**Landing page: 3 tabs → 2 tabs**
+- "Saved" renamed to "Audiences", "Curated" + "Trending" merged into "Discover"
+- Discover has inline Browse/Trending pill toggle
+- 3 separate trending tables (Largest, Active, Growing) replaced with 1 sortable table — clickable column headers sort by Members, Posts/Day, or 7d Growth
+
+**Audience view: 6 tabs + analytics icon → single scrollable page**
+- Tab bar removed entirely (was: Themes, Ask, Subreddits, Topics, Posts, Analytics)
+- Header: added Collect All + Refresh buttons (moved from Subreddits tab), compact stats row
+- Unified Search/Ask input with mode toggle (Ask default) — merges Ask tab + search bar
+- Insight type cards in responsive 2-3 column grid (extracted from 3-column layout)
+- Topics, Trends, Raw Posts as collapsible disclosure sections
+- Insight list with inline type filter pills (from Topics tab)
+- Export row (CSV/JSON/MD/Report) at bottom of page
+- Removed: 3-column layout, Subreddits tab (management via Edit modal), Analytics tab (heatmap, matrix, intensity table cut; trends chart kept in collapsible)
+
+**Theme detail panel: 3 sub-tabs → single scroll**
+- Removed sub-tab navigation (Results | Patterns | Ask)
+- Summary always visible at top, Patterns auto-loaded below
+- Ask sub-tab removed (redundant with unified Ask input)
+
+**JS cleanup**
+- Removed state: `tab`, `themeDetailTab`, `themeAskQuestion/Answer/Loading`, `askQuestion/Answer/History`, `searchQuery`, `analyticsData`, `topIntensityInsights`, `activityHeatmap`, `themeMatrix`
+- Added state: `discoverMode`, `queryMode`, `queryInput`, `queryHistory`, `showTopics`, `showTrends`, `showPosts`
+- Removed methods: `themeAskAboutAudience`, `loadAnalytics`, `loadAnalyticsData`, `loadTopIntensityInsights`, `loadActivityHeatmap`, `loadThemeMatrix`, `getHeatColor`, `getMatrixColor`
+- Added: `loadTrends` (simplified, only loads theme timeline)
+- Fixed audience card stats: `getAudienceGrowth()` now falls back to `subreddits` array for member counts and `trendingData` for growth %, and evaluates reactively instead of caching in `x-data`
+- Trending data loaded eagerly on init so audience cards always show growth
+
+**Result**: 2902 → ~2310 lines (~595 lines cut). 9 navigation surfaces → 4 (landing tabs, audience page, theme panel, edit modal).
 
 ### 2026-03-20: Audit Hardening Pass #2 — 11 Remaining User-Facing Fixes
 
