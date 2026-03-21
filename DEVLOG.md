@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 15 complete (UX Simplification) | Enrichment running | Mac app planned
+**Status**: Phase 16 planned (Better Analysis + Smart Suggestions) | Phase 15 complete (UX Simplification) | Enrichment running | Mac app planned
 
 ---
 
@@ -97,9 +97,136 @@
 - [x] Review subreddit catalog category groupings (287 → 46 categories, 1,859 → 263 curated subs)
 - [ ] Address remaining codebase audit items (see audit section below) — 27/~60 fixed after two hardening passes
 
+### Phase 16: Better Analysis, Kill Intensity, Smart Suggestions
+
+Five changes this round:
+
+**1. Kill intensity score from UI, sort by engagement**
+
+The LLM-assigned 0-100 intensity number is opaque guesswork. Reddit's own engagement signals (upvotes, comments) are real community validation. A future feature will cluster insights across subreddits and use aggregate engagement as the real signal.
+
+- Frontend: Replace intensity score display on insight cards with post engagement (pts + comments)
+- Frontend: Remove `total_score` (intensity-based) from theme patterns panel, replace with count-based sort
+- Frontend: Remove "Avg intensity" from compact stats if present
+- Backend `services/analyzer.py`: Change default sort in `get_insights_by_theme()` from `Insight.intensity_score.desc()` to `Post.score.desc()` (join already exists via `joinedload`)
+- Backend `api/analysis.py`: `InsightResponse` already has `post_score` and `post_num_comments` — no change needed
+- Keep `intensity_score` column in DB and keep generating it — costs nothing, useful as future clustering input
+
+Files: `frontend/index.html`, `backend/app/api/analysis.py`, `backend/app/services/analyzer.py`
+
+**2. Better post analysis**
+
+More context to the LLM, better prompt, quote validation.
+
+- Increase post body from `post.body[:2000]` → `post.body[:4000]`
+- Increase comment limit from 10 → 15, comment body from 500 → 800 chars
+- Add reply threads: for top comments with score > 5, fetch top 1 reply per parent (`WHERE parent_id IN (top_comment_ids) AND score > 0 ORDER BY score DESC`). Format indented as `  ↳ [reply_author] (score: N): reply[:500]`
+- Add post metadata block to prompt: `POST METADATA: {score} upvotes | {num_comments} comments | {upvote_ratio}% upvoted`
+- Replace `ANALYSIS_SYSTEM_PROMPT` with evidence-focused version emphasizing community validation, actionability, and specific insight types
+- Update intensity scoring guidance: weight by community validation, emotional language, solution-seeking behavior, real impact
+- Add quote validation (post-processing, no LLM): `_validate_quote()` using `difflib.SequenceMatcher` — if quote doesn't fuzzy-match source text (ratio > 0.7), set `quote = None`
+
+File: `backend/app/services/analyzer.py`
+
+**3. RAG-enhanced Ask + multi-turn**
+
+Ask currently sends almost no real content to the LLM — just summary stats and 5 sample insight titles. Need to send actual insight content via ChromaDB retrieval.
+
+- Before building Ask prompt, query ChromaDB for 12 most relevant insights: `search(query=question, limit=30)`, then post-filter to audience subreddits by looking up each result's `post_id` → `Post.subreddit`
+- Replace minimal context prompt with rich prompt including: audience name/description, subreddit list, data overview stats, type summary, theme summary, and the 12 retrieved insights with type/title/description/quote/author/subreddit
+- Better system prompt: "Base answers strictly on provided data — cite specific insights, quotes, and subreddits. Give actionable recommendations. If data is insufficient, say so."
+- Increase `max_tokens` from 1024 → 2048
+- Add `history: Optional[list[dict]] = None` to `AskRequest`. If provided, append previous Q&A pairs to prompt as `PREVIOUS Q&A:` block
+- Frontend: send `history: this.queryHistory.slice(0, 3)` in ask request body
+
+Files: `backend/app/api/audiences.py`, `frontend/index.html`
+
+**4. Smart subreddit suggestions**
+
+When creating an audience, suggest semantically relevant subreddits based on the audience name/description. No LLM — uses ChromaDB's built-in all-MiniLM-L6-v2 embeddings for vector similarity.
+
+- New service `backend/app/services/subreddit_search.py`:
+  - Second ChromaDB collection: `"subreddits"`
+  - Lazy-indexed from catalog entries (`subreddits.yaml`: `name + " " + description + " " + best_for`) and enriched communities (`communities.json`: filtered non-NSFW, 10K+ subs, `name + " " + description`)
+  - Dedup: catalog version preferred
+  - `search(query, limit)` → vector similarity results with name, description, subscribers, source, similarity
+- New endpoint `GET /api/subreddits/suggest?q=<text>&limit=10` in `backend/app/api/subreddits.py`
+  - Takes free-text, returns semantically relevant subs
+  - Falls back to empty list if ChromaDB unavailable
+- Frontend audience form changes:
+  - New state: `nameBasedSuggestions: []`, `nameSuggestionLoading: false`
+  - Debounce 500ms on `audienceForm.name` / `audienceForm.description` change
+  - Fire when `name.length >= 3` and fewer than 3 subs selected
+  - "Suggested for this audience" section between search input and "Monitored" section
+  - Click to add via existing `addSearchResultToAudience` flow
+
+Files: new `backend/app/services/subreddit_search.py`, `backend/app/api/subreddits.py`, `frontend/index.html`
+
+**5. Pre-built audience suggestions**
+
+Offline clustering of enriched community data into one-click audience templates.
+
+- Offline script `scripts/generate_audience_suggestions.py`:
+  1. Load `communities.json`, filter: non-NSFW, 10K+ subs, description >= 20 chars
+  2. TF-IDF on `name + " " + description` (sklearn, max_features=5000, ngram_range=(1,2))
+  3. Agglomerative clustering (Ward, distance_threshold for ~40-60 clusters)
+  4. For each cluster with 3+ members, send top 20 subs to LLM → get audience name, description, curated 5-12 subs
+  5. Output → `backend/app/data/suggested_audiences.json`
+- Endpoint `GET /api/audiences/suggestions` in `backend/app/api/audiences.py`:
+  - Serve pre-computed JSON
+  - Filter out suggestions with >80% subreddit overlap with existing user audiences
+  - Cache in memory
+- Frontend audiences tab:
+  - New state: `suggestedAudiences: []`, load on init
+  - "Suggested Audiences" section below user's audience grid
+  - Cards: name, description, sub count, "Create" button
+  - Create auto-monitors subs and creates audience
+  - Hide after creation
+
+Files: new `scripts/generate_audience_suggestions.py`, new `backend/app/data/suggested_audiences.json`, `backend/app/api/audiences.py`, `frontend/index.html`
+
+**Implementation order**: 1 → 2 → 3 → 4 → 5
+
+**Verification checklist**:
+- [ ] No intensity score visible anywhere in UI. Insights sorted by post upvotes
+- [ ] Post engagement shown on insight cards (pts + comments)
+- [ ] Better analysis: re-analyze posts → insights have reply context, no fabricated quotes
+- [ ] Ask quality: ask "What frustrations do people have?" → response cites specific quotes and subreddits
+- [ ] Multi-turn: ask follow-up → references previous answer
+- [ ] Subreddit suggestions: type "SaaS Founders" as audience name → relevant subs appear
+- [ ] Audience templates: audiences tab shows pre-built suggestions, one-click create works
+
 ---
 
 ## Changelog
+
+### 2026-03-19: Billing & Payments Planning (PRIVATE — exclude from public repo)
+
+**Decision**: Use **Stripe India** for payment processing.
+- Sole proprietorship + GST number is sufficient for Stripe India signup
+- KYC approval ~1-3 days, payouts to Indian bank in INR
+
+**Purchase flow:**
+1. Landing page "Subscribe" button → Stripe Checkout Session (hosted by Stripe, no PCI hassle)
+2. After payment, Stripe redirects back to app with session ID
+3. Stripe webhook (`checkout.session.completed`) hits backend → create/upgrade user account
+4. Web app + Mac app both authenticate against backend → backend checks subscription status
+
+**Implementation pieces needed:**
+- [ ] Sign up for Stripe India (stripe.com/in) with PAN + GST
+- [ ] Create Products + Prices in Stripe Dashboard
+- [ ] `/api/billing` module — checkout session creation, webhook handling
+- [ ] Webhooks: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+- [ ] `subscriptions` table in DB (user email ↔ Stripe Customer ID ↔ subscription status)
+- [ ] Stripe Customer Portal link for self-service billing management
+- [ ] Gate features in web app + Mac app based on subscription status
+
+**Tax notes:**
+- Stripe charges 2-3% + 18% GST on their fees (not on customer payment)
+- Indian customers: issue GST invoices (Stripe can auto-generate)
+- International customers: export of services — zero-rated GST (0%), still file in GSTR-1
+
+---
 
 ### 2026-03-21: UX Simplification — Reduce Noise, Surface Value
 

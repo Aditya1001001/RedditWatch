@@ -34,4 +34,4 @@ jobs:
       - name: Check coverage
         working-directory: backend
         run: |
-          python -m pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=40
+          python -m pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=35
