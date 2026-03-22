@@ -1,5 +1,6 @@
 """LLM-based analysis service for extracting insights from Reddit posts."""
 
+import difflib
 import logging
 import re
 import time
@@ -24,19 +25,24 @@ VALID_SENTIMENTS = {"positive", "negative", "neutral", "mixed"}
 # System prompt for post analysis
 ANALYSIS_SYSTEM_PROMPT = """You are an expert market researcher analyzing Reddit posts to find business opportunities.
 
-Your task is to extract actionable insights from posts and comments. Focus on:
-1. Pain points - Problems people are frustrated about
-2. Solution requests - People actively looking for tools/products
-3. Product mentions - References to existing products (with sentiment)
-4. Opportunities - Gaps in the market or underserved needs
-5. Advice requests - People asking for guidance, tips, how-to help, resource recommendations
-6. Ideas - People suggesting tools/products that should exist, or ways things could work
-7. Money talk - Discussions about pricing, spending, willingness to pay, budget constraints
+CRITICAL: Every insight MUST be grounded in the source text. Quotes must be copied VERBATIM from the post or a comment — do not paraphrase, summarize, or fabricate. If no direct quote supports an insight, set quote to null.
 
-Be specific and quote directly from the source when possible."""
+Extract actionable insights in these categories:
+1. Pain points — Problems people are frustrated about
+2. Solution requests — People actively looking for tools/products
+3. Product mentions — References to existing products (with sentiment)
+4. Opportunities — Gaps in the market or underserved needs
+5. Advice requests — People asking for guidance, tips, how-to help, resource recommendations
+6. Ideas — People suggesting tools/products that should exist, or ways things could work
+7. Money talk — Discussions about pricing, spending, willingness to pay, budget constraints
+
+Be specific. Prefer quoting over summarizing. Return empty insights array if nothing actionable."""
 
 # Prompt template for analyzing a single post
 ANALYZE_POST_PROMPT = """Analyze this Reddit post from r/{subreddit} and extract insights.
+
+POST METADATA:
+Score: {score} | Comments: {num_comments} | Upvote ratio: {upvote_ratio}
 
 POST TITLE: {title}
 
@@ -202,6 +208,40 @@ def validate_llm_output(raw: dict) -> AnalysisOutput:
         return AnalysisOutput()
 
 
+def _validate_quote(quote: str, source_chunks: list[str], threshold: float = 0.7) -> bool:
+    """Validate that a quote actually appears in the source text.
+
+    Two-tier approach:
+    1. Fast path: exact substring match (lowercased)
+    2. Fuzzy path: SequenceMatcher longest match >= threshold of quote length
+    """
+    if not quote or not source_chunks:
+        return False
+
+    # Too short to meaningfully validate
+    if len(quote) < 10:
+        return True
+
+    quote_lower = quote.lower()
+
+    for chunk in source_chunks:
+        if not chunk:
+            continue
+        chunk_lower = chunk.lower()
+
+        # Fast path: exact substring
+        if quote_lower in chunk_lower:
+            return True
+
+        # Fuzzy path: longest common substring
+        matcher = difflib.SequenceMatcher(None, quote_lower, chunk_lower, autojunk=False)
+        match = matcher.find_longest_match(0, len(quote_lower), 0, len(chunk_lower))
+        if match.size >= len(quote_lower) * threshold:
+            return True
+
+    return False
+
+
 class AnalyzerService:
     """Analyzes Reddit posts using LLM to extract insights."""
 
@@ -243,19 +283,46 @@ class AnalyzerService:
 
         # Get comments if requested
         comments_text = ""
+        top_comments = []
+        reply_map: dict[str, Comment] = {}
         if include_comments:
+            # Query 1: Top 15 top-level comments
             result = await session.execute(
                 select(Comment)
-                .where(Comment.post_id == post.id)
+                .where(and_(Comment.post_id == post.id, Comment.depth == 0))
                 .order_by(Comment.score.desc())
-                .limit(10)
+                .limit(15)
             )
-            comments = result.scalars().all()
-            if comments:
-                comments_text = "\n\n".join([
-                    f"[{c.author}] (score: {c.score}): {c.body[:500]}"
-                    for c in comments
-                ])
+            top_comments = list(result.scalars().all())
+
+            # Query 2: Best reply per high-score parent
+            high_score_ids = [c.id for c in top_comments if c.score > 5]
+            if high_score_ids:
+                result = await session.execute(
+                    select(Comment)
+                    .where(and_(
+                        Comment.post_id == post.id,
+                        Comment.depth == 1,
+                        Comment.parent_id.in_(high_score_ids),
+                    ))
+                    .order_by(Comment.score.desc())
+                )
+                all_replies = result.scalars().all()
+                # Pick top 1 reply per parent
+                for reply in all_replies:
+                    if reply.parent_id not in reply_map:
+                        reply_map[reply.parent_id] = reply
+
+            # Format with threaded replies
+            if top_comments:
+                lines = []
+                for c in top_comments:
+                    lines.append(f"[{c.author}] (score: {c.score}): {c.body[:800]}")
+                    reply = reply_map.get(c.id)
+                    if reply:
+                        lines.append(f"  \u21b3 [{reply.author}] (score: {reply.score}): {reply.body[:800]}")
+                    lines.append("")  # blank line between threads
+                comments_text = "\n".join(lines)
 
         # Fetch existing themes if not provided
         if existing_themes is None:
@@ -271,8 +338,11 @@ class AnalyzerService:
         # Build prompt
         prompt = ANALYZE_POST_PROMPT.format(
             subreddit=post.subreddit,
+            score=post.score,
+            num_comments=post.num_comments,
+            upvote_ratio=f"{(post.upvote_ratio or 0) * 100:.0f}%",
             title=post.title,
-            body=post.body[:2000] if post.body else "(no body text)",
+            body=post.body[:4000] if post.body else "(no body text)",
             comments=comments_text or "(no comments)",
             existing_themes_block=existing_themes_block,
         )
@@ -287,6 +357,18 @@ class AnalyzerService:
 
             # Validate LLM output
             validated = validate_llm_output(raw_result)
+
+            # Validate quotes against source text
+            source_chunks = [post.title, post.body[:4000] if post.body else ""]
+            source_chunks.extend(c.body[:800] for c in top_comments)
+            source_chunks.extend(r.body[:800] for r in reply_map.values())
+            for item in validated.insights:
+                if item.quote and not _validate_quote(item.quote, source_chunks):
+                    logger.debug(
+                        f"Quote validation failed for post {post.id}: {item.quote[:80]!r}"
+                    )
+                    item.quote = None
+                    item.quote_author = None
 
             # Update post with analysis metadata
             post.category = validated.category
