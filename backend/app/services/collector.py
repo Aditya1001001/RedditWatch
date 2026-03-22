@@ -267,6 +267,7 @@ class CollectorService:
             if existing:
                 existing.score = post.score
                 existing.num_comments = post.num_comments
+                existing.upvote_ratio = post.upvote_ratio
                 stats["posts_collected"] += 1
             else:
                 session.add(post)
@@ -417,15 +418,27 @@ class CollectorService:
         include_comments: bool = True,
     ) -> dict:
         """
-        Collect posts (and optionally comments) from a subreddit (single sort, single page).
+        Collect posts (and optionally comments) from a subreddit.
+
+        Fetches from each configured sort mode (default: hot + new) and
+        deduplicates by post ID before saving.
 
         Returns collection statistics.
         """
-        posts = await self.reddit.collect_posts(
-            subreddit_name,
-            limit=self.config.collection.posts_per_subreddit,
-            sort=self.config.collection.sort_by,
-        )
+        sort_modes = self.config.collection.regular_sort_modes
+        seen_ids: set[str] = set()
+        posts: list = []
+
+        for sort_mode in sort_modes:
+            batch = await self.reddit.collect_posts(
+                subreddit_name,
+                limit=self.config.collection.posts_per_subreddit,
+                sort=sort_mode,
+            )
+            for post in batch:
+                if post.id not in seen_ids:
+                    seen_ids.add(post.id)
+                    posts.append(post)
 
         if not posts:
             logger.warning(f"No posts returned for r/{subreddit_name} - possible rate limit")
@@ -652,6 +665,111 @@ class CollectorService:
 
         return stats
 
+    async def refresh_young_posts(self) -> dict:
+        """
+        Refresh engagement data for posts less than N days old.
+
+        Batches posts into groups of 100, fetches fresh metadata via /by_id/,
+        and updates score, num_comments, and upvote_ratio. Also refreshes
+        comments for the top growing posts.
+
+        Returns refresh statistics.
+        """
+        max_age_days = self.config.collection.young_post_max_age_days
+        comment_limit = self.config.collection.young_post_comment_refresh_limit
+        comment_min_score = self.config.collection.young_post_comment_min_score
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+
+        total_stats = {
+            "posts_checked": 0,
+            "posts_updated": 0,
+            "comments_new": 0,
+            "comments_updated": 0,
+            "errors": [],
+        }
+
+        async with async_session_maker() as session:
+            # Query for young posts
+            query = (
+                select(Post)
+                .where(Post.created_utc >= cutoff)
+                .order_by(Post.created_utc.desc())
+            )
+            result = await session.execute(query)
+            young_posts = list(result.scalars().all())
+
+            if not young_posts:
+                logger.info("No young posts to refresh")
+                return total_stats
+
+            total_stats["posts_checked"] = len(young_posts)
+            post_ids = [p.id for p in young_posts]
+
+            # Fetch fresh metadata in batches of 100
+            try:
+                fresh_posts = await self.reddit.fetch_posts_by_id(post_ids)
+            except Exception as e:
+                logger.error(f"Failed to fetch young posts by ID: {e}")
+                total_stats["errors"].append({"error": str(e)})
+                return total_stats
+
+            # Build lookup for quick matching
+            fresh_lookup = {p.id: p for p in fresh_posts}
+
+            # Track score jumps for comment refresh prioritization
+            score_jumps: list[tuple[Post, int]] = []  # (db_post, jump)
+
+            for db_post in young_posts:
+                fresh = fresh_lookup.get(db_post.id)
+                if not fresh:
+                    continue
+
+                jump = fresh.score - db_post.score
+                changed = False
+
+                if db_post.score != fresh.score:
+                    db_post.score = fresh.score
+                    changed = True
+                if db_post.num_comments != fresh.num_comments:
+                    db_post.num_comments = fresh.num_comments
+                    changed = True
+                if db_post.upvote_ratio != fresh.upvote_ratio:
+                    db_post.upvote_ratio = fresh.upvote_ratio
+                    changed = True
+
+                if changed:
+                    total_stats["posts_updated"] += 1
+                    if jump > 0 and fresh.score >= comment_min_score:
+                        score_jumps.append((db_post, jump))
+
+            # Refresh comments for top growing posts
+            score_jumps.sort(key=lambda x: x[1], reverse=True)
+            for db_post, jump in score_jumps[:comment_limit]:
+                try:
+                    stats = await self.refresh_comments(
+                        session, db_post.id, db_post.subreddit
+                    )
+                    total_stats["comments_new"] += stats["comments_new"]
+                    total_stats["comments_updated"] += stats["comments_updated"]
+                except Exception as e:
+                    logger.error(
+                        f"Error refreshing comments for young post {db_post.id}: {e}"
+                    )
+                    total_stats["errors"].append({
+                        "post_id": db_post.id,
+                        "error": str(e),
+                    })
+
+            await session.commit()
+
+        logger.info(
+            f"Young post refresh: {total_stats['posts_checked']} checked, "
+            f"{total_stats['posts_updated']} updated, "
+            f"{total_stats['comments_new']} new comments"
+        )
+
+        return total_stats
+
     async def refresh_hot_conversations(
         self,
         min_score: int = 10,
@@ -689,7 +807,7 @@ class CollectorService:
                 .limit(limit)
             )
             result = await session.execute(query)
-            posts = result.scalars().all()
+            posts = list(result.scalars().all())
 
             for post in posts:
                 try:
@@ -707,6 +825,22 @@ class CollectorService:
                         "post_id": post.id,
                         "error": str(e),
                     })
+
+            # Batch-update post metadata (score, num_comments, upvote_ratio)
+            # for all refreshed posts — 1 API call for up to 100 posts
+            if posts:
+                try:
+                    post_ids = [p.id for p in posts]
+                    fresh_posts = await self.reddit.fetch_posts_by_id(post_ids)
+                    fresh_lookup = {p.id: p for p in fresh_posts}
+                    for post in posts:
+                        fresh = fresh_lookup.get(post.id)
+                        if fresh:
+                            post.score = fresh.score
+                            post.num_comments = fresh.num_comments
+                            post.upvote_ratio = fresh.upvote_ratio
+                except Exception as e:
+                    logger.warning(f"Failed to batch-update post metadata: {e}")
 
             await session.commit()
 

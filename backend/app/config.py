@@ -83,6 +83,15 @@ class CollectionConfig(BaseModel):
     comment_min_score: int = 5  # Only fetch comments for posts above this score
     comments_per_collection: int = 3  # Max comment-fetches per subreddit per run
 
+    # Regular collection sort modes (fetch both "hot" and "new" by default)
+    regular_sort_modes: list[str] = Field(default_factory=lambda: ["hot", "new"])
+
+    # Young post refresh settings
+    young_post_max_age_days: int = 5
+    young_post_refresh_interval_hours: int = 4
+    young_post_comment_refresh_limit: int = 5
+    young_post_comment_min_score: int = 10
+
     # Scheduling
     auto_schedule: bool = False
 

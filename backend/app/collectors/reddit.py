@@ -222,6 +222,57 @@ class RedditCollector:
         logger.info(f"Fetched {len(all_subs)} popular subreddits ({page + 1} pages)")
         return all_subs
 
+    async def fetch_posts_by_id(self, post_ids: list[str]) -> list[Post]:
+        """
+        Fetch fresh metadata for posts by their IDs using Reddit's /by_id/ endpoint.
+
+        Fetches up to 100 posts per API call. Useful for refreshing score,
+        num_comments, and upvote_ratio on existing posts.
+
+        Args:
+            post_ids: List of Reddit post IDs (without t3_ prefix)
+
+        Returns:
+            List of Post model instances with current metadata
+        """
+        all_posts = []
+
+        # Batch into groups of 100 (Reddit API limit)
+        for i in range(0, len(post_ids), 100):
+            batch = post_ids[i : i + 100]
+            fullnames = ",".join(f"t3_{pid}" for pid in batch)
+            url = f"{self.base_url}/by_id/{fullnames}.json"
+
+            try:
+                response = await self._request(url)
+
+                if response.status_code == 429:
+                    logger.warning("Rate limited on /by_id/ fetch")
+                    continue
+
+                if response.status_code != 200:
+                    logger.error(f"HTTP {response.status_code} for /by_id/ fetch")
+                    continue
+
+                data = response.json()
+                children = data.get("data", {}).get("children", [])
+
+                for item in children:
+                    if item.get("kind") != "t3":
+                        continue
+                    post_data = item.get("data", {})
+                    # Extract subreddit from the post data itself
+                    subreddit_name = post_data.get("subreddit", "")
+                    post = self._parse_post(post_data, subreddit_name)
+                    if post:
+                        all_posts.append(post)
+
+            except Exception as e:
+                logger.error(f"/by_id/ fetch failed for batch starting at {i}: {e}")
+
+        logger.info(f"Fetched {len(all_posts)} posts by ID ({len(post_ids)} requested)")
+        return all_posts
+
     async def collect_posts(
         self,
         subreddit_name: str,

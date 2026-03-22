@@ -56,9 +56,20 @@ class CollectionScheduler:
             replace_existing=True,
         )
 
+        # Job 4: Young post refresh (< 5 days old) — every 4 hours
+        young_interval = config.collection.young_post_refresh_interval_hours
+        self.scheduler.add_job(
+            self._run_young_post_refresh,
+            IntervalTrigger(hours=young_interval),
+            id="young_post_refresh",
+            name="Young post refresh (< 5 days old)",
+            replace_existing=True,
+        )
+
         logger.info(
             f"Scheduler configured: regular every {interval}min, "
-            f"deep daily at 3AM, comment refresh every 2h"
+            f"deep daily at 3AM, comment refresh every 2h, "
+            f"young post refresh every {young_interval}h"
         )
 
     async def _run_regular_collection(self) -> None:
@@ -128,6 +139,29 @@ class CollectionScheduler:
         except Exception as e:
             logger.error(f"Scheduler: comment refresh failed: {e}")
             self._last_results["comment_refresh"] = {
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "error": str(e),
+            }
+
+    async def _run_young_post_refresh(self) -> None:
+        """Refresh engagement data for posts less than 5 days old."""
+        from app.services.collector import get_collector
+
+        logger.info("Scheduler: starting young post refresh")
+        try:
+            collector = get_collector()
+            result = await collector.refresh_young_posts()
+            self._last_results["young_post_refresh"] = {
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                **result,
+            }
+            logger.info(
+                f"Scheduler: young post refresh done — "
+                f"{result['posts_updated']} updated out of {result['posts_checked']} checked"
+            )
+        except Exception as e:
+            logger.error(f"Scheduler: young post refresh failed: {e}")
+            self._last_results["young_post_refresh"] = {
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "error": str(e),
             }
