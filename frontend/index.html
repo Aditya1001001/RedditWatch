@@ -987,24 +987,35 @@
                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     <template x-for="it in insightTypeConfig" :key="it.key">
                         <div @click="selectThemeType(it.key)"
-                             class="border border-border rounded-lg p-4 cursor-pointer hover:border-accent/40 transition-all duration-150 group">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-2.5 h-2.5 rounded-full"
-                                         :class="{
-                                             'bg-insight-pain': it.key === 'pain_point',
-                                             'bg-insight-solution': it.key === 'solution_request',
-                                             'bg-insight-advice': it.key === 'advice_request',
-                                             'bg-insight-opportunity': it.key === 'opportunity',
-                                             'bg-insight-idea': it.key === 'idea',
-                                             'bg-insight-product': it.key === 'product_mention',
-                                             'bg-insight-money': it.key === 'money_talk',
-                                         }"></div>
+                             class="border border-border rounded-lg overflow-hidden cursor-pointer hover:border-accent/40 transition-all duration-150 group"
+                             :class="{ 'opacity-50': analysisStatus.insights_by_type && !(analysisStatus.insights_by_type[it.key]) }">
+                            <div class="h-[3px]"
+                                 :class="{
+                                     'bg-insight-pain': it.key === 'pain_point',
+                                     'bg-insight-solution': it.key === 'solution_request',
+                                     'bg-insight-advice': it.key === 'advice_request',
+                                     'bg-insight-opportunity': it.key === 'opportunity',
+                                     'bg-insight-idea': it.key === 'idea',
+                                     'bg-insight-product': it.key === 'product_mention',
+                                     'bg-insight-money': it.key === 'money_talk',
+                                 }"></div>
+                            <div class="p-4">
+                                <div class="flex items-center justify-between mb-1.5">
                                     <span class="text-sm font-medium group-hover:text-accent transition-colors duration-150" x-text="it.label"></span>
+                                    <span class="text-lg tabular-nums font-bold"
+                                          :class="{
+                                              'text-insight-pain': it.key === 'pain_point',
+                                              'text-insight-solution': it.key === 'solution_request',
+                                              'text-insight-advice': it.key === 'advice_request',
+                                              'text-insight-opportunity': it.key === 'opportunity',
+                                              'text-insight-idea': it.key === 'idea',
+                                              'text-insight-product': it.key === 'product_mention',
+                                              'text-insight-money': it.key === 'money_talk',
+                                          }"
+                                          x-text="analysisStatus.insights_by_type?.[it.key] || 0"></span>
                                 </div>
-                                <span class="text-xs tabular-nums text-text-muted font-semibold bg-surface-3 px-2 py-0.5 rounded-full" x-text="analysisStatus.insights_by_type?.[it.key] || 0"></span>
+                                <p class="text-xs text-text-muted" x-text="it.desc"></p>
                             </div>
-                            <p class="text-xs text-text-muted ml-[18px]" x-text="it.desc"></p>
                         </div>
                     </template>
                 </div>
@@ -1069,7 +1080,15 @@
                                 class="text-xs text-text-muted hover:text-accent transition-colors duration-150">
                             Clear filter
                         </button>
-                        <span class="text-xs text-text-muted tabular-nums ml-auto" x-text="insightsList.length + ' insights'"></span>
+                        <div class="flex items-center gap-2 ml-auto">
+                            <span class="text-xs text-text-muted tabular-nums" x-text="insightsList.length + ' insights'"></span>
+                            <select x-model.number="insightsLimit" @change="loadInsightsList()"
+                                    class="text-xs bg-surface-2 text-text-secondary border border-border rounded px-1.5 py-0.5 cursor-pointer hover:border-accent/40 transition-colors duration-150">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Loading skeleton for insights -->
@@ -1092,9 +1111,18 @@
                         <p class="text-text-muted text-xs mt-1">Run analysis on collected posts</p>
                     </div>
 
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <template x-for="insight in insightsList" :key="insight.id">
-                            <div class="border border-border rounded-lg p-5 hover:border-border-light transition-colors duration-150">
+                            <div class="border border-border rounded-lg p-5 bg-surface-1 hover:border-border-light transition-colors duration-150"
+                                 :class="{
+                                     'border-l-[3px] border-l-insight-pain': insight.type === 'pain_point',
+                                     'border-l-[3px] border-l-insight-solution': insight.type === 'solution_request',
+                                     'border-l-[3px] border-l-insight-advice': insight.type === 'advice_request',
+                                     'border-l-[3px] border-l-insight-opportunity': insight.type === 'opportunity',
+                                     'border-l-[3px] border-l-insight-idea': insight.type === 'idea',
+                                     'border-l-[3px] border-l-insight-product': insight.type === 'product_mention',
+                                     'border-l-[3px] border-l-insight-money': insight.type === 'money_talk',
+                                 }">
                                 <div class="flex justify-between items-start gap-4 mb-2">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <span :class="{
@@ -1106,23 +1134,28 @@
                                             'text-insight-idea bg-insight-idea/10': insight.type === 'idea',
                                             'text-insight-money bg-insight-money/10': insight.type === 'money_talk'
                                         }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="insight.type.replace('_', ' ')"></span>
-                                        <span class="font-medium text-sm" x-text="insight.title"></span>
+                                        <span class="font-semibold text-sm text-text-primary" x-text="insight.title"></span>
                                     </div>
-                                    <div x-show="insight.post_score != null" class="flex items-center gap-2 text-xs text-text-muted shrink-0 tabular-nums">
-                                        <span x-text="(insight.post_score || 0) + ' pts'"></span>
-                                        <span>·</span>
-                                        <span x-text="(insight.post_num_comments || 0) + ' comments'"></span>
+                                    <div x-show="insight.post_score != null" class="flex items-center gap-3 text-xs text-text-secondary shrink-0 tabular-nums">
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                            <span x-text="insight.post_score || 0"></span>
+                                        </span>
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                            <span x-text="insight.post_num_comments || 0"></span>
+                                        </span>
                                     </div>
                                 </div>
 
-                                <p class="text-sm text-text-secondary leading-relaxed mb-3" x-text="insight.description"></p>
+                                <p class="text-[13px] text-text-muted leading-relaxed mb-3" x-text="insight.description"></p>
 
                                 <!-- Quote -->
-                                <div x-show="insight.quote" class="border-l-2 border-accent/40 pl-4 py-2 mb-3">
-                                    <p class="text-sm text-text-secondary italic leading-relaxed">
-                                        <span class="quote-mark text-accent text-lg leading-none">"</span><span x-text="insight.quote"></span><span class="quote-mark text-accent text-lg leading-none">"</span>
+                                <div x-show="insight.quote" class="border-l-2 border-accent/40 pl-4 py-2.5 mb-3 bg-accent/[0.04] rounded-r-lg">
+                                    <p class="font-serif text-[15px] text-text-primary/90 italic leading-relaxed">
+                                        <span class="quote-mark text-accent text-xl leading-none">"</span><span x-text="insight.quote"></span><span class="quote-mark text-accent text-xl leading-none">"</span>
                                     </p>
-                                    <p class="text-xs text-text-muted mt-1">
+                                    <p class="text-xs text-text-muted mt-1.5">
                                         — <span x-text="insight.quote_author || 'anonymous'"></span>
                                     </p>
                                 </div>
@@ -1142,11 +1175,11 @@
                                 </div>
 
                                 <!-- Footer -->
-                                <div class="flex justify-between items-center text-xs pt-2 border-t border-border">
-                                    <span class="text-text-muted capitalize" x-text="insight.theme_key.replace(/_/g, ' ')"></span>
+                                <div class="flex justify-between items-center text-xs pt-2">
+                                    <span class="text-text-muted capitalize bg-surface-2 px-2 py-0.5 rounded" x-text="insight.theme_key.replace(/_/g, ' ')"></span>
                                     <a :href="'https://reddit.com' + insight.permalink" target="_blank"
-                                       class="text-accent hover:text-accent-light transition-colors duration-150">
-                                        View on Reddit →
+                                       class="text-text-muted hover:text-accent transition-colors duration-150">
+                                        View source →
                                     </a>
                                 </div>
                             </div>
@@ -1329,6 +1362,7 @@
                 insightsList: [],
                 selectedTheme: null,
                 insightTypeFilter: null,
+                insightsLimit: 10,
                 analyzing: false,
                 analysisResult: null,
                 searchResults: [],
@@ -1946,7 +1980,7 @@
                         const params = new URLSearchParams();
                         if (this.selectedTheme) params.set('theme_key', this.selectedTheme);
                         if (this.insightTypeFilter) params.set('type', this.insightTypeFilter);
-                        params.set('limit', '50');
+                        params.set('limit', String(this.insightsLimit));
                         this.audienceParam(params);
                         const res = await fetch('/api/analyze/insights?' + params, signal ? { signal } : {});
                         if (!res.ok) throw new Error('HTTP ' + res.status);

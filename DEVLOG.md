@@ -86,7 +86,7 @@ Goal was to package as native macOS app (menu bar, background collection, `.dmg`
 
 - [ ] Take fresh screenshots after Phase 16 UI changes
 - [ ] Remaining codebase audit items (~15 unfixed, mostly architectural — see audit summary below)
-- [ ] Insight list pagination (currently hard-capped at 50)
+- [x] Insight list pagination (default 10, user-selectable up to 50)
 
 ### Phase 17: Pre-Launch Dataset — Collection + Analysis
 
@@ -211,6 +211,23 @@ Implementation pieces:
 ---
 
 ## Changelog
+
+### 2026-03-22: Design Polish — Insight Cards + Type Overview
+
+Visual hierarchy and color personality for the two primary data surfaces. Addresses three user issues: walls of text, no visual hierarchy, flat dark-on-dark appearance.
+
+**6 changes shipped:**
+
+1. **Colored left borders on insight cards** — 3px left border in insight type color (pain=red, solution=green, etc.) + `bg-surface-1` lift + increased card spacing
+2. **Redesigned type overview cards** — colored top accent bar replaces dot, hero count number in type color replaces small gray pill, empty types dimmed to `opacity-50`
+3. **Elevated quote block** — warm amber background tint (`bg-accent/[0.04]`), Newsreader serif font at 15px, brighter text, larger quote marks — the "found gold" moment
+4. **Stronger title/description hierarchy** — title bumped to `font-semibold text-text-primary`, description dropped to `text-[13px] text-text-muted`
+5. **Better engagement stats** — SVG icons (upvote arrow, chat bubble) replace "pts"/"comments" text labels, bumped to `text-text-secondary`
+6. **Cleaner footer** — removed border separator, theme key styled as chip, link fades until hovered, renamed "View on Reddit" → "View source"
+
+**Bonus: Insight list limit selector** — default reduced from 50 → 10, dropdown (10/25/50) next to insight count header. Resolves the "hard-capped at 50" pending item.
+
+Files: `frontend/index.html` only — HTML/CSS, no JS logic or backend changes.
 
 ### 2026-03-22: New Post Tracking + Young Post Refresh
 
