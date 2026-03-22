@@ -114,10 +114,6 @@
             .toast-enter, .toast-exit { animation: none; }
         }
 
-        /* Intensity bar gradient */
-        .intensity-bar {
-            background: linear-gradient(90deg, #4caf6e 0%, #d4a030 50%, #e05252 100%);
-        }
 
         /* Quote styling */
         .quote-mark { font-family: 'Newsreader', Georgia, serif; }
@@ -392,7 +388,6 @@
                                             <span class="text-sm font-medium capitalize" x-text="pattern.theme_key.replace(/_/g, ' ')"></span>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <span class="text-xs text-text-muted tabular-nums" x-text="'score: ' + pattern.total_score"></span>
                                             <svg class="w-4 h-4 text-text-muted transition-transform duration-200" :class="expandedPattern === pattern.theme_key ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
@@ -1069,12 +1064,10 @@
                                         }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="insight.type.replace('_', ' ')"></span>
                                         <span class="font-medium text-sm" x-text="insight.title"></span>
                                     </div>
-                                    <div x-show="insight.intensity_score" class="text-right shrink-0">
-                                        <span :class="{
-                                            'text-insight-opportunity': insight.intensity_score < 40,
-                                            'text-insight-solution': insight.intensity_score >= 40 && insight.intensity_score < 70,
-                                            'text-insight-pain': insight.intensity_score >= 70
-                                        }" class="text-lg font-bold tabular-nums" x-text="insight.intensity_score"></span>
+                                    <div x-show="insight.post_score != null" class="flex items-center gap-2 text-xs text-text-muted shrink-0 tabular-nums">
+                                        <span x-text="(insight.post_score || 0) + ' pts'"></span>
+                                        <span>·</span>
+                                        <span x-text="(insight.post_num_comments || 0) + ' comments'"></span>
                                     </div>
                                 </div>
 
@@ -2089,7 +2082,6 @@
                                 theme_key: key,
                                 count: items.length,
                                 items: items,
-                                total_score: items.reduce((s, i) => s + (i.intensity_score || 0), 0),
                             }))
                             .sort((a, b) => b.count - a.count);
                     } catch (e) {

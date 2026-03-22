@@ -525,20 +525,23 @@ class AnalyzerService:
         subreddit_names: Optional[list[str]] = None,
     ) -> list[Insight]:
         """Get insights grouped by theme."""
-        from sqlalchemy.orm import joinedload
+        from sqlalchemy.orm import contains_eager
 
-        query = select(Insight).options(joinedload(Insight.post))
+        query = select(Insight).join(Post).options(contains_eager(Insight.post))
 
         if subreddit_names is not None:
-            query = query.join(Post).where(Post.subreddit.in_(subreddit_names))
+            query = query.where(Post.subreddit.in_(subreddit_names))
 
         # Apply sorting
-        if sort_by == "intensity":
+        if sort_by == "engagement":
+            query = query.order_by(Post.score.desc())
+        elif sort_by == "intensity":
             query = query.order_by(Insight.intensity_score.desc().nullslast())
         elif sort_by == "date":
             query = query.order_by(Insight.created_at.desc())
         else:
-            query = query.order_by(Insight.intensity_score.desc().nullslast())
+            # Default: sort by post engagement (real community signal)
+            query = query.order_by(Post.score.desc())
 
         if theme_key:
             query = query.where(Insight.theme_key == theme_key)

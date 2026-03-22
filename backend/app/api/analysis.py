@@ -183,7 +183,7 @@ async def get_themes(
 async def get_insights(
     theme_key: Optional[str] = None,
     type: Optional[str] = Query(default=None, alias="type"),
-    sort: Optional[str] = Query(default=None, description="Sort by: intensity, date"),
+    sort: Optional[str] = Query(default=None, description="Sort by: engagement, date, intensity"),
     limit: int = Query(default=50, ge=1, le=200),
     audience_id: Optional[int] = Query(default=None),
     subreddits: Optional[str] = Query(default=None, description="Comma-separated subreddit names"),
