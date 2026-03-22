@@ -12,17 +12,17 @@ from app.llm.base import BaseLLMProvider, LLMProviderError, LLMResponse
 
 class OpenAIProvider(BaseLLMProvider):
     """
-    OpenAI API provider.
+    OpenAI-compatible API provider.
 
+    Works with OpenAI, Groq, DeepSeek, and any OpenAI-compatible endpoint.
     Requires OPENAI_API_KEY environment variable.
     """
-
-    API_URL = "https://api.openai.com/v1/chat/completions"
 
     def __init__(self, config: Config):
         self.api_key = os.getenv("OPENAI_API_KEY", "")
         self.model = config.llm.openai.model
         self.max_tokens = config.llm.openai.max_tokens
+        self.base_url = config.llm.openai.base_url.rstrip("/")
 
     @property
     def name(self) -> str:
@@ -34,7 +34,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     async def is_available(self) -> bool:
         """Check if API key is configured."""
-        return bool(self.api_key and self.api_key.startswith("sk-"))
+        return bool(self.api_key)
 
     async def generate(
         self,
@@ -70,7 +70,7 @@ class OpenAIProvider(BaseLLMProvider):
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
-                    self.API_URL,
+                    f"{self.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
                 )

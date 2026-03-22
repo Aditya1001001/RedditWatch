@@ -33,10 +33,11 @@ class ClaudeConfig(BaseModel):
 
 
 class OpenAIConfig(BaseModel):
-    """OpenAI API configuration."""
+    """OpenAI API configuration. Works with any OpenAI-compatible API (Groq, DeepSeek, etc.)."""
 
     model: str = "gpt-4o-mini"
     max_tokens: int = 4096
+    base_url: str = "https://api.openai.com/v1"
 
 
 class LLMConfig(BaseModel):

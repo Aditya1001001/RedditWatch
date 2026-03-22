@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 16 in progress (Kill Intensity + Better Analysis + RAG Ask) | New post tracking + young post refresh shipped | Phases 1-15 complete | SaaS launch prep underway
+**Status**: Phase 16 in progress (Kill Intensity + Better Analysis + RAG Ask) | Phase 17 planned (Pre-Launch Dataset) | Phases 1-15 complete | SaaS launch prep underway
 
 **Reference docs** (private, gitignored):
 - `ARCHITECTURE.md` — system overview, data models, subsystem descriptions
@@ -87,6 +87,70 @@ Goal was to package as native macOS app (menu bar, background collection, `.dmg`
 - [ ] Take fresh screenshots after Phase 16 UI changes
 - [ ] Remaining codebase audit items (~15 unfixed, mostly architectural — see audit summary below)
 - [ ] Insight list pagination (currently hard-capped at 50)
+
+### Phase 17: Pre-Launch Dataset — Collection + Analysis
+
+Ship RedditWatch with a pre-loaded, already-analyzed dataset that serves two purposes:
+1. **Demo data** — new users see a populated dashboard with real insights on signup
+2. **Content marketing** — use the analyzed data to write blog posts, tweets, and landing page copy
+
+Timeline: this week. Approach: lean (37 curated subs, not 100+).
+
+**Step 1: Make OpenAI provider URL-configurable (for Groq)**
+
+Problem: `OpenAIProvider` has hardcoded `API_URL` and `is_available()` requires key starting with `sk-`. Groq uses a different URL and key prefix (`gsk_`).
+
+Solution: Make the OpenAI provider generic enough to work with any OpenAI-compatible API.
+
+Files to modify:
+- `backend/app/config.py` — add `base_url` field to `OpenAIConfig` (default: `https://api.openai.com/v1`)
+- `backend/app/llm/openai.py` — use config `base_url` instead of hardcoded URL; relax the `sk-` check in `is_available()`
+
+Users configure Groq by setting:
+```yaml
+llm:
+  provider: openai
+  openai:
+    base_url: "https://api.groq.com/openai/v1"
+    model: "llama-3.3-70b-versatile"
+```
+And `OPENAI_API_KEY=gsk_...` in `.env`.
+
+**Step 2: Collect data from 37 subreddits**
+
+No code changes — use existing deep collect via API.
+
+Tier 1 — Core Demo (15): SaaS, startups, Entrepreneur, indiehackers, microsaas, SideProject, smallbusiness, marketing, SEO, ecommerce, shopify, sales, freelance, ProductManagement, nocode
+
+Tier 2 — Content-Worthy Niches (10): selfhosted, ChatGPT, recruitinghell, personalfinance, cscareerquestions, digitalnomad, Etsy, Teachers, YNAB, LocalLLaMA
+
+Tier 3 — Breadth (12): webdev, devops, aws, emailmarketing, dropship, CryptoCurrency, realestateinvesting, 3Dprinting, podcasting, privacy, homelab, GrowthHacking
+
+Execution:
+1. Add all 37 subs to monitoring: `POST /api/subreddits {"name": "..."}` for each
+2. Trigger deep collection: `POST /api/collect/seed`
+3. Wait ~5-6 hours at 8 RPM
+
+Expected yield: ~37K posts, ~100K comments
+
+**Step 3: Analyze with Groq**
+
+1. Set up Groq: create account at console.groq.com, get API key
+2. Configure `.env` + `config.yaml` per Step 1
+3. Trigger analysis: `POST /api/analyze?limit=50&min_score=3` (repeat until all analyzed)
+
+Expected: ~24K posts to analyze (score >= 3), ~$2-5 on Groq paid, done in 2-3 hours.
+
+**Step 4: Consolidate themes**
+
+After analysis: `POST /api/analyze/themes/consolidate`
+
+**Verification checklist**:
+- [ ] Groq integration works: set config, hit `/api/llm/test`, get response
+- [ ] All 37 subs collected with deep data
+- [ ] Analysis complete: `/api/analyze/status` shows 0 unanalyzed posts (with score >= 3)
+- [ ] Themes consolidated: no obvious duplicates in `/api/analyze/themes`
+- [ ] Demo looks good: open UI, select an audience with these subs, insights are populated and useful
 
 ### Priority Order (Agreed 2026-03-21)
 
@@ -259,6 +323,7 @@ LLM analysis pipeline, insights UI, theme extraction, export system. Reddit API 
 ### ✅ Phase 14: Subreddit Discovery + Community Scraper
 ### ✅ Phase 15: UX Simplification (9 surfaces → 4)
 ### 🔲 Phase 16: Kill Intensity + Better Analysis + RAG Ask (in progress)
+### 🔲 Phase 17: Pre-Launch Dataset — Collection + Analysis (planned)
 
 ### 🔲 Phase 7b: Performance & Polish (Deferred)
 - [ ] Cloud LLM toggle for faster analysis
