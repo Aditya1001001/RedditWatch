@@ -956,31 +956,11 @@
                     </div>
                 </div>
 
-                <!-- ── C. Analyze Bar ── -->
-                <div x-show="analysisStatus.unanalyzed_posts > 0 || analyzing" x-transition
-                     class="flex items-center justify-between border border-border rounded-lg px-4 py-2.5">
-                    <span class="text-sm text-insight-solution">
-                        <span class="tabular-nums" x-text="analysisStatus.unanalyzed_posts"></span> posts awaiting analysis
-                    </span>
-                    <button @click="runAnalysis()"
-                            :disabled="analyzing"
-                            class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150">
-                        <span x-show="!analyzing">Analyze</span>
-                        <span x-show="analyzing" class="flex items-center gap-2">
-                            <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
-                            Analyzing…
-                        </span>
-                    </button>
-                </div>
-
-                <!-- Analysis Result -->
-                <div x-show="analysisResult" x-transition class="border border-insight-opportunity/20 rounded-lg p-4 bg-insight-opportunity/5">
-                    <p class="text-insight-opportunity font-medium text-sm">Analysis complete</p>
-                    <p class="text-sm text-text-secondary mt-1">
-                        <span class="tabular-nums" x-text="analysisResult?.posts_analyzed"></span> posts analyzed,
-                        <span class="tabular-nums" x-text="analysisResult?.insights_extracted"></span> insights extracted
-                        (<span class="tabular-nums" x-text="((analysisResult?.total_duration_ms || 0) / 1000).toFixed(1)"></span>s)
-                    </p>
+                <!-- ── C. Analysis Status (passive) ── -->
+                <div x-show="analysisStatus.status === 'running' || analysisStatus.status === 'pending'" x-transition
+                     class="flex items-center gap-2 text-sm text-text-muted py-2">
+                    <svg class="animate-spin h-3.5 w-3.5 text-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                    Analyzing new posts…
                 </div>
 
                 <!-- ── D. Insight Type Cards ── -->
@@ -1363,8 +1343,7 @@
                 selectedTheme: null,
                 insightTypeFilter: null,
                 insightsLimit: 10,
-                analyzing: false,
-                analysisResult: null,
+                _analysisPolling: false,
                 searchResults: [],
                 lastSearchQuery: '',
                 // Theme detail panel
@@ -1465,7 +1444,7 @@
                                 if (newPosts > 0) {
                                     this.showToast('Collection complete', `${newPosts} new posts collected`, 'success');
                                 }
-                                await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                                await Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts(), this.loadInsights()]);
                                 return;
                             } else if (task.status === 'failed') {
                                 this.bgCollection = { active: false, taskId: null, postsNew: 0 };
@@ -1885,7 +1864,7 @@
                                 this.collecting = false;
                                 this.bgCollection = { active: false, taskId: null, postsNew: 0 };
                                 this.showToast('Collection complete', `${result?.posts_new || 0} new posts`, 'success');
-                                Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts()]);
+                                Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts(), this.loadInsights()]);
                             });
                         } else {
                             this.collectResult = task;
@@ -1953,11 +1932,40 @@
                         if (!res.ok) throw new Error('HTTP ' + res.status);
                         if (signal?.aborted) return;
                         this.analysisStatus = await res.json();
+                        this._pollAnalysisIfRunning();
                     } catch (e) {
                         if (e.name === 'AbortError') return;
                         this.showToast('Load failed', 'Could not load analysis status', 'error');
                         this.analysisStatus = {};
                     }
+                },
+
+                _pollAnalysisIfRunning() {
+                    if (this._analysisPolling) return;
+                    const status = this.analysisStatus.status;
+                    if (status !== 'running' && status !== 'pending') return;
+
+                    this._analysisPolling = true;
+                    const poll = async () => {
+                        try {
+                            const params = new URLSearchParams();
+                            this.audienceParam(params);
+                            const res = await fetch('/api/analyze/status?' + params);
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            this.analysisStatus = await res.json();
+
+                            if (this.analysisStatus.status === 'running' || this.analysisStatus.status === 'pending') {
+                                setTimeout(poll, 5000);
+                                return;
+                            }
+                        } catch (e) { /* ignore polling errors */ }
+
+                        // Analysis finished — refresh data
+                        this._analysisPolling = false;
+                        await this.loadInsights();
+                        try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
+                    };
+                    setTimeout(poll, 5000);
                 },
 
                 async loadThemes(signal) {
@@ -1997,30 +2005,6 @@
                     this.selectedTheme = themeKey;
                     if (themeKey) this.insightTypeFilter = null;
                     await this.loadInsightsList();
-                },
-
-                async runAnalysis() {
-                    this.analyzing = true;
-                    this.analysisResult = null;
-                    try {
-                        const res = await fetch('/api/analyze?limit=10&min_score=0', { method: 'POST' });
-                        const task = await res.json();
-                        if (task.task_id) {
-                            await this.pollTask(task.task_id, '/api/analyze/task/', async (result) => {
-                                this.analysisResult = result;
-                                this.analyzing = false;
-                                this.showToast('Analysis complete', `${result?.insights_extracted || 0} insights extracted`, 'success');
-                                await this.loadInsights();
-                                try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
-                            });
-                        } else {
-                            this.analysisResult = task;
-                            this.analyzing = false;
-                        }
-                    } catch (e) {
-                        this.showToast('Analysis failed', e.message, 'error');
-                        this.analyzing = false;
-                    }
                 },
 
                 async consolidateThemes() {

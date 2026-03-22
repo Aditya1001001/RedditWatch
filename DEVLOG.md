@@ -6,7 +6,7 @@
 
 **Why**: GummySearch shut down (Nov 2025), paid alternatives cost $20-200/month, and we want to own our data and run offline with local LLMs.
 
-**Status**: Phase 16 in progress (Kill Intensity + Better Analysis + RAG Ask) | Phase 17 planned (Pre-Launch Dataset) | Phases 1-15 complete | SaaS launch prep underway
+**Status**: Phase 17 in progress (Pre-Launch Dataset) | Phases 1-16 complete | SaaS launch prep underway
 
 **Reference docs** (private, gitignored):
 - `ARCHITECTURE.md` — system overview, data models, subsystem descriptions
@@ -16,9 +16,20 @@
 
 ## Pending Work
 
-### Phase 16: Better Analysis + RAG Ask
+### Phase 16: Better Analysis + RAG Ask ✅
 
-Three changes this round (items #4 smart suggestions and #5 audience templates deferred — templates will be hand-curated via one-time Claude task, no pipeline):
+Three changes this round (items #4 smart suggestions and #5 audience templates deferred — templates will be hand-curated via one-time Claude task, no pipeline).
+
+**4. Auto-analyze after collection (v0.2.1)**
+
+Remove the manual "Analyze" button. Analysis runs automatically after every collection (regular, deep, startup catch-up). UI shows a passive "Analyzing new posts…" spinner that polls status and auto-refreshes insights when done.
+
+- Scheduler: `_maybe_run_analysis()` fires after regular/deep collection + 30-min safety net job
+- Startup: `_collect_then_analyze()` chains analysis after stale-data catch-up
+- Frontend: replaced analyze bar + button with passive status indicator, added `_pollAnalysisIfRunning()` auto-polling
+- Version bumped to 0.2.1, `main.py` uses `__version__` from `__init__.py`
+
+Files: `scheduler.py`, `main.py`, `__init__.py`, `frontend/index.html`
 
 **1. Kill intensity score from UI, sort by engagement**
 
@@ -87,6 +98,16 @@ Goal was to package as native macOS app (menu bar, background collection, `.dmg`
 - [ ] Take fresh screenshots after Phase 16 UI changes
 - [ ] Remaining codebase audit items (~15 unfixed, mostly architectural — see audit summary below)
 - [x] Insight list pagination (default 10, user-selectable up to 50)
+
+**LLM Cost Abuse Mitigations (pre-SaaS)**
+
+Six LLM-calling endpoints currently have zero auth or rate limiting. Not urgent for self-hosted OSS, but critical before SaaS launch. Auth itself is tracked as priority #3 — these items are the LLM-cost mitigations that layer on top of auth.
+
+- [ ] Per-user rate limits on LLM endpoints (`/api/audiences/{id}/ask`, `/api/analyze`, `/api/analyze/themes/summary`, `/api/analyze/themes/consolidate`)
+- [ ] Disable or auth-gate `/api/llm/test` and `/api/llm/test-json` — debug endpoints, should not be publicly accessible in SaaS
+- [ ] Input length cap on `/api/llm/test` prompt field (currently accepts unbounded input)
+- [ ] Global daily LLM spending cap as safety net (hard cutoff or alert threshold)
+- [ ] Analysis idempotency — prevent re-triggering analysis on already-analyzed posts (avoid duplicate LLM spend)
 
 ### Phase 17: Pre-Launch Dataset — Collection + Analysis
 
@@ -211,6 +232,19 @@ Implementation pieces:
 ---
 
 ## Changelog
+
+### 2026-03-22: Auto-Analyze After Collection (v0.2.1)
+
+Removed the manual "Analyze" button. Analysis now fires automatically after every collection cycle (regular, deep, startup catch-up). A 30-minute safety-net scheduler job catches any missed posts.
+
+**4 changes shipped:**
+
+1. **`_maybe_run_analysis()`** — scheduler method that triggers analysis if `auto_analyze: true` and no analysis task already running
+2. **Post-collection hooks** — `_run_regular_collection()`, `_run_deep_collection()`, and `_startup_collect_if_stale()` all chain analysis after collection completes
+3. **Passive UI indicator** — replaced the analyze bar + button with a spinner ("Analyzing new posts…") that appears when analysis is running/pending, auto-polls every 5s, and refreshes insights + reindexes search on completion
+4. **Version cleanup** — bumped to 0.2.1, `main.py` imports `__version__` from `__init__.py` instead of hardcoding
+
+Files: `backend/app/services/scheduler.py`, `backend/app/main.py`, `backend/app/__init__.py`, `frontend/index.html`
 
 ### 2026-03-22: Design Polish — Insight Cards + Type Overview
 
@@ -339,8 +373,8 @@ LLM analysis pipeline, insights UI, theme extraction, export system. Reddit API 
 ### ⏸️ Phase 13: Native Mac App (deferred post-launch)
 ### ✅ Phase 14: Subreddit Discovery + Community Scraper
 ### ✅ Phase 15: UX Simplification (9 surfaces → 4)
-### 🔲 Phase 16: Kill Intensity + Better Analysis + RAG Ask (in progress)
-### 🔲 Phase 17: Pre-Launch Dataset — Collection + Analysis (planned)
+### ✅ Phase 16: Kill Intensity + Better Analysis + RAG Ask + Auto-Analyze
+### 🔲 Phase 17: Pre-Launch Dataset — Collection + Analysis (in progress)
 
 ### 🔲 Phase 7b: Performance & Polish (Deferred)
 - [ ] Cloud LLM toggle for faster analysis

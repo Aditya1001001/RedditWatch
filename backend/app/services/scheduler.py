@@ -66,6 +66,16 @@ class CollectionScheduler:
             replace_existing=True,
         )
 
+        # Job 5: Auto-analysis safety net — every 30 minutes
+        if config.analysis.auto_analyze:
+            self.scheduler.add_job(
+                self._maybe_run_analysis,
+                IntervalTrigger(minutes=30),
+                id="auto_analysis",
+                name="Auto-analysis (safety net)",
+                replace_existing=True,
+            )
+
         logger.info(
             f"Scheduler configured: regular every {interval}min, "
             f"deep daily at 3AM, comment refresh every 2h, "
@@ -88,6 +98,7 @@ class CollectionScheduler:
                 f"Scheduler: regular collection done — "
                 f"{result['posts_new']} new posts from {result['subreddits_processed']} subs"
             )
+            await self._maybe_run_analysis()
         except Exception as e:
             logger.error(f"Scheduler: regular collection failed: {e}")
             self._last_results["regular_collection"] = {
@@ -111,6 +122,7 @@ class CollectionScheduler:
                 f"Scheduler: deep collection done — "
                 f"{result['posts_new']} new posts from {result['subreddits_processed']} subs"
             )
+            await self._maybe_run_analysis()
         except Exception as e:
             logger.error(f"Scheduler: deep collection failed: {e}")
             self._last_results["deep_collection"] = {
@@ -142,6 +154,36 @@ class CollectionScheduler:
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "error": str(e),
             }
+
+    async def _maybe_run_analysis(self) -> None:
+        """Trigger analysis if auto_analyze is enabled and no analysis is already running."""
+        config = get_config()
+        if not config.analysis.auto_analyze:
+            return
+
+        from app.services.tasks import get_task_tracker
+
+        tracker = get_task_tracker()
+        if tracker.get_active_task("analysis"):
+            logger.debug("Scheduler: analysis already running, skipping")
+            return
+
+        from app.services.analyzer import get_analyzer
+
+        logger.info("Scheduler: starting auto-analysis")
+        try:
+            task_info = tracker.create_task("analysis")
+            analyzer = get_analyzer()
+
+            async def _run():
+                return await analyzer.analyze_unanalyzed_posts(
+                    limit=config.analysis.batch_size,
+                    min_score=config.analysis.min_score_threshold,
+                )
+
+            tracker.run_background(task_info, _run())
+        except Exception as e:
+            logger.error(f"Scheduler: auto-analysis failed to start: {e}")
 
     async def _run_young_post_refresh(self) -> None:
         """Refresh engagement data for posts less than 5 days old."""

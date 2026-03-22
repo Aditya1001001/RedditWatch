@@ -1,3 +1,15 @@
+## Versioning
+
+Single source of truth: `backend/app/__init__.py` (`__version__`). Imported by `main.py` — never hardcode version strings elsewhere.
+
+**Pre-1.0 convention:**
+- **Patch** (0.2.X) — bug fixes, design tweaks, config changes, data collection
+- **Minor** (0.X.0) — new features, new API endpoints, data model changes
+
+Bump the version in the same commit as the feature/fix it corresponds to.
+
+---
+
 ## Design Context
 
 ### Users

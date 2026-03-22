@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import __version__
 from app.api import api_router
 from app.config import Config, get_config
 from app.database import init_db
@@ -91,7 +92,16 @@ async def _startup_collect_if_stale(config: Config):
             return
 
         task_info = tracker.create_task("collection")
-        tracker.run_background(task_info, collector.collect_all(deep=False))
+
+        async def _collect_then_analyze():
+            result = await collector.collect_all(deep=False)
+            if config.analysis.auto_analyze:
+                from app.services.scheduler import get_scheduler
+                scheduler = get_scheduler()
+                await scheduler._maybe_run_analysis()
+            return result
+
+        tracker.run_background(task_info, _collect_then_analyze())
 
         logger.info(f"Startup collection started (task_id={task_info.task_id})")
     except Exception:
@@ -102,7 +112,7 @@ async def _startup_collect_if_stale(config: Config):
 app = FastAPI(
     title="RedditWatch",
     description="Self-hosted Reddit market research tool",
-    version="0.1.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -123,7 +133,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "redditwatch",
-        "version": "0.1.0",
+        "version": __version__,
     }
 
 
