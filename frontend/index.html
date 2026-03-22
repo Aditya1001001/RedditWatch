@@ -54,6 +54,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -137,6 +138,47 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .skeleton { animation: none; background: #232320; }
+        }
+
+        /* Ask answer markdown */
+        .prose-answer > *:first-child { margin-top: 0; }
+        .prose-answer > *:last-child { margin-bottom: 0; }
+        .prose-answer p { margin: 0.6em 0; }
+        .prose-answer strong { color: #e8e5df; font-weight: 600; }
+        .prose-answer em { color: #9c9890; }
+        .prose-answer ul, .prose-answer ol {
+            margin: 0.75em 0;
+            padding-left: 1.5em;
+        }
+        .prose-answer ol { list-style-type: decimal; }
+        .prose-answer ul { list-style-type: disc; }
+        .prose-answer li {
+            margin-bottom: 0.5em;
+            padding-left: 0.25em;
+        }
+        .prose-answer li::marker { color: #6b6760; }
+        .prose-answer blockquote {
+            border-left: 2px solid #d4a373;
+            padding: 0.5em 0.75em;
+            margin: 0.75em 0;
+            background: rgba(212, 163, 115, 0.06);
+            border-radius: 0 6px 6px 0;
+            font-family: 'Newsreader', Georgia, serif;
+            font-style: italic;
+            color: #9c9890;
+        }
+        .prose-answer h1, .prose-answer h2, .prose-answer h3 {
+            color: #e8e5df;
+            font-weight: 600;
+            margin: 1.25em 0 0.35em;
+        }
+        .prose-answer h1 { font-size: 1.1em; }
+        .prose-answer h2 { font-size: 1.05em; }
+        .prose-answer h3 { font-size: 1em; }
+        .prose-answer hr {
+            border: none;
+            border-top: 1px solid #2c2c28;
+            margin: 1em 0;
         }
     </style>
 </head>
@@ -871,11 +913,13 @@
                     </div>
 
                     <!-- Ask history -->
-                    <div x-show="queryMode === 'ask' && queryHistory.length > 0" class="space-y-3">
+                    <div x-show="queryMode === 'ask' && queryHistory.length > 0" class="space-y-4">
                         <template x-for="(item, i) in queryHistory" :key="i">
-                            <div class="border border-border rounded-lg p-4">
-                                <p class="text-xs font-semibold text-accent mb-2">Q: <span x-text="item.question"></span></p>
-                                <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line" x-text="item.answer"></p>
+                            <div class="border border-border rounded-lg overflow-hidden">
+                                <div class="bg-surface-2 px-4 py-2.5 border-b border-border">
+                                    <p class="text-xs font-semibold text-accent">Q: <span x-text="item.question"></span></p>
+                                </div>
+                                <div class="px-5 py-4 text-[13px] text-text-secondary leading-[1.7] prose-answer" x-html="marked.parse(item.answer)"></div>
                             </div>
                         </template>
                     </div>
@@ -2111,7 +2155,13 @@
                         const res = await fetch(`/api/audiences/${this.activeAudienceId}/ask`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ question }),
+                            body: JSON.stringify({
+                                question,
+                                history: this.queryHistory.slice(0, 3).map(h => ({
+                                    question: h.question,
+                                    answer: h.answer,
+                                })),
+                            }),
                         });
                         if (res.ok) {
                             const data = await res.json();

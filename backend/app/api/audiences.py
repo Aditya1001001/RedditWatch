@@ -151,8 +151,14 @@ async def delete_audience(
     return {"message": f"Audience '{audience.name}' deleted"}
 
 
+class HistoryItem(BaseModel):
+    question: str
+    answer: str
+
+
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=500)
+    history: list[HistoryItem] = Field(default_factory=list, max_length=3)
 
 
 @router.post("/{audience_id}/ask")
@@ -214,27 +220,97 @@ async def ask_about_audience(
         for t, c in sorted(insights_by_type.items(), key=lambda x: -x[1])
     )
     theme_summary = ", ".join(f"{t} ({c})" for t, c in top_themes[:8])
-    sample_text = "\n".join(f'- "{title}" ({typ.replace("_", " ")})' for title, typ in samples)
 
-    prompt = f"""You are a market research assistant. The user has an audience called "{audience.name}" tracking subreddits: {', '.join('r/' + s for s in sub_names)}.
+    # RAG retrieval — inject real insights into the prompt
+    retrieved_text = "(no relevant insights found)"
+    try:
+        from app.services.search import get_search_service
+        search_svc = get_search_service()
+        raw_results = await search_svc.search_async(query=request.question, limit=36)
 
-Data summary:
-- {total_posts} posts, {total_insights} insights
-- Themes: {type_summary}
-- Top topics: {theme_summary}
-- Sample high-intensity insights:
-{sample_text}
+        # Post-filter by audience subreddits
+        post_ids = [r["metadata"].get("post_id") for r in raw_results if r["metadata"].get("post_id")]
+        if post_ids:
+            rows = await session.execute(
+                select(Post.id, Post.subreddit).where(Post.id.in_(post_ids))
+            )
+            post_sub_map = {row.id: row.subreddit for row in rows}
+            filtered = [
+                r for r in raw_results
+                if post_sub_map.get(r["metadata"].get("post_id")) in sub_names
+            ][:12]
+        else:
+            filtered = []
 
-Answer concisely: {request.question}"""
+        if filtered:
+            # Batch-load full insights
+            insight_ids = [r["metadata"]["insight_id"] for r in filtered if r["metadata"].get("insight_id")]
+            insight_map = {}
+            if insight_ids:
+                insight_rows = await session.execute(
+                    select(Insight).where(Insight.id.in_(insight_ids))
+                )
+                insight_map = {i.id: i for i in insight_rows.scalars().all()}
+
+            lines = []
+            for r in filtered:
+                iid = r["metadata"].get("insight_id")
+                insight = insight_map.get(iid)
+                if not insight:
+                    continue
+                sub = post_sub_map.get(r["metadata"].get("post_id"), "unknown")
+                line = f'({insight.type}, r/{sub}) "{insight.title}"'
+                if insight.description:
+                    line += f"\n    {insight.description}"
+                if insight.quote:
+                    author = f" \u2014 u/{insight.quote_author}" if insight.quote_author else ""
+                    line += f'\n    Quote: "{insight.quote}"{author}'
+                lines.append(line)
+
+            if lines:
+                retrieved_text = "\n\n".join(lines)
+    except Exception:
+        logger.warning("RAG retrieval failed for ask endpoint, falling back to stats-only", exc_info=True)
+
+    # Build conversation history block
+    history_block = ""
+    if request.history:
+        history_lines = []
+        for h in request.history:
+            history_lines.append(f"User: {h.question}")
+            history_lines.append(f"Assistant: {h.answer}")
+        history_block = "CONVERSATION HISTORY:\n" + "\n".join(history_lines) + "\n\n"
+
+    subreddit_list = ", ".join("r/" + s for s in sub_names)
+    prompt = f"""AUDIENCE: "{audience.name}" \u2014 tracking {subreddit_list}
+
+DATA OVERVIEW:
+- {total_posts} posts analyzed, {total_insights} insights extracted
+- By type: {type_summary}
+- Top themes: {theme_summary}
+
+RETRIEVED INSIGHTS (most relevant to the question):
+{retrieved_text}
+
+{history_block}QUESTION: {request.question}"""
+
+    system_prompt = """You are an expert market research analyst. You answer questions ONLY using the provided insights data. You must NEVER make up quotes, usernames, or claims.
+
+RULES:
+- ONLY use information from the RETRIEVED INSIGHTS section below. If no relevant insights are provided, say "I don't have enough data on this topic to give a grounded answer" and suggest what the user could ask instead based on the DATA OVERVIEW.
+- When an insight has a quote, include it verbatim in quotation marks with the author (e.g. "quote here" — u/author). NEVER invent quotes or attribute statements to usernames not in the data.
+- Always name the specific subreddit where a pattern appears (e.g. "In r/startups, founders report...")
+- Do NOT reference insight numbers, indices, or counts like "Insight 5" or "(Insights 3 and 7)" — just state the finding naturally
+- Give actionable recommendations, not just summaries"""
 
     try:
         from app.llm.factory import get_llm_provider
         provider = await get_llm_provider()
         response = await provider.generate(
             prompt=prompt,
-            system="You are a helpful market research assistant. Give concise, actionable answers based on the data provided.",
+            system=system_prompt,
             temperature=0.4,
-            max_tokens=1024,
+            max_tokens=2048,
         )
         return {"answer": response.content, "model": response.model}
     except Exception as e:
