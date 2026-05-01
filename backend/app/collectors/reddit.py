@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 
 import httpx
 
+from app.collectors.arctic_shift import ArcticShiftCollector
 from app.models import Comment, Post
 from app.services.rate_limiter import get_rate_limiter
 
@@ -37,6 +38,7 @@ class RedditCollector:
         self.timeout = 30.0
         self._client: Optional[httpx.AsyncClient] = None
         self._rate_limiter = get_rate_limiter(rpm=rate_limit_rpm)
+        self._arctic = ArcticShiftCollector()
 
     def _get_headers(self) -> dict:
         """Get request headers with random user agent."""
@@ -60,6 +62,7 @@ class RedditCollector:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+        await self._arctic.close()
 
     async def _request(self, url: str, params: Optional[dict] = None) -> httpx.Response:
         """
@@ -303,6 +306,11 @@ class RedditCollector:
                 logger.warning(f"JSON failed for r/{subreddit_name}, trying RSS")
                 posts = await self._collect_posts_rss(subreddit_name, limit)
 
+            if not posts:
+                # Fall back to Arctic Shift if Reddit is fully blocked
+                logger.warning(f"Reddit blocked for r/{subreddit_name}, trying Arctic Shift")
+                posts = await self._arctic.collect_posts(subreddit_name, limit, sort, time_filter)
+
         except Exception as e:
             logger.error(f"Failed to collect posts from r/{subreddit_name}: {e}")
 
@@ -329,6 +337,7 @@ class RedditCollector:
             num_comments=post_data.get("num_comments", 0),
             permalink=post_data.get("permalink", ""),
             url=post_data.get("url") if not post_data.get("is_self") else None,
+            link_flair_text=post_data.get("link_flair_text"),
             created_utc=datetime.fromtimestamp(
                 post_data.get("created_utc", 0), tz=timezone.utc
             ),
@@ -388,6 +397,7 @@ class RedditCollector:
         max_pages: int = 10,
         per_page: int = 100,
         rate_limit_delay: float = 1.0,
+        since_date: Optional[datetime] = None,
     ) -> list[Post]:
         """
         Collect posts with pagination, following Reddit's `after` cursor.
@@ -399,6 +409,8 @@ class RedditCollector:
             max_pages: Maximum number of pages to fetch
             per_page: Posts per page (max 100)
             rate_limit_delay: Base delay between requests (seconds)
+            since_date: If set with sort="new", paginate until posts are older
+                than this date (overrides max_pages with a 200-page cap)
 
         Returns:
             List of Post model instances (up to max_pages * per_page)
@@ -409,7 +421,12 @@ class RedditCollector:
         sort_path = sort if sort in ["hot", "new", "top", "rising"] else "hot"
         url = f"{self.base_url}/r/{subreddit_name}/{sort_path}.json"
 
-        for page in range(max_pages):
+        # When since_date is set on "new" sort, allow many more pages
+        effective_max_pages = max_pages
+        if since_date and sort == "new":
+            effective_max_pages = 200
+
+        for page in range(effective_max_pages):
             params = {"limit": min(per_page, 100)}
             if sort == "top" and time_filter:
                 params["t"] = time_filter
@@ -450,6 +467,17 @@ class RedditCollector:
                     if post:
                         page_posts.append(post)
 
+                # Date-based filtering: stop when posts are older than cutoff
+                if since_date and sort == "new":
+                    before_filter = len(page_posts)
+                    page_posts = [p for p in page_posts if p.created_utc >= since_date]
+                    if len(page_posts) < before_filter:
+                        all_posts.extend(page_posts)
+                        logger.info(
+                            f"Date cutoff reached for r/{subreddit_name} on page {page + 1}"
+                        )
+                        break
+
                 all_posts.extend(page_posts)
 
                 # No more pages
@@ -476,6 +504,7 @@ class RedditCollector:
         per_page: int = 100,
         rate_limit_delay: float = 1.0,
         modes_per_run: int = 3,
+        since_date: Optional[datetime] = None,
     ) -> list[Post]:
         """
         Collect posts using multiple sort/time combos, deduplicated by post ID.
@@ -491,6 +520,7 @@ class RedditCollector:
             per_page: Posts per page
             rate_limit_delay: Base delay between requests
             modes_per_run: How many sort modes to use this run (rotates daily)
+            since_date: If set, passed to paginated collection for date-based stopping
 
         Returns:
             Deduplicated list of Post model instances
@@ -536,6 +566,7 @@ class RedditCollector:
                 max_pages=max_pages,
                 per_page=per_page,
                 rate_limit_delay=rate_limit_delay,
+                since_date=since_date,
             )
 
             new_count = 0
@@ -550,6 +581,11 @@ class RedditCollector:
                 f"Deep collect r/{subreddit_name} [{label}]: "
                 f"{len(posts)} total, {new_count} new unique"
             )
+
+        # Fall back to Arctic Shift if Reddit returned nothing (likely 403 blocked)
+        if not unique_posts:
+            logger.warning(f"Reddit blocked for deep collect r/{subreddit_name}, trying Arctic Shift")
+            unique_posts = await self._arctic.collect_posts_deep(subreddit_name)
 
         logger.info(
             f"Deep collection complete for r/{subreddit_name}: "
