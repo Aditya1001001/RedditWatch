@@ -73,6 +73,20 @@ async def init_db() -> None:
         except Exception:
             pass  # Column already exists
 
+        try:
+            await conn.execute(text(
+                "ALTER TABLE posts ADD COLUMN link_flair_text VARCHAR(100)"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            await conn.execute(text(
+                "ALTER TABLE audiences ADD COLUMN active BOOLEAN DEFAULT 0"
+            ))
+        except Exception:
+            pass  # Column already exists
+
     print(f"Database initialized at {DATABASE_PATH}")
 
 

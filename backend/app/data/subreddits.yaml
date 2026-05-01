@@ -1546,3 +1546,140 @@ relationships_social:
       description: Long distance relationships
       subscribers: 250000
       best_for: Long distance communication tools
+
+gardening_plants:
+  _meta:
+    display_name: "Gardening & Plants"
+  subreddits:
+    - name: gardening
+      display_name: r/gardening
+      description: A place for the best guides, pictures, and discussions of all things related to plants and gardening
+      subscribers: 8792569
+      icon_url: https://b.thumbs.redditmedia.com/ObOhgosRIJnnCAeHU_twkrWC9uCJRpoI5QYeKZF9GJk.png
+      best_for: Garden planning, plant care, pest management
+    - name: houseplants
+      display_name: r/houseplants
+      description: A community focused on the discussion, care, and well-being of houseplants
+      subscribers: 2925147
+      icon_url: https://styles.redditmedia.com/t5_2skiq/styles/communityIcon_sl0iy5d8tq391.png
+      best_for: Indoor plant care, recommendations, troubleshooting
+    - name: vegetablegardening
+      display_name: r/vegetablegardening
+      description: An educational subreddit dedicated to learning how to grow your own food
+      subscribers: 764220
+      icon_url: https://styles.redditmedia.com/t5_30g5j/styles/communityIcon_8syvm2ahcpz91.png
+      best_for: Vegetable growing tips, seed recommendations
+    - name: lawncare
+      display_name: r/lawncare
+      description: Lawn care guides, pictures, and discussions
+      subscribers: 906281
+      icon_url: https://styles.redditmedia.com/t5_2rzrk/styles/communityIcon_iohf4x0m70l31.png
+      best_for: Lawn maintenance, weed control, equipment
+    - name: succulents
+      display_name: r/succulents
+      description: Anything and everything about succulent plants
+      subscribers: 731637
+      icon_url: https://styles.redditmedia.com/t5_2smnv/styles/communityIcon_cnzkp15lmkn41.png
+      best_for: Succulent care, identification, propagation
+    - name: plantclinic
+      display_name: r/plantclinic
+      description: If you're wondering what's wrong with your plant, we will help you diagnose and treat it
+      subscribers: 858648
+      icon_url: https://styles.redditmedia.com/t5_38zax/styles/communityIcon_9ob85fxf1rce1.png
+      best_for: Plant disease diagnosis, treatment advice
+
+homesteading:
+  _meta:
+    display_name: "Homesteading"
+  subreddits:
+    - name: homestead
+      display_name: r/homestead
+      description: Ponds, barns, livestock, gardens, food preservation, fishing, hunting, tractors
+      subscribers: 3495975
+      icon_url: https://styles.redditmedia.com/t5_2s8lc/styles/communityIcon_867lcm9vuhf51.png
+      best_for: Homesteading lifestyle, self-sufficiency
+    - name: BackYardChickens
+      display_name: r/BackYardChickens
+      description: Interesting stuff for the small flock community and the humane big flock community
+      subscribers: 1005285
+      icon_url: https://styles.redditmedia.com/t5_2sdri/styles/communityIcon_w6946e2cpqye1.png
+      best_for: Chicken keeping, coop building, egg production
+    - name: Permaculture
+      display_name: r/Permaculture
+      description: A community for like-minded individuals to discuss permaculture and sustainable living
+      subscribers: 351168
+      best_for: Sustainable agriculture, food forests, design
+    - name: Sourdough
+      display_name: r/Sourdough
+      description: Ask for help, share knowledge, tips, recipes and discuss sourdough
+      subscribers: 708419
+      icon_url: https://styles.redditmedia.com/t5_2s7wc/styles/communityIcon_wcyszfijj0c61.png
+      best_for: Sourdough baking, starter maintenance
+    - name: foraging
+      display_name: r/foraging
+      description: Info on finding, identifying, harvesting, and cooking wild edible food
+      subscribers: 765907
+      best_for: Wild food identification, foraging techniques
+
+crafts_making:
+  _meta:
+    display_name: "Crafts & Making"
+  subreddits:
+    - name: woodworking
+      display_name: r/woodworking
+      description: Woodworking is your worldwide home for discussion of all things woodworking
+      subscribers: 6123638
+      icon_url: https://styles.redditmedia.com/t5_2qlqp/styles/communityIcon_7ufwgp6bijra1.png
+      best_for: Woodworking projects, tools, techniques
+    - name: crochet
+      display_name: r/crochet
+      description: This sub is for hobbyist crocheters to share their work, discuss, swap ideas
+      subscribers: 1910190
+      icon_url: https://b.thumbs.redditmedia.com/9bL-OYw8Wtp2VQmF-lNiBGAw7vRe6d2CQW0R0WXxEXQ.png
+      best_for: Crochet patterns, yarn recommendations
+    - name: sewing
+      display_name: r/sewing
+      description: Sewing for everybody and every body
+      subscribers: 2195650
+      icon_url: https://styles.redditmedia.com/t5_2sczp/styles/communityIcon_88xurwid3i021.png
+      best_for: Sewing projects, machine recommendations, patterns
+    - name: Leathercraft
+      display_name: r/Leathercraft
+      description: This is the subreddit for all leathercrafters
+      subscribers: 872116
+      icon_url: https://styles.redditmedia.com/t5_2sufa/styles/communityIcon_cd169seotird1.jpeg
+      best_for: Leather working techniques, tool recommendations
+    - name: knitting
+      display_name: r/knitting
+      description: Warm, fuzzy, sometimes tangled
+      subscribers: 588855
+      icon_url: https://b.thumbs.redditmedia.com/953dPFBxLxhFpIBc5gzMbegNwM29kojX3ZB5k2jTzhQ.png
+      best_for: Knitting patterns, yarn reviews, techniques
+
+cooking_baking:
+  _meta:
+    display_name: "Cooking & Baking"
+  subreddits:
+    - name: Cooking
+      display_name: r/Cooking
+      description: Home cooking community
+      subscribers: 6054188
+      best_for: Recipe ideas, cooking techniques, equipment
+    - name: Baking
+      display_name: r/Baking
+      description: For all your baking needs! Recipes, pictures, ideas, questions and all things baking
+      subscribers: 4297919
+      icon_url: https://styles.redditmedia.com/t5_2qx1h/styles/communityIcon_bpprg3isxj851.png
+      best_for: Baking recipes, troubleshooting, decoration
+    - name: Sourdough
+      display_name: r/Sourdough
+      description: Ask for help, share knowledge, tips, recipes and discuss sourdough
+      subscribers: 708419
+      icon_url: https://styles.redditmedia.com/t5_2s7wc/styles/communityIcon_wcyszfijj0c61.png
+      best_for: Sourdough baking, starter maintenance
+    - name: AskCulinary
+      display_name: r/AskCulinary
+      description: A place to get that one right answer to your cooking questions
+      subscribers: 1240734
+      icon_url: https://styles.redditmedia.com/t5_2t82m/styles/communityIcon_92wxnjurxhd01.png
+      best_for: Cooking technique questions, food science

@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+import json
+
 import yaml
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,7 @@ from app.collectors.reddit import RedditCollector
 from app.config import Config, get_config
 from app.database import async_session_maker
 from app.models import Comment, MonitoredSubreddit, Post, SubscriberSnapshot
+from app.models.audience import Audience, audience_subreddits
 from app.services.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,7 @@ class CollectorService:
             rate_limit_rpm=self.config.collection.rate_limit_rpm,
         )
         self._catalog: Optional[dict] = None
+        self._directory: Optional[list[dict]] = None
         # 24-hour in-memory cache for subreddit info {name: (fetched_at, info_dict)}
         self._subreddit_info_cache: dict[str, tuple[datetime, dict]] = {}
 
@@ -70,6 +74,20 @@ class CollectorService:
                 })
 
         return result
+
+    def _load_directory(self) -> list[dict]:
+        """Load the expanded subreddit directory (from enriched community scrape)."""
+        if self._directory is not None:
+            return self._directory
+
+        directory_path = Path(__file__).parent.parent / "data" / "subreddits_directory.json"
+        if directory_path.exists():
+            with open(directory_path) as f:
+                self._directory = json.load(f)
+        else:
+            self._directory = []
+
+        return self._directory
 
     def get_catalog_categories(self) -> list[dict]:
         """Get list of categories with display names and counts."""
@@ -124,17 +142,34 @@ class CollectorService:
                     "is_monitored": entry["name"].lower() in monitored_names,
                 })
 
-        # 2. Reddit search (network)
+        # 2. Directory search (local, ~6K subs)
+        directory_results = []
+        for entry in self._load_directory():
+            name_lower = entry["name"].lower()
+            desc_lower = (entry.get("description") or "").lower()
+            if query_lower in name_lower or query_lower in desc_lower:
+                directory_results.append({
+                    "name": entry["name"],
+                    "display_name": f"r/{entry['name']}",
+                    "description": entry.get("description", ""),
+                    "subscribers": entry.get("subscribers"),
+                    "icon_url": entry.get("icon_url"),
+                    "source": "directory",
+                    "category": None,
+                    "is_monitored": entry["name"].lower() in monitored_names,
+                })
+
+        # 3. Reddit search (network)
         reddit_results = await self.reddit.search_subreddits(query, limit)
         for r in reddit_results:
             r["source"] = "reddit"
             r["category"] = None
             r["is_monitored"] = r["name"].lower() in monitored_names
 
-        # 3. Merge: catalog first, then reddit, deduplicate by lowercased name
+        # 4. Merge: catalog first, then directory, then reddit, deduplicate
         seen = set()
         merged = []
-        for item in catalog_results + reddit_results:
+        for item in catalog_results + directory_results + reddit_results:
             key = item["name"].lower()
             if key not in seen:
                 seen.add(key)
@@ -467,6 +502,7 @@ class CollectorService:
         session: AsyncSession,
         subreddit_name: str,
         include_comments: bool = True,
+        since_date: Optional[datetime] = None,
     ) -> dict:
         """
         Deep collect from a subreddit using multiple sort/time combos with pagination.
@@ -479,6 +515,7 @@ class CollectorService:
             max_pages=self.config.collection.max_pages_per_sort,
             rate_limit_delay=self.config.collection.rate_limit_delay,
             modes_per_run=self.config.collection.deep_sort_modes_per_run,
+            since_date=since_date,
         )
 
         if not posts:
@@ -503,7 +540,9 @@ class CollectorService:
         )
         return stats
 
-    async def collect_all(self, deep: bool = False) -> dict:
+    async def collect_all(
+        self, deep: bool = False, since_date: Optional[datetime] = None,
+    ) -> dict:
         """
         Collect from all enabled subreddits sequentially.
 
@@ -515,6 +554,7 @@ class CollectorService:
 
         Args:
             deep: If True, use multi-sort paginated collection
+            since_date: If set, passed through to deep collection for date-based stopping
 
         Returns aggregate statistics.
         """
@@ -528,14 +568,27 @@ class CollectorService:
         }
 
         async with async_session_maker() as session:
-            subreddits = await self.get_monitored_subreddits(session, enabled_only=True)
+            # Only collect subreddits that belong to at least one active (followed) audience
+            active_sub_names = (
+                select(audience_subreddits.c.subreddit_name)
+                .join(Audience, Audience.id == audience_subreddits.c.audience_id)
+                .where(Audience.active == True)
+                .distinct()
+            )
+            result = await session.execute(
+                select(MonitoredSubreddit)
+                .where(MonitoredSubreddit.enabled == True)
+                .where(MonitoredSubreddit.name.in_(active_sub_names))
+                .order_by(MonitoredSubreddit.name)
+            )
+            subreddits = list(result.scalars().all())
 
         sub_names = [sub.name for sub in subreddits]
         retry_queue: list[str] = []
 
         # --- First pass: sequential collection ---
         for name in sub_names:
-            result = await self._collect_one(name, deep=deep)
+            result = await self._collect_one(name, deep=deep, since_date=since_date)
             if result is None:
                 continue
             if "error" in result:
@@ -551,7 +604,7 @@ class CollectorService:
         if retry_queue:
             logger.info(f"Retrying {len(retry_queue)} failed subreddits: {retry_queue}")
             for name in retry_queue:
-                result = await self._collect_one(name, deep=deep)
+                result = await self._collect_one(name, deep=deep, since_date=since_date)
                 if result is None:
                     continue
                 if "error" in result:
@@ -572,7 +625,12 @@ class CollectorService:
 
         return total_stats
 
-    async def _collect_one(self, subreddit_name: str, deep: bool = False) -> Optional[dict]:
+    async def _collect_one(
+        self,
+        subreddit_name: str,
+        deep: bool = False,
+        since_date: Optional[datetime] = None,
+    ) -> Optional[dict]:
         """Collect a single subreddit inside its own session."""
         try:
             async with async_session_maker() as session:
@@ -581,6 +639,7 @@ class CollectorService:
                         session,
                         subreddit_name,
                         include_comments=self.config.collection.include_comments,
+                        since_date=since_date,
                     )
                 else:
                     stats = await self.collect_subreddit(

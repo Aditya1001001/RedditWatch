@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_maker
 from app.llm.factory import get_llm_provider
 from app.models import Comment, Insight, Post
+from app.models.audience import Audience, audience_subreddits
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +28,26 @@ ANALYSIS_SYSTEM_PROMPT = """You are an expert market researcher analyzing Reddit
 
 CRITICAL: Every insight MUST be grounded in the source text. Quotes must be copied VERBATIM from the post or a comment — do not paraphrase, summarize, or fabricate. If no direct quote supports an insight, set quote to null.
 
+The POST AUTHOR line tells you who wrote the post. When the author is promoting, showcasing, or seeking feedback on their own product, focus on the *community response* (comments) rather than the author's claims. Commenter voices are independent market signals; the author's voice is marketing.
+
+Return empty insights array if the post is purely self-promotional with no actionable community signal.
+
 Extract actionable insights in these categories:
-1. Pain points — Problems people are frustrated about
-2. Solution requests — People actively looking for tools/products
-3. Product mentions — References to existing products (with sentiment)
-4. Opportunities — Gaps in the market or underserved needs
+1. Pain points — Problems people are genuinely frustrated about. The frustration must come from someone *experiencing* the problem — not a founder claiming they solved a problem.
+2. Solution requests — People actively looking for tools/products to solve a problem they have. Not founders looking for beta testers or feedback.
+3. Product mentions — References to products by people who are NOT the product's creator. If the post author is promoting their own product, that is not a product mention — it's self-promotion. Only extract product mentions from commenters or third-party references.
+4. Opportunities — Gaps identified by the community through complaints, requests, or unmet needs. A founder claiming "there was nothing that did X so I built it" is marketing, not a market signal.
 5. Advice requests — People asking for guidance, tips, how-to help, resource recommendations
 6. Ideas — People suggesting tools/products that should exist, or ways things could work
 7. Money talk — Discussions about pricing, spending, willingness to pay, budget constraints
 
-Be specific. Prefer quoting over summarizing. Return empty insights array if nothing actionable."""
+Be specific. Prefer quoting over summarizing."""
 
 # Prompt template for analyzing a single post
 ANALYZE_POST_PROMPT = """Analyze this Reddit post from r/{subreddit} and extract insights.
+
+POST AUTHOR: u/{author}
+POST FLAIR: {flair}
 
 POST METADATA:
 Score: {score} | Comments: {num_comments} | Upvote ratio: {upvote_ratio}
@@ -317,10 +325,12 @@ class AnalyzerService:
             if top_comments:
                 lines = []
                 for c in top_comments:
-                    lines.append(f"[{c.author}] (score: {c.score}): {c.body[:800]}")
+                    op_tag = " [OP]" if c.author == post.author else ""
+                    lines.append(f"[{c.author}]{op_tag} (score: {c.score}): {c.body[:800]}")
                     reply = reply_map.get(c.id)
                     if reply:
-                        lines.append(f"  \u21b3 [{reply.author}] (score: {reply.score}): {reply.body[:800]}")
+                        reply_op_tag = " [OP]" if reply.author == post.author else ""
+                        lines.append(f"  \u21b3 [{reply.author}]{reply_op_tag} (score: {reply.score}): {reply.body[:800]}")
                     lines.append("")  # blank line between threads
                 comments_text = "\n".join(lines)
 
@@ -338,6 +348,8 @@ class AnalyzerService:
         # Build prompt
         prompt = ANALYZE_POST_PROMPT.format(
             subreddit=post.subreddit,
+            author=post.author or "[deleted]",
+            flair=getattr(post, 'link_flair_text', None) or "(none)",
             score=post.score,
             num_comments=post.num_comments,
             upvote_ratio=f"{(post.upvote_ratio or 0) * 100:.0f}%",
@@ -413,6 +425,7 @@ class AnalyzerService:
                             "theme_key": ins.theme_key,
                             "intensity_score": ins.intensity_score or 0,
                             "post_id": ins.post_id,
+                            "subreddit": post.subreddit,
                         })
                     if batch:
                         search.add_insights_batch(batch)
@@ -451,13 +464,21 @@ class AnalyzerService:
         run_start = time.time()
 
         async with async_session_maker() as session:
-            # Get unanalyzed posts
+            # Only analyze posts from active (followed) audiences
+            active_sub_names = (
+                select(audience_subreddits.c.subreddit_name)
+                .join(Audience, Audience.id == audience_subreddits.c.audience_id)
+                .where(Audience.active == True)
+                .distinct()
+            )
+
             result = await session.execute(
                 select(Post)
                 .where(
                     and_(
                         Post.analyzed == False,
                         Post.score >= min_score,
+                        Post.subreddit.in_(active_sub_names),
                     )
                 )
                 .order_by(Post.score.desc())

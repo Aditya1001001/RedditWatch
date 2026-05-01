@@ -553,8 +553,18 @@
                 <div x-show="audiences.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template x-for="aud in audiences" :key="aud.id">
                         <div @click="selectAudience(aud.id)"
-                             class="border border-border rounded-lg p-5 cursor-pointer hover:border-accent/40 transition-all duration-150 group">
-                            <h3 class="font-semibold text-base text-text-primary group-hover:text-accent transition-colors duration-150 mb-4" x-text="aud.name"></h3>
+                             class="border rounded-lg p-5 cursor-pointer hover:border-accent/40 transition-all duration-150 group"
+                             :class="aud.active ? 'border-accent/30 bg-accent/[0.03]' : 'border-border'">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold text-base text-text-primary group-hover:text-accent transition-colors duration-150" x-text="aud.name"></h3>
+                                <button @click.stop="toggleFollow(aud)"
+                                        class="text-xs font-medium px-2.5 py-1 rounded-md transition-all duration-150"
+                                        :class="aud.active
+                                            ? 'bg-accent/15 text-accent hover:bg-accent/25'
+                                            : 'bg-surface-3 text-text-muted hover:text-text-secondary hover:bg-surface-4'"
+                                        x-text="aud.active ? 'Following' : 'Follow'">
+                                </button>
+                            </div>
 
                             <!-- Stats -->
                             <div class="grid grid-cols-3 gap-3 mb-4">
@@ -811,22 +821,29 @@
                         <h2 class="text-xl font-bold tracking-tight" x-text="activeAudience()?.name"></h2>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button @click="toggleFollow(activeAudience())"
+                                class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+                                :class="activeAudience()?.active
+                                    ? 'bg-accent/15 text-accent hover:bg-accent/25'
+                                    : 'bg-surface-3 text-text-muted hover:text-text-secondary hover:bg-surface-4'"
+                                x-text="activeAudience()?.active ? 'Following' : 'Follow'">
+                        </button>
                         <button @click="collectAll()"
                                 :disabled="collecting"
                                 class="bg-accent hover:bg-accent-dark active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-surface-0 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150">
-                            <span x-show="!collecting">Collect All</span>
+                            <span x-show="!collecting">Collect</span>
                             <span x-show="collecting" class="flex items-center gap-2">
                                 <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
                                 Collecting…
                             </span>
                         </button>
-                        <button @click="refreshHotConversations()"
-                                :disabled="refreshing"
+                        <button @click="collectDeep()"
+                                :disabled="collecting"
                                 class="bg-surface-3 hover:bg-surface-4 active:scale-[0.98] disabled:opacity-40 text-text-secondary px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150">
-                            <span x-show="!refreshing">Refresh</span>
-                            <span x-show="refreshing" class="flex items-center gap-2">
+                            <span x-show="!collecting">Deep Collect</span>
+                            <span x-show="collecting" class="flex items-center gap-2">
                                 <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
-                                Refreshing…
+                                Collecting…
                             </span>
                         </button>
                         <span class="text-border-light mx-0.5">|</span>
@@ -1328,7 +1345,7 @@
                 activeAudienceSubreddits: [],
                 showAudienceForm: false,
                 editingAudience: null,
-                audienceForm: { name: '', description: '', color: '#d4a373', subreddit_names: [] },
+                audienceForm: { name: '', description: '', color: '#d4a373', active: false, subreddit_names: [] },
                 showAddSubToAudience: false,
                 subredditSearch: '',
                 subredditSearchResults: [],
@@ -1595,8 +1612,8 @@
                 openAudienceForm(audience = null) {
                     this.editingAudience = audience;
                     this.audienceForm = audience
-                        ? { name: audience.name, description: audience.description || '', color: audience.color || '#d4a373', subreddit_names: [...audience.subreddit_names] }
-                        : { name: '', description: '', color: '#d4a373', subreddit_names: [] };
+                        ? { name: audience.name, description: audience.description || '', color: audience.color || '#d4a373', active: audience.active ?? false, subreddit_names: [...audience.subreddit_names] }
+                        : { name: '', description: '', color: '#d4a373', active: false, subreddit_names: [] };
                     this.subredditSearch = '';
                     this.subredditSearchResults = [];
                     this.subredditSearching = false;
@@ -1689,6 +1706,49 @@
                         this.showToast('Audience deleted', '', 'info');
                     } catch (e) {
                         this.showToast('Error', e.message, 'error');
+                    }
+                },
+
+                async toggleFollow(aud) {
+                    if (!aud) return;
+                    const endpoint = aud.active ? 'unfollow' : 'follow';
+                    try {
+                        const res = await fetch(`/api/audiences/${aud.id}/${endpoint}`, { method: 'PUT' });
+                        if (res.ok) {
+                            await this.loadAudiences();
+                            this.showToast(aud.active ? 'Unfollowed' : 'Following', aud.name, 'success');
+                        } else {
+                            const data = await res.json();
+                            this.showToast('Failed', data.detail || 'Error', 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('Error', e.message, 'error');
+                    }
+                },
+
+                async collectDeep() {
+                    this.collecting = true;
+                    this.collectResult = null;
+                    try {
+                        const res = await fetch('/api/collect?mode=deep', { method: 'POST' });
+                        const task = await res.json();
+                        if (task.task_id) {
+                            this.bgCollection = { active: true, taskId: task.task_id, postsNew: 0 };
+                            await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
+                                this.collectResult = result;
+                                this.collecting = false;
+                                this.bgCollection = { active: false, taskId: null, postsNew: 0 };
+                                this.showToast('Deep collection complete', `${result?.posts_new || 0} new posts`, 'success');
+                                Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts(), this.loadInsights()]);
+                            });
+                        } else {
+                            this.collectResult = task;
+                            this.collecting = false;
+                        }
+                    } catch (e) {
+                        this.showToast('Deep collection failed', e.message, 'error');
+                        this.collecting = false;
+                        this.bgCollection = { active: false, taskId: null, postsNew: 0 };
                     }
                 },
 

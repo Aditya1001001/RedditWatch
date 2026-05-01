@@ -20,6 +20,7 @@ class AudienceCreate(BaseModel):
     name: str
     description: Optional[str] = None
     color: Optional[str] = None
+    active: bool = False
     subreddit_names: list[str] = []
 
 
@@ -27,6 +28,7 @@ class AudienceUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     color: Optional[str] = None
+    active: Optional[bool] = None
     subreddit_names: Optional[list[str]] = None
 
 
@@ -35,6 +37,7 @@ class AudienceResponse(BaseModel):
     name: str
     description: Optional[str] = None
     color: Optional[str] = None
+    active: bool = False
     subreddit_names: list[str] = []
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -48,6 +51,7 @@ def _audience_to_response(audience: Audience) -> AudienceResponse:
         name=audience.name,
         description=audience.description,
         color=audience.color,
+        active=audience.active,
         subreddit_names=[s.name for s in audience.subreddits],
         created_at=audience.created_at.isoformat() if audience.created_at else None,
         updated_at=audience.updated_at.isoformat() if audience.updated_at else None,
@@ -81,6 +85,7 @@ async def create_audience(
         name=request.name,
         description=request.description,
         color=request.color,
+        active=request.active,
     )
 
     # Resolve subreddits
@@ -125,6 +130,8 @@ async def update_audience(
         audience.description = request.description
     if request.color is not None:
         audience.color = request.color
+    if request.active is not None:
+        audience.active = request.active
 
     if request.subreddit_names is not None:
         audience.subreddits.clear()
@@ -149,6 +156,34 @@ async def delete_audience(
 
     await session.delete(audience)
     return {"message": f"Audience '{audience.name}' deleted"}
+
+
+@router.put("/{audience_id}/follow", response_model=AudienceResponse)
+async def follow_audience(
+    audience_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Follow an audience (set active = True)."""
+    audience = await session.get(Audience, audience_id)
+    if not audience:
+        raise HTTPException(status_code=404, detail=f"Audience {audience_id} not found")
+    audience.active = True
+    await session.flush()
+    return _audience_to_response(audience)
+
+
+@router.put("/{audience_id}/unfollow", response_model=AudienceResponse)
+async def unfollow_audience(
+    audience_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Unfollow an audience (set active = False)."""
+    audience = await session.get(Audience, audience_id)
+    if not audience:
+        raise HTTPException(status_code=404, detail=f"Audience {audience_id} not found")
+    audience.active = False
+    await session.flush()
+    return _audience_to_response(audience)
 
 
 class HistoryItem(BaseModel):
@@ -221,30 +256,19 @@ async def ask_about_audience(
     )
     theme_summary = ", ".join(f"{t} ({c})" for t, c in top_themes[:8])
 
-    # RAG retrieval — inject real insights into the prompt
+    # RAG retrieval — semantic search filtered to audience subreddits
     retrieved_text = "(no relevant insights found)"
     try:
         from app.services.search import get_search_service
         search_svc = get_search_service()
-        raw_results = await search_svc.search_async(query=request.question, limit=36)
+        raw_results = await search_svc.search_async(
+            query=request.question,
+            limit=12,
+            subreddits=sub_names,
+        )
 
-        # Post-filter by audience subreddits
-        post_ids = [r["metadata"].get("post_id") for r in raw_results if r["metadata"].get("post_id")]
-        if post_ids:
-            rows = await session.execute(
-                select(Post.id, Post.subreddit).where(Post.id.in_(post_ids))
-            )
-            post_sub_map = {row.id: row.subreddit for row in rows}
-            filtered = [
-                r for r in raw_results
-                if post_sub_map.get(r["metadata"].get("post_id")) in sub_names
-            ][:12]
-        else:
-            filtered = []
-
-        if filtered:
-            # Batch-load full insights
-            insight_ids = [r["metadata"]["insight_id"] for r in filtered if r["metadata"].get("insight_id")]
+        if raw_results:
+            insight_ids = [r["metadata"]["insight_id"] for r in raw_results if r["metadata"].get("insight_id")]
             insight_map = {}
             if insight_ids:
                 insight_rows = await session.execute(
@@ -253,17 +277,17 @@ async def ask_about_audience(
                 insight_map = {i.id: i for i in insight_rows.scalars().all()}
 
             lines = []
-            for r in filtered:
+            for r in raw_results:
                 iid = r["metadata"].get("insight_id")
                 insight = insight_map.get(iid)
                 if not insight:
                     continue
-                sub = post_sub_map.get(r["metadata"].get("post_id"), "unknown")
+                sub = r["metadata"].get("subreddit", "unknown")
                 line = f'({insight.type}, r/{sub}) "{insight.title}"'
                 if insight.description:
                     line += f"\n    {insight.description}"
                 if insight.quote:
-                    author = f" \u2014 u/{insight.quote_author}" if insight.quote_author else ""
+                    author = f" — u/{insight.quote_author}" if insight.quote_author else ""
                     line += f'\n    Quote: "{insight.quote}"{author}'
                 lines.append(line)
 
