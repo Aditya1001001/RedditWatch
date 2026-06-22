@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -54,13 +54,13 @@ class PostResponse(BaseModel):
 
 class PostDetailResponse(PostResponse):
     """Post with comments and insights."""
-    comments: list[CommentResponse] = []
+    comments: list[CommentResponse] = Field(default_factory=list)
     insight_count: int = 0
 
 
 class PostListResponse(BaseModel):
     """Paginated post list."""
-    posts: list[PostResponse]
+    posts: list[PostResponse] = Field(default_factory=list)
     total: int
     page: int
     page_size: int
@@ -76,6 +76,33 @@ class PostStats(BaseModel):
     posts_by_subreddit: dict
     posts_by_category: dict
     posts_by_date: dict
+
+
+def post_to_response(post: Post, *, truncate_body: bool = True) -> PostResponse:
+    """Map a Post model to the public API response shape."""
+    body = post.body
+    return PostResponse(
+        id=post.id,
+        subreddit=post.subreddit,
+        title=post.title,
+        body=body[:500] if truncate_body and body else body,
+        body_truncated=bool(truncate_body and body and len(body) > 500),
+        author=post.author,
+        score=post.score,
+        upvote_ratio=post.upvote_ratio,
+        num_comments=post.num_comments,
+        permalink=post.permalink,
+        url=post.url,
+        created_utc=post.created_utc,
+        collected_at=post.collected_at,
+        analyzed=post.analyzed,
+        analysis_status=getattr(post, "analysis_status", None),
+        analysis_error=getattr(post, "analysis_error", None),
+        analysis_skip_reason=getattr(post, "analysis_skip_reason", None),
+        signal_score=getattr(post, "signal_score", 0) or 0,
+        category=post.category,
+        reddit_url=post.reddit_url,
+    )
 
 
 @router.get("", response_model=PostListResponse)
@@ -127,31 +154,7 @@ async def list_posts(
     posts = result.scalars().all()
 
     return PostListResponse(
-        posts=[
-            PostResponse(
-                id=p.id,
-                subreddit=p.subreddit,
-                title=p.title,
-                body=p.body[:500] if p.body else None,
-                body_truncated=bool(p.body and len(p.body) > 500),
-                author=p.author,
-                score=p.score,
-                upvote_ratio=p.upvote_ratio,
-                num_comments=p.num_comments,
-                permalink=p.permalink,
-                url=p.url,
-                created_utc=p.created_utc,
-                collected_at=p.collected_at,
-                analyzed=p.analyzed,
-                analysis_status=getattr(p, "analysis_status", None),
-                analysis_error=getattr(p, "analysis_error", None),
-                analysis_skip_reason=getattr(p, "analysis_skip_reason", None),
-                signal_score=getattr(p, "signal_score", 0) or 0,
-                category=p.category,
-                reddit_url=p.reddit_url,
-            )
-            for p in posts
-        ],
+        posts=[post_to_response(p) for p in posts],
         total=total,
         page=page,
         page_size=page_size,
@@ -264,26 +267,9 @@ async def get_post(
     # Sort comments by score
     sorted_comments = sorted(post.comments, key=lambda c: c.score, reverse=True)
 
+    base = post_to_response(post, truncate_body=False)
     return PostDetailResponse(
-        id=post.id,
-        subreddit=post.subreddit,
-        title=post.title,
-        body=post.body,
-        author=post.author,
-        score=post.score,
-        upvote_ratio=post.upvote_ratio,
-        num_comments=post.num_comments,
-        permalink=post.permalink,
-        url=post.url,
-        created_utc=post.created_utc,
-        collected_at=post.collected_at,
-        analyzed=post.analyzed,
-        analysis_status=getattr(post, "analysis_status", None),
-        analysis_error=getattr(post, "analysis_error", None),
-        analysis_skip_reason=getattr(post, "analysis_skip_reason", None),
-        signal_score=getattr(post, "signal_score", 0) or 0,
-        category=post.category,
-        reddit_url=post.reddit_url,
+        **base.model_dump(),
         comments=[
             CommentResponse(
                 id=c.id,
