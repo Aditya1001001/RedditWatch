@@ -89,21 +89,24 @@ key.txt
 key.txt.pub
 
 # Setup notes (not needed in repo)
-GIT_SETUP.md
+/GIT_SETUP.md
 
 # Private-to-public sync tooling (keep local/private only)
 .oss-ignore
 .github/workflows/sync-oss.yml
 
 # Personal roadmaps & strategy (not for public repo)
-MONETIZATION_ROADMAP.md
-MARKETING_GTM_PLAN.md
-DEVLOG.md
-PLANS.md
-ARCHITECTURE.md
-TECHNICAL_DECISIONS.md
-COSTS.md
-marketing/
+/MONETIZATION_ROADMAP.md
+/MARKETING_GTM_PLAN.md
+/DEVLOG.md
+/PLANS.md
+/ARCHITECTURE.md
+/TECHNICAL_DECISIONS.md
+/COSTS.md
+/marketing/
+/docs/audit-roadmap.md
+/docs/demo-recording-plan.md
+/docs/portfolio-case-study.md
 
 # Screenshots (keep only v0.3 public assets, ignore dev captures)
 screenshots/before/
