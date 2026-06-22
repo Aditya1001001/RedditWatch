@@ -584,6 +584,14 @@ class CollectorService:
             subreddits = list(result.scalars().all())
 
         sub_names = [sub.name for sub in subreddits]
+        if not sub_names:
+            total_stats["skipped_reason"] = (
+                "No followed audiences with monitored subreddits. "
+                "Follow an audience before running Collect All."
+            )
+            logger.info("Collection skipped: no followed audiences with monitored subreddits")
+            return total_stats
+
         retry_queue: list[str] = []
 
         # --- First pass: sequential collection ---

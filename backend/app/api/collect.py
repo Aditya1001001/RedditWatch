@@ -1,13 +1,17 @@
 """Collection API endpoints."""
 
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.database import get_session
+from app.models import Audience
+from app.models.audience import audience_subreddits
 from app.services.collector import get_collector
 from app.services.tasks import get_task_tracker
 
@@ -89,12 +93,19 @@ async def trigger_collection(
         default=CollectionMode.REGULAR,
         description="Collection mode: 'regular' (single sort/page) or 'deep' (multi-sort with pagination)",
     ),
+    since_days: Optional[int] = Query(
+        default=None,
+        description="Collect posts from the last N days (deep mode only). "
+        "Paginates 'new' sort until posts are older than the cutoff.",
+    ),
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Trigger collection from all enabled subreddits.
 
     Args:
         mode: 'regular' for single sort/page, 'deep' for multi-sort with pagination
+        since_days: If set, collect all posts from the last N days (deep mode)
 
     Returns immediately with a task_id. Poll /status or /task/{task_id}
     for progress.
@@ -106,11 +117,34 @@ async def trigger_collection(
     if active:
         return active.to_dict()
 
+    active_subreddits = await session.execute(
+        select(audience_subreddits.c.subreddit_name)
+        .join(Audience, Audience.id == audience_subreddits.c.audience_id)
+        .where(Audience.active == True)
+        .distinct()
+        .limit(1)
+    )
+    if active_subreddits.first() is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No followed audiences with monitored subreddits. "
+                "Create or follow an audience before running Collect All."
+            ),
+        )
+
     task_info = tracker.create_task("collection")
     collector = get_collector()
 
+    since_date = None
+    if since_days is not None:
+        since_date = datetime.now(timezone.utc) - timedelta(days=since_days)
+
     async def _run_collection():
-        return await collector.collect_all(deep=(mode == CollectionMode.DEEP))
+        return await collector.collect_all(
+            deep=(mode == CollectionMode.DEEP),
+            since_date=since_date,
+        )
 
     tracker.run_background(task_info, _run_collection())
     return task_info.to_dict()

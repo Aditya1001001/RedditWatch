@@ -55,6 +55,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -936,9 +937,26 @@
                                 <div class="bg-surface-2 px-4 py-2.5 border-b border-border">
                                     <p class="text-xs font-semibold text-accent">Q: <span x-text="item.question"></span></p>
                                 </div>
-                                <div class="px-5 py-4 text-[13px] text-text-secondary leading-[1.7] prose-answer" x-html="marked.parse(item.answer)"></div>
+                                <div class="px-5 py-4 text-[13px] text-text-secondary leading-[1.7] prose-answer" x-html="safeMarkdown(item.answer)"></div>
                             </div>
                         </template>
+                    </div>
+
+                    <!-- Search index status -->
+                    <div x-show="searchIndexStatus.status === 'needs_reindex' || searchIndexStatus.error"
+                         class="flex items-center justify-between gap-3 border border-insight-solution/30 bg-insight-solution/10 rounded-lg px-4 py-3">
+                        <p class="text-xs text-text-secondary">
+                            <span class="font-semibold text-insight-solution">Search index needs refresh.</span>
+                            <span x-show="!searchIndexStatus.error">
+                                <span x-text="searchIndexStatus.indexed_count || 0"></span> of
+                                <span x-text="searchIndexStatus.total_insights || 0"></span> insights indexed.
+                            </span>
+                            <span x-show="searchIndexStatus.error" x-text="searchIndexStatus.error"></span>
+                        </p>
+                        <button @click="reindexSearch()"
+                                class="shrink-0 bg-surface-3 hover:bg-surface-4 text-text-secondary px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">
+                            Reindex
+                        </button>
                     </div>
 
                     <!-- Search results -->
@@ -978,6 +996,13 @@
                      class="flex items-center gap-2 text-sm text-text-muted py-2">
                     <svg class="animate-spin h-3.5 w-3.5 text-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
                     Analyzing new posts…
+                </div>
+                <div x-show="analysisStatus.failed_posts > 0"
+                     class="flex items-center justify-between gap-3 border border-insight-pain/30 bg-insight-pain/10 rounded-lg px-4 py-3">
+                    <p class="text-xs text-text-secondary">
+                        <span class="font-semibold text-insight-pain" x-text="analysisStatus.failed_posts + ' post' + (analysisStatus.failed_posts === 1 ? '' : 's') + ' failed analysis.'"></span>
+                        They remain retryable after you fix the LLM provider or prompt issue.
+                    </p>
                 </div>
 
                 <!-- ── D. Insight Type Cards ── -->
@@ -1266,9 +1291,12 @@
                                             <div class="shrink-0">
                                                 <span :class="post.analyzed
                                                     ? 'text-insight-opportunity bg-insight-opportunity/10'
-                                                    : 'text-insight-solution bg-insight-solution/10'"
+                                                    : post.analysis_status === 'failed'
+                                                        ? 'text-insight-pain bg-insight-pain/10'
+                                                        : 'text-insight-solution bg-insight-solution/10'"
                                                       class="px-2 py-0.5 rounded text-xs font-medium"
-                                                      x-text="post.analyzed ? 'Analyzed' : 'Pending'"></span>
+                                                      :title="post.analysis_error || ''"
+                                                      x-text="post.analyzed ? 'Analyzed' : post.analysis_status === 'failed' ? 'Failed' : 'Pending'"></span>
                                             </div>
                                         </div>
                                     </div>
@@ -1354,6 +1382,7 @@
                 // Growth
                 growthSummary: [],
                 analysisStatus: {},
+                searchIndexStatus: {},
                 themes: [],
                 consolidating: false,
                 insightsList: [],
@@ -1418,6 +1447,7 @@
                     await Promise.all([
                         this.loadGrowthSummary(),
                         this.loadTrendingData(),
+                        this.loadSearchStats(),
                     ]);
                     this.checkBgCollection();
                 },
@@ -1430,6 +1460,17 @@
                     setTimeout(() => {
                         this.toasts = this.toasts.filter(t => t.id !== id);
                     }, duration);
+                },
+
+                safeMarkdown(value) {
+                    const html = marked.parse(value || '');
+                    if (window.DOMPurify) {
+                        return DOMPurify.sanitize(html, {
+                            USE_PROFILES: { html: true },
+                            ALLOWED_ATTR: ['href', 'title', 'target', 'rel'],
+                        });
+                    }
+                    return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 },
 
                 async checkBgCollection() {
@@ -1732,13 +1773,15 @@
                     try {
                         const res = await fetch('/api/collect?mode=deep', { method: 'POST' });
                         const task = await res.json();
+                        if (!res.ok) throw new Error(task.detail || 'HTTP ' + res.status);
                         if (task.task_id) {
                             this.bgCollection = { active: true, taskId: task.task_id, postsNew: 0 };
                             await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
                                 this.collectResult = result;
                                 this.collecting = false;
                                 this.bgCollection = { active: false, taskId: null, postsNew: 0 };
-                                this.showToast('Deep collection complete', `${result?.posts_new || 0} new posts`, 'success');
+                                const detail = this.collectionResultMessage(result);
+                                this.showToast('Deep collection complete', detail, result?.skipped_reason ? 'info' : 'success');
                                 Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts(), this.loadInsights()]);
                             });
                         } else {
@@ -1917,13 +1960,15 @@
                     try {
                         const res = await fetch('/api/collect', { method: 'POST' });
                         const task = await res.json();
+                        if (!res.ok) throw new Error(task.detail || 'HTTP ' + res.status);
                         if (task.task_id) {
                             this.bgCollection = { active: true, taskId: task.task_id, postsNew: 0 };
                             await this.pollTask(task.task_id, '/api/collect/task/', (result) => {
                                 this.collectResult = result;
                                 this.collecting = false;
                                 this.bgCollection = { active: false, taskId: null, postsNew: 0 };
-                                this.showToast('Collection complete', `${result?.posts_new || 0} new posts`, 'success');
+                                const detail = this.collectionResultMessage(result);
+                                this.showToast('Collection complete', detail, result?.skipped_reason ? 'info' : 'success');
                                 Promise.all([this.loadSubreddits(), this.loadPostStats(), this.loadPosts(), this.loadInsights()]);
                             });
                         } else {
@@ -1935,6 +1980,14 @@
                         this.collecting = false;
                         this.bgCollection = { active: false, taskId: null, postsNew: 0 };
                     }
+                },
+
+                collectionResultMessage(result) {
+                    if (!result) return 'No result returned';
+                    if (result.skipped_reason) return result.skipped_reason;
+                    const errors = result.errors?.length || 0;
+                    const suffix = errors ? `, ${errors} error${errors === 1 ? '' : 's'}` : '';
+                    return `${result.posts_new || 0} new posts${suffix}`;
                 },
 
                 async refreshHotConversations() {
@@ -1981,6 +2034,7 @@
                         this.loadAnalysisStatus(signal),
                         this.loadThemes(signal),
                         this.loadInsightsList(signal),
+                        this.loadSearchStats(signal),
                     ]);
                 },
 
@@ -2023,9 +2077,32 @@
                         // Analysis finished — refresh data
                         this._analysisPolling = false;
                         await this.loadInsights();
-                        try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
                     };
                     setTimeout(poll, 5000);
+                },
+
+                async loadSearchStats(signal) {
+                    try {
+                        const res = await fetch('/api/search/stats', signal ? { signal } : {});
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        if (signal?.aborted) return;
+                        this.searchIndexStatus = await res.json();
+                    } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        this.searchIndexStatus = { status: 'unknown', error: 'Could not load search index status' };
+                    }
+                },
+
+                async reindexSearch() {
+                    try {
+                        const res = await fetch('/api/search/reindex', { method: 'POST' });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+                        this.showToast('Search index refreshed', `${data.indexed_count || 0} insights indexed`, 'success');
+                        await this.loadSearchStats();
+                    } catch (e) {
+                        this.showToast('Reindex failed', e.message, 'error');
+                    }
                 },
 
                 async loadThemes(signal) {
@@ -2080,7 +2157,6 @@
                                 const merged = result?.groups_merged || 0;
                                 this.showToast('Consolidation complete', `${merged} group${merged !== 1 ? 's' : ''} merged`, 'success');
                                 await this.loadInsights();
-                                try { await fetch('/api/search/reindex', { method: 'POST' }); } catch (e) {}
                             });
                         } else {
                             this.consolidating = false;
@@ -2127,10 +2203,11 @@
                         this.audienceParam(params);
                         const res = await fetch('/api/search?' + params);
                         const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
                         this.searchResults = data.results;
                         this.lastSearchQuery = this.queryInput;
                     } catch (e) {
-                        console.error('Search failed:', e);
+                        this.showToast('Search failed', e.message, 'error');
                         this.searchResults = [];
                     }
                 },

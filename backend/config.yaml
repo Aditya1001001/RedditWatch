@@ -30,8 +30,10 @@ llm:
     model: "claude-sonnet-4-20250514"
     max_tokens: 4096
 
-  # OpenAI settings (requires OPENAI_API_KEY env var)
+  # OpenAI-compatible settings (requires OPENAI_API_KEY env var)
+  # Currently configured for Groq (llama-3.3-70b-versatile)
   openai:
+    base_url: "https://api.openai.com/v1"
     model: "gpt-4o-mini"
     max_tokens: 4096
 
@@ -63,7 +65,7 @@ collection:
   comments_per_collection: 3  # Max posts to fetch comments for per subreddit
 
   # Scheduling
-  auto_schedule: false
+  auto_schedule: true
 
   # Startup catch-up: auto-collect when data is stale on app start
   collect_on_startup: true
@@ -72,8 +74,8 @@ collection:
 # Analysis settings
 analysis:
   auto_analyze: true
-  batch_size: 5
-  min_score_threshold: 3  # Ignore posts with < 3 upvotes
+  batch_size: 50
+  min_score_threshold: 10  # Focus on posts with real engagement
 
 # Scoring weights (for combined theme score)
 scoring:

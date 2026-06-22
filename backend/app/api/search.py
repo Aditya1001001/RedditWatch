@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
-from app.models import Insight
+from app.models import Insight, Post
 from app.services.search import get_search_service
 
 router = APIRouter()
@@ -44,6 +44,7 @@ class IndexStats(BaseModel):
     indexed_count: int
     total_insights: int
     status: str
+    error: Optional[str] = None
 
 
 @router.get("", response_model=SearchResponse)
@@ -200,6 +201,7 @@ async def get_index_stats(
         indexed_count=indexed,
         total_insights=total_insights,
         status="synced" if indexed == total_insights else "needs_reindex",
+        error=stats.get("error"),
     )
 
 
@@ -215,9 +217,11 @@ async def reindex_all_insights(
     """
     search_service = get_search_service()
 
-    # Get all insights from database
-    result = await session.execute(select(Insight))
-    insights = result.scalars().all()
+    # Get all insights with subreddit from database
+    result = await session.execute(
+        select(Insight, Post.subreddit).join(Post)
+    )
+    rows = result.all()
 
     # Format for indexing
     insight_data = [
@@ -228,8 +232,9 @@ async def reindex_all_insights(
             "theme_key": i.theme_key,
             "intensity_score": i.intensity_score or 0,
             "post_id": i.post_id,
+            "subreddit": sub,
         }
-        for i in insights
+        for i, sub in rows
     ]
 
     # Reindex

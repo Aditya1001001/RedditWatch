@@ -42,6 +42,8 @@ class PostResponse(BaseModel):
     created_utc: Optional[datetime] = None
     collected_at: datetime
     analyzed: bool = False
+    analysis_status: Optional[str] = None
+    analysis_error: Optional[str] = None
     category: Optional[str] = None
     reddit_url: str
 
@@ -138,6 +140,8 @@ async def list_posts(
                 created_utc=p.created_utc,
                 collected_at=p.collected_at,
                 analyzed=p.analyzed,
+                analysis_status=getattr(p, "analysis_status", None),
+                analysis_error=getattr(p, "analysis_error", None),
                 category=p.category,
                 reddit_url=p.reddit_url,
             )
@@ -265,6 +269,8 @@ async def get_post(
         created_utc=post.created_utc,
         collected_at=post.collected_at,
         analyzed=post.analyzed,
+        analysis_status=getattr(post, "analysis_status", None),
+        analysis_error=getattr(post, "analysis_error", None),
         category=post.category,
         reddit_url=post.reddit_url,
         comments=[
