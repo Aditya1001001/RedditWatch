@@ -577,6 +577,26 @@
                 </p>
             </div>
 
+            <div x-show="collectResult && !bgCollection.active" x-transition:enter="animate-in"
+                 class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">New posts</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.posts_new || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Comments</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.comments_collected || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Sources</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.subreddits_processed || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Next</p>
+                    <p class="text-xs text-text-secondary leading-relaxed">Analysis starts automatically when an LLM provider is available.</p>
+                </div>
+            </div>
+
 
             <!-- ─── AUDIENCES TAB ─── -->
             <div x-show="landingTab === 'audiences'" x-transition:enter="animate-in">
@@ -938,6 +958,26 @@
                 </p>
             </div>
 
+            <div x-show="collectResult && !bgCollection.active" x-transition:enter="animate-in"
+                 class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">New posts</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.posts_new || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Comments</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.comments_collected || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Sources</p>
+                    <p class="text-lg font-bold tabular-nums text-text-primary" x-text="collectResult.subreddits_processed || 0"></p>
+                </div>
+                <div class="bg-surface-1 border border-border rounded-lg px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Next</p>
+                    <p class="text-xs text-text-secondary leading-relaxed">Analysis starts automatically when an LLM provider is available.</p>
+                </div>
+            </div>
+
             <!-- Research progress panel -->
             <div class="mb-6 border border-border rounded-lg bg-surface-1">
                 <div class="px-5 py-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -1066,6 +1106,18 @@
                     </div>
 
                     <!-- Search results -->
+                    <div x-show="queryMode === 'search' && searchLoading"
+                         class="flex items-center gap-2 text-text-muted text-sm">
+                        <svg class="animate-spin h-4 w-4 text-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
+                        Searching indexed insights…
+                    </div>
+
+                    <div x-show="queryMode === 'search' && !searchLoading && lastSearchQuery && searchResults.length === 0"
+                         class="border border-dashed border-border rounded-lg px-4 py-6 text-center">
+                        <p class="text-sm text-text-muted">No matching insights found</p>
+                        <p class="text-xs text-text-muted mt-1">Try a broader phrase like “pricing frustration”, “alternatives”, or “onboarding”.</p>
+                    </div>
+
                     <div x-show="queryMode === 'search' && searchResults.length > 0" x-transition class="border border-border rounded-lg p-4 bg-surface-1">
                         <div class="flex items-center justify-between mb-3">
                             <p class="text-xs text-text-muted">
@@ -1108,6 +1160,13 @@
                     <p class="text-xs text-text-secondary">
                         <span class="font-semibold text-insight-pain" x-text="analysisStatus.failed_posts + ' post' + (analysisStatus.failed_posts === 1 ? '' : 's') + ' failed analysis.'"></span>
                         They remain retryable after you fix the LLM provider or prompt issue.
+                    </p>
+                </div>
+                <div x-show="analysisStatus.skipped_posts > 0"
+                     class="flex items-center justify-between gap-3 border border-border bg-surface-1 rounded-lg px-4 py-3">
+                    <p class="text-xs text-text-secondary">
+                        <span class="font-semibold text-text-primary" x-text="analysisStatus.skipped_posts + ' low-signal post' + (analysisStatus.skipped_posts === 1 ? '' : 's') + ' skipped.'"></span>
+                        RedditWatch skips deleted, thin, or low-response self-promotional posts before spending LLM calls.
                     </p>
                 </div>
 
@@ -1373,8 +1432,17 @@
                                 </div>
 
                                 <!-- Footer -->
-                                <div class="flex justify-between items-center text-xs pt-2">
-                                    <span class="text-text-muted capitalize bg-surface-2 px-2 py-0.5 rounded" x-text="insight.theme_key.replace(/_/g, ' ')"></span>
+                                <div class="flex flex-wrap justify-between items-center gap-3 text-xs pt-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-text-muted capitalize bg-surface-2 px-2 py-0.5 rounded" x-text="insight.theme_key.replace(/_/g, ' ')"></span>
+                                        <span x-show="insight.subreddit" class="text-text-muted">
+                                            r/<span x-text="insight.subreddit"></span>
+                                        </span>
+                                        <span x-show="insight.post_score != null" class="text-text-muted tabular-nums">
+                                            <span x-text="insight.post_score || 0"></span> pts ·
+                                            <span x-text="insight.post_num_comments || 0"></span> comments
+                                        </span>
+                                    </div>
                                     <a :href="'https://reddit.com' + insight.permalink" target="_blank"
                                        class="text-text-muted hover:text-accent transition-colors duration-150">
                                         View source →
@@ -1570,6 +1638,7 @@
                 _analysisPolling: false,
                 searchResults: [],
                 lastSearchQuery: '',
+                searchLoading: false,
                 // Theme detail panel
                 selectedThemeType: null,
                 themeDetailSummary: {},
@@ -2570,6 +2639,7 @@
 
                 async performSearch() {
                     if (!this.queryInput || this.queryInput.length < 2) return;
+                    this.searchLoading = true;
                     try {
                         const params = new URLSearchParams({ q: this.queryInput, limit: '20' });
                         this.audienceParam(params);
@@ -2581,6 +2651,8 @@
                     } catch (e) {
                         this.showToast('Search failed', e.message, 'error');
                         this.searchResults = [];
+                    } finally {
+                        this.searchLoading = false;
                     }
                 },
 
