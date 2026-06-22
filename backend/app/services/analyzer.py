@@ -24,27 +24,27 @@ VALID_CATEGORIES = {"pain_point", "solution_request", "product_mention", "opport
 VALID_SENTIMENTS = {"positive", "negative", "neutral", "mixed"}
 
 # System prompt for post analysis
-ANALYSIS_SYSTEM_PROMPT = """You are an expert market researcher analyzing Reddit posts to find business opportunities.
+ANALYSIS_SYSTEM_PROMPT = """You are an expert market researcher analyzing Reddit posts to find source-backed market signals.
 
-CRITICAL: Every insight MUST be grounded in the source text. Quotes must be copied VERBATIM from the post or a comment — do not paraphrase, summarize, or fabricate. If no direct quote supports an insight, set quote to null.
+CRITICAL: Every signal MUST be grounded in the source text. Quotes must be copied VERBATIM from the post or a comment — do not paraphrase, summarize, or fabricate. If no direct quote supports a signal, set quote to null.
 
 The POST AUTHOR line tells you who wrote the post. When the author is promoting, showcasing, or seeking feedback on their own product, focus on the *community response* (comments) rather than the author's claims. Commenter voices are independent market signals; the author's voice is marketing.
 
 Return empty insights array if the post is purely self-promotional with no actionable community signal.
 
-Extract actionable insights in these categories:
-1. Pain points — Problems people are genuinely frustrated about. The frustration must come from someone *experiencing* the problem — not a founder claiming they solved a problem.
-2. Solution requests — People actively looking for tools/products to solve a problem they have. Not founders looking for beta testers or feedback.
+Extract actionable market signals in these categories:
+1. Pain signals — Problems people are genuinely frustrated about. The frustration must come from someone *experiencing* the problem — not a founder claiming they solved a problem.
+2. Demand signals — People actively looking for tools/products to solve a problem they have. Not founders looking for beta testers or feedback.
 3. Product mentions — References to products by people who are NOT the product's creator. If the post author is promoting their own product, that is not a product mention — it's self-promotion. Only extract product mentions from commenters or third-party references.
-4. Opportunities — Gaps identified by the community through complaints, requests, or unmet needs. A founder claiming "there was nothing that did X so I built it" is marketing, not a market signal.
-5. Advice requests — People asking for guidance, tips, how-to help, resource recommendations
-6. Ideas — People suggesting tools/products that should exist, or ways things could work
-7. Money talk — Discussions about pricing, spending, willingness to pay, budget constraints
+4. Opportunity signals — Gaps identified by the community through complaints, requests, or unmet needs. A founder claiming "there was nothing that did X so I built it" is marketing, not a market signal.
+5. Advice signals — People asking for guidance, tips, how-to help, resource recommendations
+6. Idea signals — People suggesting tools/products that should exist, or ways things could work
+7. Pricing signals — Discussions about pricing, spending, willingness to pay, budget constraints
 
-Be specific. Prefer quoting over summarizing."""
+Be specific. Prefer source quotes over generic summaries."""
 
 # Prompt template for analyzing a single post
-ANALYZE_POST_PROMPT = """Analyze this Reddit post from r/{subreddit} and extract insights.
+ANALYZE_POST_PROMPT = """Analyze this Reddit post from r/{subreddit} and extract source-backed market signals.
 
 POST AUTHOR: u/{author}
 POST FLAIR: {flair}
@@ -62,7 +62,7 @@ TOP COMMENTS:
 
 ---
 
-Extract insights in this exact JSON format:
+Extract signals in this exact JSON format. Keep the JSON field names exactly as shown:
 {{
     "category": "pain_point" | "solution_request" | "product_mention" | "opportunity" | "advice_request" | "idea" | "money_talk" | "general",
     "insights": [
@@ -70,7 +70,7 @@ Extract insights in this exact JSON format:
             "type": "pain_point" | "solution_request" | "product_mention" | "opportunity" | "advice_request" | "idea" | "money_talk",
             "theme_key": "lowercase_underscore_theme",
             "title": "Short descriptive title",
-            "description": "Detailed description of the insight",
+            "description": "Detailed description of the signal",
             "quote": "Exact quote from post or comment",
             "quote_author": "username",
             "intensity_score": 0-100,
@@ -84,11 +84,11 @@ Extract insights in this exact JSON format:
 
 Rules:
 - theme_key: PREFER reusing an existing theme from the list above. Only create a new theme_key if none of the existing ones fit. New keys must be lowercase with underscores.
-- intensity_score: 0-30 mild annoyance, 31-60 moderate frustration, 61-80 significant pain, 81-100 severe/urgent
+- intensity_score: signal strength, where 0-30 is weak/noisy, 31-60 is moderate, 61-80 is strong, and 81-100 is severe/urgent
 - Only include product_name and sentiment for product_mention type
 - Quote must be verbatim from the text
 - Return empty insights array if nothing actionable found
-- Maximum 5 insights per post
+- Maximum 5 signals per post
 
 Return ONLY valid JSON, no other text."""
 

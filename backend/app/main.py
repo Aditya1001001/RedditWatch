@@ -115,7 +115,7 @@ async def _startup_collect_if_stale(config: Config):
 # Create FastAPI app
 app = FastAPI(
     title="RedditWatch",
-    description="Self-hosted Reddit market research tool",
+    description="Self-hosted community intelligence tool for ranked, source-backed Reddit market signals",
     version=__version__,
     lifespan=lifespan,
 )

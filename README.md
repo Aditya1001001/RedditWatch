@@ -3,9 +3,9 @@
 [![Tests](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml/badge.svg)](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Evidence-backed market research from Reddit conversations.**
+**RedditWatch turns noisy Reddit communities into ranked, source-backed market signals.**
 
-A self-hosted, LLM-powered research workspace for founders, product teams, marketers, and researchers who want to monitor Reddit audiences and turn public conversations into pain points, product opportunities, buying signals, and source-backed quotes. No Reddit API key needed. No monthly fees. Your data stays on your machine.
+A self-hosted community intelligence workspace for PMs, founders, marketers, researchers, and builders who want to understand repeated pain, demand, advice-seeking, workarounds, and product mentions across public Reddit communities. Reddit search helps you find threads. RedditWatch helps you find the patterns hiding across them, with source quotes and Reddit links behind every signal.
 
 > GummySearch shut down in December 2025 after Reddit killed their API access. RedditWatch uses public endpoints (old.reddit.com) — it can't be shut down the same way. Free forever, open source.
 
@@ -20,18 +20,18 @@ A self-hosted, LLM-powered research workspace for founders, product teams, marke
 
 - **No Reddit API key required** — Uses public old.reddit.com endpoints. Immune to API policy changes.
 - **Free and open source** — Self-host it. No subscriptions, no vendor lock-in.
-- **LLM-powered analysis** — Not just keyword alerts. Extracts pain points, solution requests, product mentions, and opportunities with intensity scoring.
+- **Ranked, source-backed market signals** — Find repeated pain, demand, advice, and product signals from public Reddit communities.
 - **Works with free local models** — Defaults to Ollama (llama3.1:8b). Zero cost, fully private. Also supports Claude and OpenAI.
-- **Semantic search** — Find related insights by meaning using ChromaDB embeddings.
-- **Export everything** — CSV, JSON, Markdown, or full research reports.
+- **Semantic search** — Find related signals by meaning using ChromaDB embeddings.
+- **Evidence-first exports** — CSV, JSON, Markdown, or full market signal reports with source quotes and Reddit links.
 
 ## See It in Action
 
-### Insights — Themes, Semantic Search, and Exports
+### Signals — Themes, Semantic Search, and Exports
 
-![Insights](screenshots/v0.3/insights.gif)
+![Signals](screenshots/v0.3/insights.gif)
 
-### Analytics — Charts, Trends, and High-Intensity Signals
+### Analytics — Charts, Trends, and Signal Strength
 
 ![Analytics](screenshots/v0.3/analytics.gif)
 
@@ -91,21 +91,35 @@ Create an audience for the market, persona, competitor space, or customer segmen
 
 Click **Collect All**. RedditWatch collects posts and comments from followed audiences using public Reddit endpoints, with local rate limiting and fallbacks for empty or blocked responses.
 
-### 3. Extract Insights
+### 3. Extract Signals
 
 After collection, analysis runs automatically when an LLM provider is available. The LLM reads each post and its comments, then extracts:
-- **Pain Points** — User frustrations with intensity scores (0-100)
-- **Solution Requests** — "I wish there was a tool that..."
+- **Pain Signals** — Repeated frustrations with signal strength scores (0-100)
+- **Demand Signals** — "I wish there was a tool that..."
 - **Product Mentions** — Tools/services discussed, with sentiment
 - **Opportunities** — Market gaps and unmet needs
 
 ### 4. Review Evidence & Export
 
-- **Themes** — Pain points grouped by theme (e.g., "onboarding_friction"), ranked by frequency x intensity
-- **Semantic Search** — Find insights by meaning, not just keywords
-- **Ask** — Ask natural-language questions about a selected audience using retrieved insights
+- **Themes** — Signals grouped by theme (e.g., "onboarding_friction"), ranked by frequency x signal strength
+- **Semantic Search** — Find signals by meaning, not just keywords
+- **Ask** — Ask natural-language questions about a selected audience using retrieved signals
 - **Evidence** — Review source quotes and open the underlying Reddit discussion
-- **Export** — CSV, JSON, Markdown, or generate a full research report
+- **Export** — CSV, JSON, Markdown, or generate a source-backed market signal report
+
+## Demo Positioning
+
+Theme: **From Reddit noise to market signals.**
+
+Recommended short demo flow:
+
+1. Open a populated audience.
+2. Show signal categories and ranked themes.
+3. Filter to **Pain Signals**.
+4. Open a quote-backed signal and follow the Reddit source link.
+5. Export a market signal report.
+
+Avoid live collection or live LLM analysis during short demos unless the run has been preflighted. A pre-populated local database makes the first “aha” moment faster and more reliable.
 
 ## Configuration
 
@@ -149,11 +163,11 @@ RedditWatch is designed for local/self-hosted use and does not include authentic
 | Posts | `/api/posts` | List, get, delete, stats |
 | Subreddits | `/api/subreddits` | CRUD, catalog, collect per-sub |
 | Collection | `/api/collect` | Trigger collection, status, refresh comments |
-| Analysis | `/api/analyze` | Trigger analysis, themes, insights, status |
+| Analysis | `/api/analyze` | Trigger analysis, themes, signals, status |
 | Search | `/api/search` | Semantic search, similar, duplicates |
 | Export | `/api/export` | CSV/JSON/Markdown export, reports, quote cards |
 | LLM | `/api/llm` | Provider status, test |
-| Insights | `/api/insights` | Direct insight queries |
+| Insights | `/api/insights` | Direct signal queries; route name kept for API compatibility |
 | Themes | `/api/themes` | Direct theme queries |
 
 ## Architecture
@@ -162,7 +176,7 @@ RedditWatch is designed for local/self-hosted use and does not include authentic
 Browser (Alpine.js + Tailwind + Chart.js)
   |
 FastAPI Backend
-  |-- SQLite (posts, comments, insights)
+  |-- SQLite (posts, comments, signals)
   |-- ChromaDB (vector embeddings)
   |-- LLM Providers
         |-- Ollama (local, default)
@@ -176,7 +190,7 @@ FastAPI Backend
 - **Frontend**: Alpine.js, Tailwind CSS, Chart.js (no build step)
 - **LLM**: Ollama (default), Claude, OpenAI
 - **Vector Search**: ChromaDB with sentence-transformers
-- **Reddit Data**: HTTP requests to old.reddit.com (no API key needed)
+- **Public Reddit Conversations**: HTTP requests to old.reddit.com (no API key needed)
 - **Testing**: pytest, pytest-asyncio
 - **CI**: GitHub Actions
 
@@ -208,7 +222,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Roadmap
 
-- [x] Core collection and LLM analysis pipeline
+- [x] Core collection and market signal analysis pipeline
 - [x] Semantic search with ChromaDB embeddings
 - [x] Export (CSV, JSON, Markdown, full research reports)
 - [x] Analytics dashboard with Chart.js visualizations

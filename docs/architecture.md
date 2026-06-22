@@ -5,13 +5,13 @@
 ```text
 Browser
   Alpine.js + Tailwind + Chart.js
-  audiences, discovery, insights, search, Q&A, export
+  audiences, discovery, market signals, search, Q&A, export
     |
 FastAPI backend
   posts, subreddits, audiences, collection, analysis, search, export APIs
     |
     |-- SQLite
-    |     posts, comments, audiences, insights, themes, subscriber snapshots
+    |     posts, comments, audiences, signals, themes, subscriber snapshots
     |
     |-- Reddit collection
     |     public Reddit JSON, RSS fallback, Arctic Shift fallback
@@ -20,7 +20,7 @@ FastAPI backend
     |     Ollama by default, optional Claude/OpenAI-compatible providers
     |
     |-- ChromaDB
-          semantic insight index for search and retrieval-augmented Q&A
+          semantic signal index for search and retrieval-augmented Q&A
 ```
 
 ## Data Flow
@@ -30,9 +30,9 @@ FastAPI backend
 3. Posts are stored in SQLite and scored for research signal.
 4. Deleted, thin, or low-response self-promotional posts can be marked `skipped` before LLM analysis.
 5. The analyzer sends high-signal post context to the configured LLM provider.
-6. Extracted insights are stored with type, theme, quote, author, source link, and model metadata.
-7. Insights are indexed in ChromaDB for semantic search.
-8. The UI displays themes, source-backed insight cards, Q&A, and export options.
+6. Extracted market signals are stored with type, theme, quote, author, source link, and model metadata.
+7. Signals are indexed in ChromaDB for semantic search.
+8. The UI displays themes, source-backed signal cards, Q&A, and export options.
 
 ## Core Models
 
@@ -45,11 +45,12 @@ FastAPI backend
 ### Comment
 
 - Reddit comment metadata, parent relationship, author, score, body, and depth.
-- Used as source evidence for insight extraction.
+- Used as source evidence for signal extraction.
 
 ### Insight
 
-- LLM-extracted finding with type, theme, title, description, quote, quote author, product name, sentiment, and source permalink.
+- Internal model name for a market signal. Kept as `Insight` for schema/API compatibility.
+- Stores type, theme, title, description, quote, quote author, product name, sentiment, and source permalink.
 - Used for themes, semantic search, Q&A, and exports.
 
 ### Audience
@@ -80,7 +81,7 @@ Analysis is provider-agnostic. The app defaults to Ollama for local use and can 
 - `backend/app/api/search.py`
 - `backend/app/api/audiences.py`
 
-ChromaDB stores insight embeddings. Search and audience Q&A are scoped by audience subreddits so answers stay tied to the selected research segment.
+ChromaDB stores market signal embeddings. Search and audience Q&A are scoped by audience subreddits so answers stay tied to the selected research segment.
 
 ### Runtime Storage
 
