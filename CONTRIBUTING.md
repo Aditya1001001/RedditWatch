@@ -26,7 +26,7 @@ python -m pytest tests/ -v
 backend/
   app/
     api/          # FastAPI route handlers
-    collectors/   # Reddit data collection
+    collectors/   # Public Reddit conversation collection
     llm/          # LLM provider abstraction
     models/       # SQLAlchemy ORM models
     services/     # Business logic (analyzer, collector, search, tasks)

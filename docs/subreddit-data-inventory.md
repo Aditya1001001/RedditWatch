@@ -9,15 +9,15 @@ These files are product/catalog assets, not runtime DB state:
 | File | Purpose | Current Size/Count |
 | --- | --- | --- |
 | `backend/app/data/subreddits.yaml` | Hand-curated catalog used for category browsing and high-quality starter choices. | 50 categories, 283 subreddits |
-| `backend/app/data/subreddits_directory.json` | Expanded browsable directory exported from the enrichment scrape. Every entry currently has at least 100k subscribers. | 6,089 subreddits |
-| `scripts/private/communities.json` | Private full enrichment scrape source. Not for public commits. | 225,905 discovered names, with enrichment data for the high-subscriber slice |
-| `scripts/private/popular_subreddits.json` | Earlier popular-subreddit scrape. Superseded by `communities.json`/directory export for most use cases. | 4,392 entries |
+| `backend/app/data/subreddits_directory.json` | Expanded browsable directory exported from the private enrichment pipeline. Every entry currently has at least 100k subscribers. | 6,089 subreddits |
+| `scripts/private/communities.json` | Private full enrichment source. Not for public commits. | 225,905 discovered names, with enrichment data for the high-subscriber slice |
+| `scripts/private/popular_subreddits.json` | Earlier popular-subreddit source. Superseded by `communities.json`/directory export for most use cases. | 4,392 entries |
 
 Runtime state can be reset without deleting the files above. Runtime state lives in:
 
 | Path | Meaning |
 | --- | --- |
-| `data/redditwatch.db` | Local SQLite app database: monitored subreddits, audiences, posts, comments, insights, snapshots. |
+| `data/redditwatch.db` | Local SQLite app database: monitored subreddits, audiences, posts, comments, market signals, snapshots. |
 | `data/chroma/` | Local ChromaDB semantic-search index. |
 | `data/reset-backups/` | Local backup folder for archived DB/index resets. Ignored by git. |
 
@@ -61,7 +61,7 @@ Recommended "SaaS Starter" subset:
 | --- | ---: | --- |
 | r/SaaS | 627,709 | Direct SaaS founder/operator questions, pricing, churn, feature needs. |
 | r/startups | 2,014,249 | Startup problems, validation, MVP questions, market uncertainty. |
-| r/Entrepreneur | 5,113,280 | Broad business-building pain points and buying-intent discussions. |
+| r/Entrepreneur | 5,113,280 | Broad business-building pain signals and buying-intent discussions. |
 | r/ProductManagement | 256,162 | Product workflow, prioritization, research, and roadmap pain. |
 | r/marketing | 1,920,714 | Go-to-market, channel, attribution, tooling, and campaign issues. |
 
@@ -83,7 +83,7 @@ Recommended demo flow:
 2. Click `Create SaaS Starter`.
 3. Click `Collect conversations`.
 4. Wait for auto-analysis.
-5. Open the audience overview and show the first evidence quote/top theme.
+5. Open the audience overview and show the first source-backed signal/top theme.
 6. Ask: `What should I pay attention to first?`
 
 ## Useful Query Commands
@@ -112,4 +112,3 @@ jq '[.[] | .subscribers // 0] as $s | {
   gte_100k: ($s | map(select(. >= 100000)) | length)
 }' backend/app/data/subreddits_directory.json
 ```
-

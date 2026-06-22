@@ -7,7 +7,7 @@
 reddit:
   client_id: "${REDDIT_CLIENT_ID}"
   client_secret: "${REDDIT_CLIENT_SECRET}"
-  user_agent: "RedditWatch/1.0 (self-hosted market research)"
+  user_agent: "RedditWatch/1.0 (self-hosted community intelligence)"
 
 # LLM Configuration
 llm:

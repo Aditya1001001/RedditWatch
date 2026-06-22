@@ -193,7 +193,7 @@
                     <h1 @click="backToAudiences()" class="text-2xl font-bold tracking-tight cursor-pointer hover:text-accent transition-colors duration-150">RedditWatch</h1>
                     <span class="text-xs font-medium text-text-muted bg-surface-3 px-2 py-0.5 rounded">v0.3</span>
                 </div>
-                <p class="text-text-secondary text-sm">Market research from Reddit, on your terms</p>
+                <p class="text-text-secondary text-sm">Ranked, source-backed market signals from Reddit communities</p>
             </div>
             <div class="flex items-center gap-2 text-xs text-text-muted">
                 <div :class="health.status === 'healthy' ? 'bg-insight-opportunity' : 'bg-insight-pain'"
@@ -369,24 +369,24 @@
                 <!-- Scrollable content area -->
                 <div class="flex-1 overflow-y-auto scroll-smooth">
 
-                    <!-- Summary -->
+                    <!-- Signal readout -->
                     <div class="p-5 space-y-5">
                         <!-- Loading -->
                         <div x-show="themeDetailLoading" class="flex items-center gap-2 text-text-muted text-sm py-4">
                             <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
-                            Loading summary…
+                            Loading signal readout…
                         </div>
 
-                        <!-- AI Summary -->
+                        <!-- Signal Readout -->
                         <div x-show="!themeDetailLoading && themeDetailSummary[selectedThemeType]">
                             <p class="text-base text-text-secondary leading-relaxed mt-1" x-text="themeDetailSummary[selectedThemeType]?.summary"></p>
-                            <p class="text-sm text-text-muted mt-3 tabular-nums" x-text="(themeDetailSummary[selectedThemeType]?.insight_count || 0) + ' total insights'"></p>
+                            <p class="text-sm text-text-muted mt-3 tabular-nums" x-text="(themeDetailSummary[selectedThemeType]?.insight_count || 0) + ' total signals'"></p>
                         </div>
 
                         <!-- Browse all posts button -->
                         <button @click="insightTypeFilter = selectedThemeType; selectedTheme = null; loadInsightsList(); selectedThemeType = null"
                                 class="text-accent hover:text-accent-light text-sm font-semibold transition-colors duration-150">
-                            Browse all insights →
+                            Browse all signals →
                         </button>
 
                         <!-- Related Topics -->
@@ -407,7 +407,7 @@
                                 <template x-for="s in (themeDetailSummary[selectedThemeType]?.subreddits || []).slice(0, 5)" :key="s.subreddit">
                                     <div class="flex items-center justify-between text-sm">
                                         <span class="text-text-secondary" x-text="'r/' + s.subreddit"></span>
-                                        <span class="text-text-muted tabular-nums" x-text="s.count + ' insights'"></span>
+                                        <span class="text-text-muted tabular-nums" x-text="s.count + ' signals'"></span>
                                     </div>
                                 </template>
                             </div>
@@ -482,12 +482,12 @@
                 <div class="p-5 md:p-6">
                     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
                         <div class="max-w-2xl">
-                            <p class="text-xs font-semibold uppercase tracking-wider text-accent mb-2">Reddit market research workspace</p>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-accent mb-2">Community intelligence workspace</p>
                             <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-text-primary mb-3">
-                                Turn public Reddit conversations into product evidence.
+                                Turn Reddit communities into market intelligence.
                             </h1>
                             <p class="text-sm text-text-secondary leading-relaxed">
-                                Build an audience from relevant subreddits, collect recent conversations, then use AI to extract pain points, product mentions, solution requests, and opportunity themes with source quotes.
+                                Build an audience from relevant subreddits, collect public community conversations, then find repeated pain, demand, advice, and product signals with source quotes.
                             </p>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 lg:w-[360px]">
@@ -504,7 +504,7 @@
                                 <p class="text-lg font-bold tabular-nums text-text-primary" x-text="postStats.total_posts || 0"></p>
                             </div>
                             <div class="bg-surface-2 rounded-lg px-3 py-3">
-                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Insights</p>
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Signals</p>
                                 <p class="text-lg font-bold tabular-nums text-text-primary" x-text="analysisStatus.total_insights || 0"></p>
                             </div>
                         </div>
@@ -941,7 +941,7 @@
                 <!-- Compact stats -->
                 <p class="text-xs text-text-muted tabular-nums">
                     <span x-text="activeAudienceSubreddits.length"></span> subreddits
-                    · <span x-text="analysisStatus.total_insights || 0"></span> insights
+                    · <span x-text="analysisStatus.total_insights || 0"></span> signals
                 </p>
             </div>
 
@@ -1005,7 +1005,7 @@
                         <button x-show="(analysisStatus.total_insights || 0) > 0"
                                 @click="generateReport()"
                                 class="bg-surface-3 hover:bg-surface-4 text-text-secondary px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">
-                            Export report
+                            Export signal report
                         </button>
                     </div>
                 </div>
@@ -1024,7 +1024,7 @@
                 </div>
             </div>
 
-            <!-- ═══ Single scrollable Insights page ═══ -->
+            <!-- ═══ Single scrollable Signals page ═══ -->
             <div class="space-y-6">
 
                 <!-- ── B. Unified Search/Ask Input ── -->
@@ -1048,7 +1048,7 @@
                                x-model="queryInput"
                                @keyup.enter="queryMode === 'ask' ? askAboutAudience() : performSearch()"
                                class="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:border-accent transition-colors duration-150"
-                               :placeholder="queryMode === 'ask' ? 'Ask anything about this audience...' : 'Search insights semantically...'">
+                               :placeholder="queryMode === 'ask' ? 'Ask anything about this audience...' : 'Search signals semantically...'">
                         <button @click="queryMode === 'ask' ? askAboutAudience() : performSearch()"
                                 :disabled="askLoading || !queryInput.trim()"
                                 class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150"
@@ -1095,7 +1095,7 @@
                             <span class="font-semibold text-insight-solution">Search index needs refresh.</span>
                             <span x-show="!searchIndexStatus.error">
                                 <span x-text="searchIndexStatus.indexed_count || 0"></span> of
-                                <span x-text="searchIndexStatus.total_insights || 0"></span> insights indexed.
+                                <span x-text="searchIndexStatus.total_insights || 0"></span> signals indexed.
                             </span>
                             <span x-show="searchIndexStatus.error" x-text="searchIndexStatus.error"></span>
                         </p>
@@ -1109,12 +1109,12 @@
                     <div x-show="queryMode === 'search' && searchLoading"
                          class="flex items-center gap-2 text-text-muted text-sm">
                         <svg class="animate-spin h-4 w-4 text-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
-                        Searching indexed insights…
+                        Searching indexed signals…
                     </div>
 
                     <div x-show="queryMode === 'search' && !searchLoading && lastSearchQuery && searchResults.length === 0"
                          class="border border-dashed border-border rounded-lg px-4 py-6 text-center">
-                        <p class="text-sm text-text-muted">No matching insights found</p>
+                        <p class="text-sm text-text-muted">No matching signals found</p>
                         <p class="text-xs text-text-muted mt-1">Try a broader phrase like “pricing frustration”, “alternatives”, or “onboarding”.</p>
                     </div>
 
@@ -1141,7 +1141,7 @@
                                         'text-insight-advice bg-insight-advice/10': result.type === 'advice_request',
                                         'text-insight-idea bg-insight-idea/10': result.type === 'idea',
                                         'text-insight-money bg-insight-money/10': result.type === 'money_talk'
-                                    }" class="inline-block px-1.5 py-0.5 rounded text-xs font-medium mb-1" x-text="result.type?.replace('_', ' ')"></span>
+                                    }" class="inline-block px-1.5 py-0.5 rounded text-xs font-medium mb-1" x-text="getThemeTypeLabel(result.type)"></span>
                                     <p class="text-sm text-text-secondary leading-relaxed" x-text="result.text.substring(0, 200) + '...'"></p>
                                 </div>
                             </template>
@@ -1175,7 +1175,7 @@
                     <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                         <div>
                             <h3 class="text-sm font-semibold text-text-primary">What Reddit is telling you</h3>
-                            <p class="text-xs text-text-muted mt-1">Start here: strongest signals, recurring themes, and source evidence.</p>
+                            <p class="text-xs text-text-muted mt-1">Start here: strongest market signals, recurring themes, and source evidence.</p>
                         </div>
                         <button @click="queryInput = 'What should I pay attention to first?'; queryMode = 'ask'; askAboutAudience()"
                                 class="text-accent hover:text-accent-light text-xs font-semibold transition-colors duration-150">
@@ -1199,7 +1199,7 @@
                                 <button @click="selectTheme(topTheme().theme_key)"
                                         class="text-left w-full bg-surface-2 hover:bg-surface-3 rounded-lg px-4 py-3 transition-colors duration-150">
                                     <p class="text-sm font-semibold text-text-primary capitalize" x-text="topTheme().theme_key.replace(/_/g, ' ')"></p>
-                                    <p class="text-xs text-text-muted mt-1" x-text="topTheme().count + ' related insights'"></p>
+                                    <p class="text-xs text-text-muted mt-1" x-text="topTheme().count + ' related signals'"></p>
                                 </button>
                             </template>
                             <p x-show="!topTheme()" class="text-xs text-text-muted">Themes appear after analysis groups repeated patterns.</p>
@@ -1222,7 +1222,7 @@
                     </div>
                 </div>
 
-                <!-- ── D. Insight Type Cards ── -->
+                <!-- ── D. Signal Type Cards ── -->
                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     <template x-for="it in insightTypeConfig" :key="it.key">
                         <div @click="selectThemeType(it.key)"
@@ -1282,7 +1282,7 @@
                                     <span class="ml-1 opacity-70 tabular-nums" x-text="theme.count"></span>
                                 </button>
                             </template>
-                            <p x-show="themes.filter(t => t.count >= 3).length === 0" class="text-xs text-text-muted">No topics yet — run analysis to extract insights</p>
+                            <p x-show="themes.filter(t => t.count >= 3).length === 0" class="text-xs text-text-muted">No topics yet — run analysis to extract signals</p>
                         </div>
                         <button @click="consolidateThemes()" :disabled="consolidating || themes.length < 3"
                                 class="text-xs text-text-muted hover:text-accent disabled:opacity-40 transition-colors duration-150">
@@ -1291,7 +1291,7 @@
                     </div>
                 </div>
 
-                <!-- ── F. Insight List ── -->
+                <!-- ── F. Signal List ── -->
                 <div class="space-y-4">
                     <!-- Type filter pills -->
                     <div class="flex flex-wrap gap-1.5">
@@ -1311,8 +1311,8 @@
                     <div class="flex items-baseline gap-3">
                         <h2 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">
                             <span x-show="selectedTheme" x-text="'Topic: ' + (selectedTheme || '').replace(/_/g, ' ')"></span>
-                            <span x-show="!selectedTheme && insightTypeFilter" x-text="(insightTypeFilter || '').replace('_', ' ') + 's'" class="capitalize"></span>
-                            <span x-show="!selectedTheme && !insightTypeFilter">All Insights</span>
+                            <span x-show="!selectedTheme && insightTypeFilter" x-text="getThemeTypeLabel(insightTypeFilter)"></span>
+                            <span x-show="!selectedTheme && !insightTypeFilter">All Signals</span>
                         </h2>
                         <button x-show="selectedTheme || insightTypeFilter"
                                 @click="selectedTheme = null; insightTypeFilter = null; loadInsightsList()"
@@ -1320,7 +1320,7 @@
                             Clear filter
                         </button>
                         <div class="flex items-center gap-2 ml-auto">
-                            <span class="text-xs text-text-muted tabular-nums" x-text="insightsList.length + ' insights'"></span>
+                            <span class="text-xs text-text-muted tabular-nums" x-text="insightsList.length + ' signals'"></span>
                             <select x-model.number="insightsLimit" @change="loadInsightsList()"
                                     class="text-xs bg-surface-2 text-text-secondary border border-border rounded px-1.5 py-0.5 cursor-pointer hover:border-accent/40 transition-colors duration-150">
                                 <option value="10">10</option>
@@ -1330,7 +1330,7 @@
                         </div>
                     </div>
 
-                    <!-- Loading skeleton for insights -->
+                    <!-- Loading skeleton for signals -->
                     <div x-show="loadingAudience" class="space-y-3">
                         <template x-for="i in 4" :key="'skel-insight-'+i">
                             <div class="border border-border rounded-lg p-5">
@@ -1344,7 +1344,7 @@
                         </template>
                     </div>
 
-                    <!-- Insights list -->
+                    <!-- Signals list -->
                     <div x-show="!loadingAudience && insightsList.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
                         <p class="text-text-muted text-sm" x-text="emptyInsightTitle()"></p>
                         <p class="text-text-muted text-xs mt-1 max-w-md mx-auto leading-relaxed" x-text="emptyInsightDetail()"></p>
@@ -1390,7 +1390,7 @@
                                             'text-insight-advice bg-insight-advice/10': insight.type === 'advice_request',
                                             'text-insight-idea bg-insight-idea/10': insight.type === 'idea',
                                             'text-insight-money bg-insight-money/10': insight.type === 'money_talk'
-                                        }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="insight.type.replace('_', ' ')"></span>
+                                        }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="getThemeTypeLabel(insight.type)"></span>
                                         <span class="font-semibold text-sm text-text-primary" x-text="insight.title"></span>
                                     </div>
                                     <div x-show="insight.post_score != null" class="flex items-center gap-3 text-xs text-text-secondary shrink-0 tabular-nums">
@@ -1419,7 +1419,7 @@
 
                                 <!-- Product mention -->
                                 <div x-show="insight.product_name" class="text-sm mb-2">
-                                    <span class="text-text-muted">Product:</span>
+                                    <span class="text-text-muted">Product signal:</span>
                                     <span class="text-insight-product font-medium" x-text="insight.product_name"></span>
                                     <span x-show="insight.sentiment" class="ml-1.5">
                                         (<span :class="{
@@ -1581,7 +1581,7 @@
                     <span class="text-border-light mx-0.5">|</span>
                     <button @click="generateReport()"
                             :disabled="analysisStatus.total_insights === 0"
-                            class="text-accent hover:text-accent-light disabled:opacity-30 text-xs font-semibold transition-colors duration-150">Report</button>
+                            class="text-accent hover:text-accent-light disabled:opacity-30 text-xs font-semibold transition-colors duration-150">Signal report</button>
                 </div>
             </div>
 
@@ -1672,15 +1672,15 @@
                 showTrends: false,
                 showPosts: false,
 
-                // Insight type configuration for three-column layout
+                // Signal type configuration for three-column layout
                 insightTypeConfig: [
-                    { key: 'pain_point', label: 'Pain Points', desc: 'People expressing frustrations' },
-                    { key: 'solution_request', label: 'Solutions', desc: 'People seeking solutions' },
-                    { key: 'advice_request', label: 'Advice', desc: 'People asking for advice' },
-                    { key: 'opportunity', label: 'Opportunities', desc: 'Market gaps and openings' },
-                    { key: 'idea', label: 'Ideas', desc: 'New ideas and suggestions' },
-                    { key: 'product_mention', label: 'Products', desc: 'Products being discussed' },
-                    { key: 'money_talk', label: 'Money Talk', desc: 'Pricing and spending discussions' },
+                    { key: 'pain_point', label: 'Pain Signals', desc: 'Repeated frustrations and blockers' },
+                    { key: 'solution_request', label: 'Demand Signals', desc: 'People seeking tools or workflows' },
+                    { key: 'advice_request', label: 'Advice Signals', desc: 'People asking for recommendations' },
+                    { key: 'opportunity', label: 'Opportunity Signals', desc: 'Market gaps and openings' },
+                    { key: 'idea', label: 'Idea Signals', desc: 'Suggested tools or workflows' },
+                    { key: 'product_mention', label: 'Product Mentions', desc: 'Products being discussed' },
+                    { key: 'money_talk', label: 'Pricing Signals', desc: 'Pricing and spending discussions' },
                 ],
 
                 async init() {
@@ -1869,11 +1869,11 @@
                                 : 'Fetch posts and comments from followed subreddits.',
                         },
                         {
-                            label: 'Extract evidence',
+                            label: 'Rank signals',
                             done: (this.analysisStatus.total_insights || 0) > 0,
                             detail: (this.analysisStatus.total_insights || 0) > 0
-                                ? `${this.analysisStatus.total_insights} insights ready`
-                                : 'AI turns conversations into themes and quotes.',
+                                ? `${this.analysisStatus.total_insights} signals ready`
+                                : 'Analysis turns conversations into themes and source quotes.',
                         },
                     ];
                 },
@@ -1906,10 +1906,10 @@
                         },
                         {
                             index: 4,
-                            label: 'Insights',
+                            label: 'Signals',
                             done: (this.analysisStatus.total_insights || 0) > 0,
                             detail: (this.analysisStatus.total_insights || 0) > 0
-                                ? `${this.analysisStatus.total_insights} evidence-backed insights`
+                                ? `${this.analysisStatus.total_insights} source-backed signals`
                                 : 'Analysis runs after collection when an LLM is available.',
                         },
                     ];
@@ -1926,9 +1926,9 @@
                         return 'Ready to collect. Fetch Reddit conversations to start building evidence.';
                     }
                     if ((this.analysisStatus.total_insights || 0) === 0) {
-                        return 'Conversations are collected. Analysis will turn them into product research signals.';
+                        return 'Conversations are collected. Analysis will turn them into source-backed market signals.';
                     }
-                    return 'Insights are ready. Review themes, ask questions, and export a report.';
+                    return 'Signals are ready. Review themes, ask questions, and export a report.';
                 },
 
                 async loadAudiences() {
@@ -2295,7 +2295,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 name: 'SaaS Starter',
-                                description: 'Founders, product teams, and marketers tracking SaaS customer pain points.',
+                                description: 'Founders, product teams, and marketers tracking SaaS market signals.',
                                 color: '#5b9bd5',
                                 active: true,
                                 subreddit_names: starterSubs,
@@ -2479,7 +2479,7 @@
                         const res = await fetch('/api/search/reindex', { method: 'POST' });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
-                        this.showToast('Search index refreshed', `${data.indexed_count || 0} insights indexed`, 'success');
+                        this.showToast('Search index refreshed', `${data.indexed_count || 0} signals indexed`, 'success');
                         await this.loadSearchStats();
                     } catch (e) {
                         this.showToast('Reindex failed', e.message, 'error');
@@ -2514,7 +2514,7 @@
                         this.insightsList = await res.json();
                     } catch (e) {
                         if (e.name === 'AbortError') return;
-                        this.showToast('Load failed', 'Could not load insights', 'error');
+                        this.showToast('Load failed', 'Could not load signals', 'error');
                         this.insightsList = [];
                     }
                 },
@@ -2524,7 +2524,7 @@
                     const cards = [
                         {
                             key: 'pain_point',
-                            label: 'Pain points',
+                            label: 'Pain signals',
                             count: counts.pain_point || 0,
                             color: 'text-insight-pain',
                             detail: 'Frustrations, blockers, and repeated complaints.',
@@ -2560,7 +2560,7 @@
                     if (!this.activeAudience()?.active) return 'Audience is not followed';
                     if ((this.postsData.total || 0) === 0) return 'No conversations collected yet';
                     if (this.analysisStatus.status === 'running' || this.analysisStatus.status === 'pending') return 'Analysis is running';
-                    return 'No insights extracted yet';
+                    return 'No signals extracted yet';
                 },
 
                 emptyInsightDetail() {
@@ -2574,7 +2574,7 @@
                         return 'Collect conversations from followed subreddits. Analysis will start automatically after collection when an LLM provider is available.';
                     }
                     if (this.analysisStatus.status === 'running' || this.analysisStatus.status === 'pending') {
-                        return 'RedditWatch is reading collected posts and comments. Insights will appear here as analysis finishes.';
+                        return 'RedditWatch is reading collected posts and comments. Signals will appear here as analysis finishes.';
                     }
                     return 'Try collecting newer posts, checking the LLM provider, or lowering the analysis score threshold in configuration.';
                 },
@@ -2696,10 +2696,10 @@
                             } else if (summaryRes.status === 503) {
                                 // LLM unavailable — still load breakdown
                                 const breakdown = breakdownRes.ok ? await breakdownRes.json() : { topics: [], subreddits: [] };
-                                this.themeDetailSummary[type] = { summary: 'AI summary unavailable — configure an LLM provider to enable.', insight_count: 0, type, ...breakdown };
+                                this.themeDetailSummary[type] = { summary: 'Signal readout unavailable — configure an LLM provider to enable.', insight_count: 0, type, ...breakdown };
                             }
                         } catch (e) {
-                            this.themeDetailSummary[type] = { summary: 'Failed to load summary.', insight_count: 0, type, topics: [], subreddits: [] };
+                            this.themeDetailSummary[type] = { summary: 'Failed to load signal readout.', insight_count: 0, type, topics: [], subreddits: [] };
                         }
                         this.themeDetailLoading = false;
                     }

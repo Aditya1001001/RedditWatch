@@ -19,6 +19,16 @@ from app.services.analyzer import get_analyzer
 
 router = APIRouter()
 
+SIGNAL_TYPE_LABELS = {
+    "pain_point": "Pain Signal",
+    "solution_request": "Demand Signal",
+    "opportunity": "Opportunity Signal",
+    "product_mention": "Product Mention",
+    "advice_request": "Advice Signal",
+    "idea": "Idea Signal",
+    "money_talk": "Pricing Signal",
+}
+
 
 class ExportFilters(BaseModel):
     """Filters for export."""
@@ -88,13 +98,13 @@ def insights_to_json(insights: list[Insight]) -> list[dict]:
 
 
 def insights_to_markdown(insights: list[Insight], include_summary: bool = True) -> str:
-    """Convert insights to Markdown report format."""
+    """Convert insight records to a market signal Markdown report."""
     lines = []
 
     # Header
-    lines.append("# RedditWatch Insights Export")
+    lines.append("# RedditWatch Market Signals Export")
     lines.append(f"\n*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
-    lines.append(f"\n*Total insights: {len(insights)}*\n")
+    lines.append(f"\n*Total signals: {len(insights)}*\n")
 
     # Summary by type
     if include_summary:
@@ -102,11 +112,11 @@ def insights_to_markdown(insights: list[Insight], include_summary: bool = True) 
         for insight in insights:
             type_counts[insight.type] = type_counts.get(insight.type, 0) + 1
 
-        lines.append("## Summary\n")
+        lines.append("## Signal Breakdown\n")
         lines.append("| Type | Count |")
         lines.append("|------|-------|")
         for t, count in sorted(type_counts.items(), key=lambda x: -x[1]):
-            lines.append(f"| {t.replace('_', ' ').title()} | {count} |")
+            lines.append(f"| {SIGNAL_TYPE_LABELS.get(t, t.replace('_', ' ').title())} | {count} |")
         lines.append("")
 
     # Group by theme
@@ -121,14 +131,14 @@ def insights_to_markdown(insights: list[Insight], include_summary: bool = True) 
     sorted_themes = sorted(themes.items(), key=lambda x: -len(x[1]))
 
     lines.append("---\n")
-    lines.append("## Insights by Theme\n")
+    lines.append("## Signals by Theme\n")
 
     for theme_key, theme_insights in sorted_themes:
         theme_name = theme_key.replace("_", " ").title()
         avg_intensity = sum(i.intensity_score or 0 for i in theme_insights) / len(theme_insights)
 
         lines.append(f"### {theme_name}")
-        lines.append(f"*{len(theme_insights)} insights | Avg intensity: {avg_intensity:.0f}*\n")
+        lines.append(f"*{len(theme_insights)} signals | Avg signal strength: {avg_intensity:.0f}*\n")
 
         for insight in theme_insights:
             # Type badge
@@ -156,7 +166,7 @@ def insights_to_markdown(insights: list[Insight], include_summary: bool = True) 
             # Metadata line
             meta = []
             if insight.intensity_score:
-                meta.append(f"Intensity: {insight.intensity_score}/100")
+                meta.append(f"Signal strength: {insight.intensity_score}/100")
             if insight.product_name:
                 meta.append(f"Product: {insight.product_name}")
             if insight.sentiment:
@@ -176,7 +186,7 @@ def generate_quote_card(insight: Insight) -> str:
     """Generate a shareable quote card in Markdown."""
     lines = []
 
-    type_label = insight.type.replace("_", " ").title()
+    type_label = SIGNAL_TYPE_LABELS.get(insight.type, insight.type.replace("_", " ").title())
 
     lines.append("```")
     lines.append("┌─────────────────────────────────────────┐")
@@ -204,7 +214,7 @@ def generate_quote_card(insight: Insight) -> str:
 
     if insight.intensity_score:
         intensity_bar = "█" * (insight.intensity_score // 10) + "░" * (10 - insight.intensity_score // 10)
-        lines.append(f"│ Intensity: [{intensity_bar}] {insight.intensity_score:>3} │")
+        lines.append(f"│ Strength:  [{intensity_bar}] {insight.intensity_score:>3} │")
 
     lines.append(f"│ Theme: {insight.theme_key.replace('_', ' '):<32} │")
     lines.append("└─────────────────────────────────────────┘")
@@ -265,19 +275,19 @@ async def export_insights(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Export insights in various formats.
+    Export market signals in various formats.
 
     Args:
         format: Output format (json, csv, markdown/md)
-        type: Filter by insight type
+        type: Filter by internal insight/signal type
         theme_key: Filter by theme key
-        min_intensity: Minimum intensity score
-        max_intensity: Maximum intensity score
+        min_intensity: Minimum signal strength score
+        max_intensity: Maximum signal strength score
         subreddit: Filter by source subreddit
-        limit: Maximum number of insights to export
+        limit: Maximum number of signals to export
 
     Returns:
-        Insights in requested format
+        Signals in requested format
     """
     # Resolve audience to subreddit filter
     effective_subreddit = subreddit
@@ -316,7 +326,7 @@ async def export_insights(
             content=content,
             media_type="text/csv",
             headers={
-                "Content-Disposition": f'attachment; filename="insights_{timestamp}.csv"'
+                "Content-Disposition": f'attachment; filename="signals_{timestamp}.csv"'
             }
         )
 
@@ -326,7 +336,7 @@ async def export_insights(
             content=content,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f'attachment; filename="insights_{timestamp}.md"'
+                "Content-Disposition": f'attachment; filename="signals_{timestamp}.md"'
             }
         )
 
@@ -352,10 +362,10 @@ async def export_selected_insights(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Export specific insights by ID.
+    Export specific market signals by ID.
 
     Args:
-        ids: List of insight IDs to export
+        ids: List of internal insight/signal IDs to export
         format: Output format (json, csv, markdown/md)
     """
     insights = await get_filtered_insights(session, ids=ids, limit=len(ids))
@@ -368,7 +378,7 @@ async def export_selected_insights(
             content=content,
             media_type="text/csv",
             headers={
-                "Content-Disposition": f'attachment; filename="insights_selected_{timestamp}.csv"'
+                "Content-Disposition": f'attachment; filename="signals_selected_{timestamp}.csv"'
             }
         )
 
@@ -378,7 +388,7 @@ async def export_selected_insights(
             content=content,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f'attachment; filename="insights_selected_{timestamp}.md"'
+                "Content-Disposition": f'attachment; filename="signals_selected_{timestamp}.md"'
             }
         )
 
@@ -396,13 +406,13 @@ async def get_quote_card(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Generate a shareable quote card for an insight.
+    Generate a shareable quote card for a market signal.
 
     Returns Markdown-formatted quote card.
     """
     insight = await session.get(Insight, insight_id)
     if not insight:
-        return Response(status_code=404, content="Insight not found")
+        return Response(status_code=404, content="Signal not found")
 
     card = generate_quote_card(insight)
 
@@ -453,16 +463,16 @@ async def export_themes(
 
     elif format in ("markdown", "md"):
         lines = []
-        lines.append("# RedditWatch Themes Export")
+        lines.append("# RedditWatch Signal Themes Export")
         lines.append(f"\n*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
         lines.append(f"\n*Total themes: {len(themes)}*\n")
 
-        lines.append("| Theme | Count | Avg Intensity | Combined Score | Types |")
+        lines.append("| Theme | Count | Avg Signal Strength | Combined Score | Signal Types |")
         lines.append("|-------|-------|---------------|----------------|-------|")
 
         for theme in themes:
             theme_name = theme["theme_key"].replace("_", " ").title()
-            types = ", ".join(t.replace("_", " ") for t in theme["types"])
+            types = ", ".join(SIGNAL_TYPE_LABELS.get(t, t.replace("_", " ")) for t in theme["types"])
             lines.append(
                 f"| {theme_name} | {theme['count']} | {theme['avg_intensity']:.1f} | "
                 f"{theme['combined_score']:.1f} | {types} |"
@@ -501,7 +511,7 @@ async def generate_report(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Generate a comprehensive Markdown report with all insights and themes.
+    Generate a comprehensive Markdown report with all market signals and themes.
 
     This is a full export suitable for sharing or archiving.
     """
@@ -527,13 +537,13 @@ async def generate_report(
     lines = []
 
     # Title
-    lines.append("# RedditWatch Market Research Report")
+    lines.append("# RedditWatch Market Signals Report")
     lines.append(f"\n*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n")
 
     # Executive Summary
     lines.append("## Executive Summary\n")
     lines.append(f"- **Posts analyzed**: {analyzed_posts.scalar() or 0} of {total_posts.scalar() or 0}")
-    lines.append(f"- **Insights extracted**: {len(insights)}")
+    lines.append(f"- **Market signals extracted**: {len(insights)}")
     lines.append(f"- **Themes identified**: {len(themes)}")
 
     # Type breakdown
@@ -541,21 +551,21 @@ async def generate_report(
     for insight in insights:
         type_counts[insight.type] = type_counts.get(insight.type, 0) + 1
 
-    lines.append("\n### Insight Breakdown\n")
+    lines.append("\n### Signal Breakdown\n")
     for t, count in sorted(type_counts.items(), key=lambda x: -x[1]):
         emoji = {"pain_point": "🔴", "solution_request": "🟡", "opportunity": "🟢", "product_mention": "🟣", "advice_request": "🔵", "idea": "🟠", "money_talk": "🩵"}.get(t, "⚪")
-        lines.append(f"- {emoji} **{t.replace('_', ' ').title()}**: {count}")
+        lines.append(f"- {emoji} **{SIGNAL_TYPE_LABELS.get(t, t.replace('_', ' ').title())}**: {count}")
 
     # Top Themes
     lines.append("\n---\n")
     lines.append("## Top Themes\n")
-    lines.append("*Sorted by combined score (frequency × intensity)*\n")
+    lines.append("*Sorted by combined score (frequency x signal strength)*\n")
 
     for i, theme in enumerate(themes[:15], 1):
         theme_name = theme["theme_key"].replace("_", " ").title()
         lines.append(f"### {i}. {theme_name}")
         lines.append(f"- **Occurrences**: {theme['count']}")
-        lines.append(f"- **Average intensity**: {theme['avg_intensity']:.0f}/100")
+        lines.append(f"- **Average signal strength**: {theme['avg_intensity']:.0f}/100")
         lines.append(f"- **Combined score**: {theme['combined_score']:.1f}")
         lines.append(f"- **Types**: {', '.join(theme['types'])}")
 
@@ -566,16 +576,16 @@ async def generate_report(
                 lines.append(f"> — {quote['author']}\n")
         lines.append("")
 
-    # High-Intensity Pain Points
+    # High-strength pain signals
     high_intensity = [i for i in insights if i.type == "pain_point" and (i.intensity_score or 0) >= 70]
     if high_intensity:
         lines.append("---\n")
-        lines.append("## High-Intensity Pain Points (70+)\n")
-        lines.append("*These represent the most urgent user frustrations*\n")
+        lines.append("## High-Strength Pain Signals (70+)\n")
+        lines.append("*These represent the strongest repeated frustrations found in the source conversations.*\n")
 
         for insight in sorted(high_intensity, key=lambda x: -(x.intensity_score or 0))[:10]:
             lines.append(f"### {insight.title}")
-            lines.append(f"*Intensity: {insight.intensity_score}/100 | Theme: {insight.theme_key.replace('_', ' ')}*\n")
+            lines.append(f"*Signal strength: {insight.intensity_score}/100 | Theme: {insight.theme_key.replace('_', ' ')}*\n")
             if insight.description:
                 lines.append(f"{insight.description}\n")
             if insight.quote:
