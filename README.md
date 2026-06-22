@@ -11,6 +11,11 @@ A self-hosted, LLM-powered research workspace for founders, product teams, marke
 
 ![RedditWatch Dashboard](screenshots/v0.3/dashboard.png)
 
+## Project Notes
+
+- [Subreddit data inventory](docs/subreddit-data-inventory.md) — catalog sources, counts, and starter subset
+- [Architecture notes](docs/architecture.md) — data flow and subsystem overview
+
 ## Why RedditWatch?
 
 - **No Reddit API key required** — Uses public old.reddit.com endpoints. Immune to API policy changes.
@@ -30,7 +35,7 @@ A self-hosted, LLM-powered research workspace for founders, product teams, marke
 
 ![Analytics](screenshots/v0.3/analytics.gif)
 
-### Subreddit Catalog — 117 Curated Subreddits Across 20 Categories
+### Subreddit Catalog — 283 Curated Subreddits Across 50 Categories
 
 ![Subreddits](screenshots/v0.3/subreddits.png)
 
@@ -43,8 +48,8 @@ A self-hosted, LLM-powered research workspace for founders, product teams, marke
 ### Option 1: Docker (Recommended)
 
 ```bash
-git clone https://github.com/Aditya1001001/RedditWatch.git
-cd RedditWatch
+git clone https://github.com/Aditya1001001/redditwatch-pro.git
+cd redditwatch-pro
 cp .env.example .env
 docker compose up
 ```
@@ -60,8 +65,8 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
 ### Option 2: Local Install
 
 ```bash
-git clone https://github.com/Aditya1001001/RedditWatch.git
-cd RedditWatch
+git clone https://github.com/Aditya1001001/redditwatch-pro.git
+cd redditwatch-pro
 ./scripts/setup.sh
 ./scripts/run.sh
 ```
@@ -189,6 +194,16 @@ python -m pytest tests/ --cov=app --cov-report=term-missing
 uvicorn app.main:app --reload --port 8000
 ```
 
+### Reset Local Runtime Data
+
+To record a fresh first-run demo, archive local runtime state and recreate an empty SQLite schema:
+
+```bash
+./scripts/reset-runtime-data.sh
+```
+
+This only moves runtime files under `data/`. It does not delete the curated subreddit catalogs in `backend/app/data/`.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Roadmap
@@ -198,10 +213,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 - [x] Export (CSV, JSON, Markdown, full research reports)
 - [x] Analytics dashboard with Chart.js visualizations
 - [x] Audience grouping and filtering with subreddit suggestions
-- [x] 117-subreddit catalog across 20 categories
+- [x] 283-subreddit curated catalog across 50 categories
+- [x] 6,089-subreddit expanded directory for discovery
 - [x] Security hardening, background tasks, testing, Docker
-- [ ] Scheduled collection (APScheduler)
-- [ ] Performance improvements (migrations, indexes, rate limiting)
+- [x] Scheduled collection (APScheduler)
+- [x] Post signal scoring and low-signal skip reasons
+- [ ] Deterministic sample dataset for offline portfolio demos
+- [ ] Full migration framework beyond lightweight SQLite upgrades
 
 ## License
 
