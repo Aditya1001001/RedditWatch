@@ -53,8 +53,10 @@ class Post(Base):
     analyzed: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     analysis_status: Mapped[str] = mapped_column(
         String(20), default="pending", index=True
-    )  # pending, complete, failed
+    )  # pending, complete, failed, skipped
     analysis_error: Mapped[Optional[str]] = mapped_column(Text)
+    analysis_skip_reason: Mapped[Optional[str]] = mapped_column(Text)
+    signal_score: Mapped[int] = mapped_column(Integer, default=0, index=True)
     analyzed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     analysis_duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
     category: Mapped[Optional[str]] = mapped_column(

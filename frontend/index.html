@@ -1466,13 +1466,15 @@
                                             </div>
                                             <div class="shrink-0">
                                                 <span :class="post.analyzed
-                                                    ? 'text-insight-opportunity bg-insight-opportunity/10'
+                                                    ? post.analysis_status === 'skipped'
+                                                        ? 'text-text-muted bg-surface-3'
+                                                        : 'text-insight-opportunity bg-insight-opportunity/10'
                                                     : post.analysis_status === 'failed'
                                                         ? 'text-insight-pain bg-insight-pain/10'
                                                         : 'text-insight-solution bg-insight-solution/10'"
                                                       class="px-2 py-0.5 rounded text-xs font-medium"
-                                                      :title="post.analysis_error || ''"
-                                                      x-text="post.analyzed ? 'Analyzed' : post.analysis_status === 'failed' ? 'Failed' : 'Pending'"></span>
+                                                      :title="post.analysis_error || post.analysis_skip_reason || ('Signal score: ' + (post.signal_score || 0))"
+                                                      x-text="post.analysis_status === 'skipped' ? 'Skipped' : post.analyzed ? 'Analyzed' : post.analysis_status === 'failed' ? 'Failed' : 'Pending'"></span>
                                             </div>
                                         </div>
                                     </div>

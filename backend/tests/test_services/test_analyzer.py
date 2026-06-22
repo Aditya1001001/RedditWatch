@@ -4,10 +4,12 @@ import pytest
 from app.services.analyzer import (
     AnalysisOutput,
     InsightData,
+    assess_post_signal,
     validate_llm_output,
     VALID_INSIGHT_TYPES,
     VALID_CATEGORIES,
 )
+from app.models import Post
 
 
 class TestLLMOutputValidation:
@@ -149,3 +151,52 @@ class TestInsightDataModel:
         for c in VALID_CATEGORIES:
             output = AnalysisOutput(category=c)
             assert output.category == c
+
+
+class TestPostSignalAssessment:
+    """Tests for pre-LLM post signal scoring."""
+
+    def test_high_signal_question_is_not_skipped(self):
+        post = Post(
+            id="p1",
+            subreddit="saas",
+            title="What tool do you use for onboarding analytics?",
+            body="We are struggling to understand where users drop off after signup.",
+            score=18,
+            num_comments=12,
+        )
+
+        score, reason = assess_post_signal(post)
+
+        assert score >= 40
+        assert reason is None
+
+    def test_low_engagement_self_promo_is_skipped(self):
+        post = Post(
+            id="p2",
+            subreddit="saas",
+            title="I built a dashboard for founders",
+            body="Check out my app and give me feedback.",
+            score=1,
+            num_comments=0,
+        )
+
+        score, reason = assess_post_signal(post)
+
+        assert score < 20
+        assert reason == "likely_self_promotion_low_response"
+
+    def test_deleted_post_is_skipped(self):
+        post = Post(
+            id="p3",
+            subreddit="saas",
+            title="[deleted]",
+            body="",
+            score=50,
+            num_comments=20,
+        )
+
+        score, reason = assess_post_signal(post)
+
+        assert score == 0
+        assert reason == "deleted_or_removed"

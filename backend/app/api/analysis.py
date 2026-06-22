@@ -256,17 +256,19 @@ async def get_analysis_status(
     analyzed = (await session.execute(analyzed_q)).scalar() or 0
     failed_q = post_base.where(Post.analysis_status == "failed")
     failed = (await session.execute(failed_q)).scalar() or 0
+    skipped_q = post_base.where(Post.analysis_status == "skipped")
+    skipped = (await session.execute(skipped_q)).scalar() or 0
 
     # Count insights
     insights = (await session.execute(insight_base)).scalar() or 0
 
     # Get timing stats
-    avg_q = select(func.avg(Post.analysis_duration_ms)).where(Post.analyzed == True)
+    avg_q = select(func.avg(Post.analysis_duration_ms)).where(Post.analysis_status == "complete")
     if sub_names is not None:
         avg_q = avg_q.where(Post.subreddit.in_(sub_names))
     avg_ms = (await session.execute(avg_q)).scalar()
 
-    last_q = select(func.max(Post.analyzed_at)).where(Post.analyzed == True)
+    last_q = select(func.max(Post.analyzed_at)).where(Post.analysis_status == "complete")
     if sub_names is not None:
         last_q = last_q.where(Post.subreddit.in_(sub_names))
     last_at = (await session.execute(last_q)).scalar()
@@ -293,6 +295,7 @@ async def get_analysis_status(
         "analyzed_posts": analyzed,
         "unanalyzed_posts": total - analyzed,
         "failed_posts": failed,
+        "skipped_posts": skipped,
         "total_insights": insights,
         "total_themes": themes,
         "insights_by_type": insights_by_type,

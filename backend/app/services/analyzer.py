@@ -250,6 +250,84 @@ def _validate_quote(quote: str, source_chunks: list[str], threshold: float = 0.7
     return False
 
 
+SELF_PROMO_RE = re.compile(
+    r"\b(i|we)\s+(built|made|created|launched|shipped|released)\b|"
+    r"\b(check\s+out|try\s+my|feedback\s+on\s+my|beta\s+test|early\s+access)\b",
+    re.IGNORECASE,
+)
+INTENT_RE = re.compile(
+    r"\b(problem|pain|frustrat|struggl|annoy|wish|looking\s+for|recommend|"
+    r"alternative|tool|software|workflow|pricing|cost|budget|how\s+do|what\s+is|"
+    r"need\s+a|is\s+there\s+a)\b",
+    re.IGNORECASE,
+)
+
+
+def assess_post_signal(post: Post) -> tuple[int, Optional[str]]:
+    """Score a post's likelihood of producing useful product research evidence.
+
+    Returns `(signal_score, skip_reason)`. A skip reason means the post should be
+    marked as processed without spending an LLM call.
+    """
+    title = (post.title or "").strip()
+    body = (post.body or "").strip()
+    combined = f"{title}\n{body}".strip()
+    combined_lower = combined.lower()
+    text_len = len(combined)
+    score = post.score or 0
+    comments = post.num_comments or 0
+
+    if combined_lower in {"[deleted]", "[removed]"} or (
+        title.lower() in {"[deleted]", "[removed]"} and not body
+    ):
+        return 0, "deleted_or_removed"
+
+    signal = 0
+
+    if score >= 100:
+        signal += 35
+    elif score >= 50:
+        signal += 28
+    elif score >= 10:
+        signal += 18
+    elif score >= 3:
+        signal += 8
+
+    if comments >= 50:
+        signal += 25
+    elif comments >= 20:
+        signal += 18
+    elif comments >= 5:
+        signal += 10
+    elif comments >= 1:
+        signal += 4
+
+    if text_len >= 500:
+        signal += 20
+    elif text_len >= 160:
+        signal += 12
+    elif text_len >= 60:
+        signal += 6
+
+    if INTENT_RE.search(combined):
+        signal += 12
+
+    likely_self_promo = bool(SELF_PROMO_RE.search(combined))
+    if likely_self_promo:
+        signal -= 20
+
+    signal = max(0, min(100, signal))
+
+    if likely_self_promo and score < 10 and comments < 3:
+        return signal, "likely_self_promotion_low_response"
+    if text_len < 40 and score < 3 and comments < 2:
+        return signal, "too_little_text_and_engagement"
+    if signal < 12 and score < 5 and comments < 3:
+        return signal, "low_research_signal"
+
+    return signal, None
+
+
 class AnalyzerService:
     """Analyzes Reddit posts using LLM to extract insights."""
 
@@ -387,6 +465,7 @@ class AnalyzerService:
             post.analyzed = True
             post.analysis_status = "complete"
             post.analysis_error = None
+            post.analysis_skip_reason = None
             post.analyzed_at = datetime.now(timezone.utc)
             post.analysis_duration_ms = duration_ms
 
@@ -444,6 +523,7 @@ class AnalyzerService:
             post.analyzed = False
             post.analysis_status = "failed"
             post.analysis_error = str(e)[:1000]
+            post.analysis_skip_reason = None
             post.analyzed_at = datetime.now(timezone.utc)
 
         return insights
@@ -460,6 +540,7 @@ class AnalyzerService:
         """
         stats = {
             "posts_analyzed": 0,
+            "posts_skipped": 0,
             "insights_extracted": 0,
             "total_duration_ms": 0,
             "avg_duration_ms": 0,
@@ -486,7 +567,7 @@ class AnalyzerService:
                         Post.subreddit.in_(active_sub_names),
                     )
                 )
-                .order_by(Post.score.desc())
+                .order_by(Post.signal_score.desc(), Post.score.desc())
                 .limit(limit)
             )
             posts = result.scalars().all()
@@ -501,6 +582,21 @@ class AnalyzerService:
                 try:
                     # Use savepoint per post for isolation
                     async with session.begin_nested():
+                        signal_score, skip_reason = assess_post_signal(post)
+                        post.signal_score = signal_score
+                        if skip_reason:
+                            post.analyzed = True
+                            post.analysis_status = "skipped"
+                            post.analysis_skip_reason = skip_reason
+                            post.analysis_error = None
+                            post.analyzed_at = datetime.now(timezone.utc)
+                            stats["posts_skipped"] += 1
+                            logger.info(
+                                f"Skipped post {post.id}: {skip_reason} "
+                                f"(signal_score={signal_score})"
+                            )
+                            continue
+
                         existing_themes = themes_cache.get(post.subreddit, [])
                         insights = await self.analyze_post(session, post, existing_themes=existing_themes)
                         # Accumulate newly created themes so subsequent posts can reuse them
@@ -528,6 +624,7 @@ class AnalyzerService:
 
         logger.info(
             f"Analysis complete: {stats['posts_analyzed']} posts, "
+            f"{stats['posts_skipped']} skipped, "
             f"{stats['insights_extracted']} insights, "
             f"total={total_run_time}ms, avg={stats['avg_duration_ms']}ms/post"
         )
