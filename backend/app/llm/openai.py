@@ -1,5 +1,7 @@
 """OpenAI LLM provider."""
 
+import asyncio
+import logging
 import os
 import time
 from typing import Optional
@@ -8,6 +10,8 @@ import httpx
 
 from app.config import Config
 from app.llm.base import BaseLLMProvider, LLMProviderError, LLMResponse
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -67,13 +71,32 @@ class OpenAIProvider(BaseLLMProvider):
             "Authorization": f"Bearer {self.api_key}",
         }
 
+        max_retries = 5
+
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers=headers,
-                )
+                response = None
+
+                for attempt in range(max_retries):
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        json=payload,
+                        headers=headers,
+                    )
+
+                    if response.status_code == 429:
+                        retry_after = float(
+                            response.headers.get("retry-after", 2 ** attempt)
+                        )
+                        wait_time = min(retry_after, 60)
+                        logger.warning(
+                            f"Rate limited (429), retrying in {wait_time:.1f}s "
+                            f"(attempt {attempt + 1}/{max_retries})"
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
+
+                    break  # Not a 429, proceed
 
                 if response.status_code != 200:
                     error_data = response.json() if response.content else {}

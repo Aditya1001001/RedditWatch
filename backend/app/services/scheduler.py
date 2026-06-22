@@ -66,11 +66,11 @@ class CollectionScheduler:
             replace_existing=True,
         )
 
-        # Job 5: Auto-analysis safety net — every 30 minutes
+        # Job 5: Auto-analysis safety net — every 10 minutes
         if config.analysis.auto_analyze:
             self.scheduler.add_job(
                 self._maybe_run_analysis,
-                IntervalTrigger(minutes=30),
+                IntervalTrigger(minutes=10),
                 id="auto_analysis",
                 name="Auto-analysis (safety net)",
                 replace_existing=True,
