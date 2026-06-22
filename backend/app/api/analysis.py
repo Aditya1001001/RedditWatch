@@ -254,6 +254,8 @@ async def get_analysis_status(
     total = (await session.execute(post_base)).scalar() or 0
     analyzed_q = post_base.where(Post.analyzed == True)
     analyzed = (await session.execute(analyzed_q)).scalar() or 0
+    failed_q = post_base.where(Post.analysis_status == "failed")
+    failed = (await session.execute(failed_q)).scalar() or 0
 
     # Count insights
     insights = (await session.execute(insight_base)).scalar() or 0
@@ -290,6 +292,7 @@ async def get_analysis_status(
         "total_posts": total,
         "analyzed_posts": analyzed,
         "unanalyzed_posts": total - analyzed,
+        "failed_posts": failed,
         "total_insights": insights,
         "total_themes": themes,
         "insights_by_type": insights_by_type,

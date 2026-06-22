@@ -51,7 +51,7 @@ docker compose up
 
 Open http://localhost:8000
 
-**With local LLM (Ollama):**
+RedditWatch defaults to local LLM analysis with Ollama. For Docker, include the Ollama compose file:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
@@ -69,7 +69,7 @@ cd RedditWatch
 ### Prerequisites (Local)
 
 - Python 3.9+
-- [Ollama](https://ollama.ai) with `llama3.1:8b` model (or Claude/OpenAI API key)
+- [Ollama](https://ollama.ai) with `llama3.1:8b` model, or a Claude/OpenAI API key
 
 ```bash
 # Install Ollama and pull a model
@@ -78,13 +78,13 @@ ollama pull llama3.1:8b
 
 ## How It Works
 
-### 1. Add Subreddits
+### 1. Create An Audience
 
-Go to the **Subreddits** tab. Type a subreddit name or browse the curated catalog of 117 subreddits across 20 categories (startups, tech, marketing, cybersecurity, gaming, health, education, and more). When creating audience groups, the app suggests related subreddits from the same category.
+Create an audience for the market or customer segment you want to research. Add subreddits directly or browse the curated catalog of 117 subreddits across 20 categories. Follow the audience when you want RedditWatch to collect it on scheduled or manual runs.
 
 ### 2. Collect Posts
 
-Click **Collect All Posts** on the Dashboard. RedditWatch scrapes posts and comments from old.reddit.com in the background — no API key, no rate limit worries.
+Click **Collect All**. RedditWatch collects posts and comments from followed audiences using public Reddit endpoints, with local rate limiting and fallbacks for empty or blocked responses.
 
 ### 3. Analyze with LLM
 
@@ -130,6 +130,8 @@ server:
     allowed_origins:
       - "http://localhost:8000"
 ```
+
+RedditWatch is designed for local/self-hosted use and does not include authentication. Do not expose it directly to the public internet without adding access control in front of it.
 
 ## API
 

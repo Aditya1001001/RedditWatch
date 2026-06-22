@@ -62,8 +62,8 @@ class TestCollectionEndpoints:
         response = await client.get("/api/collect/status")
         assert response.status_code == 200
 
-    async def test_trigger_collection_returns_task(self, client):
-        """Collection should return a task_id immediately."""
+    async def test_trigger_collection_requires_followed_audience(self, client):
+        """Collection should explain why it cannot run with no followed audience."""
         with patch("app.api.collect.get_collector") as mock:
             collector = AsyncMock()
             collector.collect_all = AsyncMock(return_value={
@@ -76,10 +76,10 @@ class TestCollectionEndpoints:
             mock.return_value = collector
 
             response = await client.post("/api/collect")
-            assert response.status_code == 200
+            assert response.status_code == 400
             data = response.json()
-            assert "task_id" in data
-            assert data["task_type"] == "collection"
+            assert "No followed audiences" in data["detail"]
+            collector.collect_all.assert_not_called()
 
 
 @pytest.mark.asyncio

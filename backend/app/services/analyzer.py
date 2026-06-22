@@ -385,6 +385,8 @@ class AnalyzerService:
             # Update post with analysis metadata
             post.category = validated.category
             post.analyzed = True
+            post.analysis_status = "complete"
+            post.analysis_error = None
             post.analyzed_at = datetime.now(timezone.utc)
             post.analysis_duration_ms = duration_ms
 
@@ -439,7 +441,10 @@ class AnalyzerService:
 
         except Exception as e:
             logger.error(f"Failed to analyze post {post.id}: {e}")
-            post.analyzed = True  # Mark as analyzed even on failure to avoid retry loops
+            post.analyzed = False
+            post.analysis_status = "failed"
+            post.analysis_error = str(e)[:1000]
+            post.analyzed_at = datetime.now(timezone.utc)
 
         return insights
 

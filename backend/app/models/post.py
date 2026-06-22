@@ -36,6 +36,9 @@ class Post(Base):
     upvote_ratio: Mapped[Optional[float]] = mapped_column(Float)
     num_comments: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Flair
+    link_flair_text: Mapped[Optional[str]] = mapped_column(String(100))
+
     # URLs
     permalink: Mapped[Optional[str]] = mapped_column(Text)
     url: Mapped[Optional[str]] = mapped_column(Text)
@@ -48,6 +51,10 @@ class Post(Base):
 
     # Analysis status
     analyzed: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    analysis_status: Mapped[str] = mapped_column(
+        String(20), default="pending", index=True
+    )  # pending, complete, failed
+    analysis_error: Mapped[Optional[str]] = mapped_column(Text)
     analyzed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     analysis_duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
     category: Mapped[Optional[str]] = mapped_column(

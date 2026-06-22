@@ -82,6 +82,20 @@ async def init_db() -> None:
 
         try:
             await conn.execute(text(
+                "ALTER TABLE posts ADD COLUMN analysis_status VARCHAR(20) DEFAULT 'pending'"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            await conn.execute(text(
+                "ALTER TABLE posts ADD COLUMN analysis_error TEXT"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            await conn.execute(text(
                 "ALTER TABLE audiences ADD COLUMN active BOOLEAN DEFAULT 0"
             ))
         except Exception:
