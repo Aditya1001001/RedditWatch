@@ -114,6 +114,7 @@ class SearchService:
                 "theme_key": i.get("theme_key", ""),
                 "intensity_score": i.get("intensity_score", 0),
                 "post_id": i.get("post_id", ""),
+                "subreddit": i.get("subreddit", ""),
             }
             for i in insights
         ]
@@ -134,6 +135,7 @@ class SearchService:
         type_filter: Optional[str],
         theme_filter: Optional[str],
         min_intensity: Optional[int],
+        subreddits: Optional[list[str]] = None,
     ) -> list[dict]:
         """Synchronous search implementation."""
         collection = self._get_collection()
@@ -148,6 +150,8 @@ class SearchService:
             where_conditions.append({"theme_key": {"$eq": theme_filter}})
         if min_intensity is not None:
             where_conditions.append({"intensity_score": {"$gte": min_intensity}})
+        if subreddits:
+            where_conditions.append({"subreddit": {"$in": subreddits}})
 
         if len(where_conditions) == 1:
             where = where_conditions[0]
@@ -184,6 +188,7 @@ class SearchService:
         type_filter: Optional[str] = None,
         theme_filter: Optional[str] = None,
         min_intensity: Optional[int] = None,
+        subreddits: Optional[list[str]] = None,
     ) -> list[dict]:
         """
         Semantic search for insights (sync).
@@ -194,11 +199,12 @@ class SearchService:
             type_filter: Filter by insight type
             theme_filter: Filter by theme_key
             min_intensity: Minimum intensity score
+            subreddits: Filter to these subreddits only
 
         Returns:
             List of matching insights with scores
         """
-        return self._search_sync(query, limit, type_filter, theme_filter, min_intensity)
+        return self._search_sync(query, limit, type_filter, theme_filter, min_intensity, subreddits)
 
     async def search_async(
         self,
@@ -207,6 +213,7 @@ class SearchService:
         type_filter: Optional[str] = None,
         theme_filter: Optional[str] = None,
         min_intensity: Optional[int] = None,
+        subreddits: Optional[list[str]] = None,
     ) -> list[dict]:
         """
         Semantic search with timeout protection.
@@ -216,7 +223,7 @@ class SearchService:
         """
         return await asyncio.wait_for(
             asyncio.to_thread(
-                self._search_sync, query, limit, type_filter, theme_filter, min_intensity
+                self._search_sync, query, limit, type_filter, theme_filter, min_intensity, subreddits
             ),
             timeout=CHROMA_TIMEOUT,
         )
