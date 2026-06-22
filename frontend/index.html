@@ -477,6 +477,53 @@
         <!-- ═══════════════════════════════════════════ -->
         <div x-show="!activeAudienceId" x-transition:enter="animate-in">
 
+            <!-- Product framing -->
+            <div class="mb-6 border border-border rounded-lg bg-surface-1 overflow-hidden">
+                <div class="p-5 md:p-6">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                        <div class="max-w-2xl">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-accent mb-2">Reddit market research workspace</p>
+                            <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-text-primary mb-3">
+                                Turn public Reddit conversations into product evidence.
+                            </h1>
+                            <p class="text-sm text-text-secondary leading-relaxed">
+                                Build an audience from relevant subreddits, collect recent conversations, then use AI to extract pain points, product mentions, solution requests, and opportunity themes with source quotes.
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 lg:w-[360px]">
+                            <div class="bg-surface-2 rounded-lg px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Audiences</p>
+                                <p class="text-lg font-bold tabular-nums text-text-primary" x-text="audiences.length"></p>
+                            </div>
+                            <div class="bg-surface-2 rounded-lg px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Following</p>
+                                <p class="text-lg font-bold tabular-nums text-text-primary" x-text="audiences.filter(a => a.active).length"></p>
+                            </div>
+                            <div class="bg-surface-2 rounded-lg px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Posts</p>
+                                <p class="text-lg font-bold tabular-nums text-text-primary" x-text="postStats.total_posts || 0"></p>
+                            </div>
+                            <div class="bg-surface-2 rounded-lg px-3 py-3">
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1">Insights</p>
+                                <p class="text-lg font-bold tabular-nums text-text-primary" x-text="analysisStatus.total_insights || 0"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 border-t border-border">
+                    <template x-for="step in researchLoopSteps()" :key="step.label">
+                        <div class="px-5 py-4 border-t md:border-t-0 md:border-l first:border-l-0 border-border/70">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="w-2 h-2 rounded-full"
+                                      :class="step.done ? 'bg-insight-opportunity' : 'bg-surface-4'"></span>
+                                <p class="text-xs font-semibold text-text-secondary" x-text="step.label"></p>
+                            </div>
+                            <p class="text-xs text-text-muted leading-relaxed" x-text="step.detail"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <!-- Tab Bar + Action Buttons -->
             <div class="flex items-center justify-between mb-6">
                 <nav class="flex gap-0 border-b border-border" role="tablist">
@@ -542,12 +589,25 @@
 
                 <!-- Empty state -->
                 <div x-show="audiences.length === 0" class="text-center py-16 border border-dashed border-border rounded-lg">
-                    <p class="text-text-secondary text-sm mb-1">Create an audience to get started</p>
-                    <p class="text-text-muted text-xs mb-4">Group subreddits into audiences to track insights, themes, and trends</p>
-                    <button @click="openAudienceForm()"
-                            class="bg-accent hover:bg-accent-dark text-surface-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150">
-                        + New Audience
-                    </button>
+                    <p class="text-text-secondary text-sm mb-1">Start with a market or customer segment</p>
+                    <p class="text-text-muted text-xs mb-5 max-w-md mx-auto leading-relaxed">
+                        An audience is a saved group of subreddits. Follow it to include those conversations in collection and analysis.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-center gap-2">
+                        <button @click="createStarterAudience()"
+                                :disabled="addingSubreddit"
+                                class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150">
+                            Create SaaS Starter
+                        </button>
+                        <button @click="openAudienceForm()"
+                                class="bg-surface-3 hover:bg-surface-4 text-text-secondary px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                            Custom Audience
+                        </button>
+                        <button @click="landingTab = 'discover'"
+                                class="text-accent hover:text-accent-light px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150">
+                            Browse catalog
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Grid -->
@@ -878,6 +938,52 @@
                 </p>
             </div>
 
+            <!-- Research progress panel -->
+            <div class="mb-6 border border-border rounded-lg bg-surface-1">
+                <div class="px-5 py-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-text-primary">Research loop</h3>
+                        <p class="text-xs text-text-muted mt-1" x-text="audienceProgressSummary()"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button x-show="!activeAudience()?.active"
+                                @click="toggleFollow(activeAudience())"
+                                class="bg-accent hover:bg-accent-dark text-surface-0 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-150">
+                            Follow audience
+                        </button>
+                        <button x-show="activeAudienceSubreddits.length === 0"
+                                @click="openAudienceForm(activeAudience())"
+                                class="bg-accent hover:bg-accent-dark text-surface-0 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-150">
+                            Add subreddits
+                        </button>
+                        <button x-show="activeAudience()?.active && activeAudienceSubreddits.length > 0 && (postsData.total || 0) === 0"
+                                @click="collectAll()"
+                                :disabled="collecting"
+                                class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-150">
+                            Collect conversations
+                        </button>
+                        <button x-show="(analysisStatus.total_insights || 0) > 0"
+                                @click="generateReport()"
+                                class="bg-surface-3 hover:bg-surface-4 text-text-secondary px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">
+                            Export report
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4">
+                    <template x-for="step in audienceSetupSteps()" :key="step.label">
+                        <div class="px-5 py-4 border-t md:border-t-0 md:border-l first:border-l-0 border-border/70">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                                      :class="step.done ? 'bg-insight-opportunity/15 text-insight-opportunity' : 'bg-surface-3 text-text-muted'"
+                                      x-text="step.done ? '✓' : step.index"></span>
+                                <p class="text-xs font-semibold text-text-secondary" x-text="step.label"></p>
+                            </div>
+                            <p class="text-xs text-text-muted leading-relaxed" x-text="step.detail"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <!-- ═══ Single scrollable Insights page ═══ -->
             <div class="space-y-6">
 
@@ -1005,6 +1111,58 @@
                     </p>
                 </div>
 
+                <!-- ── C2. Aha Overview ── -->
+                <div x-show="(analysisStatus.total_insights || 0) > 0" class="border border-border rounded-lg bg-surface-1 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-text-primary">What Reddit is telling you</h3>
+                            <p class="text-xs text-text-muted mt-1">Start here: strongest signals, recurring themes, and source evidence.</p>
+                        </div>
+                        <button @click="queryInput = 'What should I pay attention to first?'; queryMode = 'ask'; askAboutAudience()"
+                                class="text-accent hover:text-accent-light text-xs font-semibold transition-colors duration-150">
+                            Ask for readout →
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3">
+                        <template x-for="card in primaryFindingCards()" :key="card.key">
+                            <button @click="insightTypeFilter = card.key; selectedTheme = null; loadInsightsList()"
+                                    class="text-left px-5 py-4 border-t lg:border-t-0 lg:border-l first:border-l-0 border-border/70 hover:bg-surface-2 transition-colors duration-150">
+                                <p class="text-[11px] uppercase tracking-wider text-text-muted mb-1" x-text="card.label"></p>
+                                <p class="text-2xl font-bold tabular-nums mb-1" :class="card.color" x-text="card.count"></p>
+                                <p class="text-xs text-text-muted leading-relaxed" x-text="card.detail"></p>
+                            </button>
+                        </template>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 border-t border-border">
+                        <div class="px-5 py-4">
+                            <p class="text-[11px] uppercase tracking-wider text-text-muted mb-2">Top theme</p>
+                            <template x-if="topTheme()">
+                                <button @click="selectTheme(topTheme().theme_key)"
+                                        class="text-left w-full bg-surface-2 hover:bg-surface-3 rounded-lg px-4 py-3 transition-colors duration-150">
+                                    <p class="text-sm font-semibold text-text-primary capitalize" x-text="topTheme().theme_key.replace(/_/g, ' ')"></p>
+                                    <p class="text-xs text-text-muted mt-1" x-text="topTheme().count + ' related insights'"></p>
+                                </button>
+                            </template>
+                            <p x-show="!topTheme()" class="text-xs text-text-muted">Themes appear after analysis groups repeated patterns.</p>
+                        </div>
+                        <div class="px-5 py-4 border-t lg:border-t-0 lg:border-l border-border/70">
+                            <p class="text-[11px] uppercase tracking-wider text-text-muted mb-2">Evidence quote</p>
+                            <template x-if="strongestQuote()">
+                                <div class="bg-accent/[0.04] border-l-2 border-accent/40 rounded-r-lg px-4 py-3">
+                                    <p class="font-serif text-sm text-text-primary/90 italic leading-relaxed">
+                                        "<span x-text="strongestQuote().quote"></span>"
+                                    </p>
+                                    <p class="text-xs text-text-muted mt-2">
+                                        — <span x-text="strongestQuote().quote_author || 'anonymous'"></span>,
+                                        <span x-text="'r/' + strongestQuote().subreddit"></span>
+                                    </p>
+                                </div>
+                            </template>
+                            <p x-show="!strongestQuote()" class="text-xs text-text-muted">Source quotes appear here when extracted from analyzed Reddit discussions.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── D. Insight Type Cards ── -->
                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     <template x-for="it in insightTypeConfig" :key="it.key">
@@ -1129,8 +1287,26 @@
 
                     <!-- Insights list -->
                     <div x-show="!loadingAudience && insightsList.length === 0" class="text-center py-12 border border-dashed border-border rounded-lg">
-                        <p class="text-text-muted text-sm">No insights yet</p>
-                        <p class="text-text-muted text-xs mt-1">Run analysis on collected posts</p>
+                        <p class="text-text-muted text-sm" x-text="emptyInsightTitle()"></p>
+                        <p class="text-text-muted text-xs mt-1 max-w-md mx-auto leading-relaxed" x-text="emptyInsightDetail()"></p>
+                        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                            <button x-show="activeAudienceSubreddits.length === 0"
+                                    @click="openAudienceForm(activeAudience())"
+                                    class="bg-accent hover:bg-accent-dark text-surface-0 px-4 py-2 rounded-lg text-xs font-semibold transition-colors duration-150">
+                                Add subreddits
+                            </button>
+                            <button x-show="activeAudience()?.active && activeAudienceSubreddits.length > 0 && (postsData.total || 0) === 0"
+                                    @click="collectAll()"
+                                    :disabled="collecting"
+                                    class="bg-accent hover:bg-accent-dark disabled:opacity-40 text-surface-0 px-4 py-2 rounded-lg text-xs font-semibold transition-colors duration-150">
+                                Collect conversations
+                            </button>
+                            <button x-show="!activeAudience()?.active && activeAudienceSubreddits.length > 0"
+                                    @click="toggleFollow(activeAudience())"
+                                    class="bg-accent hover:bg-accent-dark text-surface-0 px-4 py-2 rounded-lg text-xs font-semibold transition-colors duration-150">
+                                Follow audience
+                            </button>
+                        </div>
                     </div>
 
                     <div class="space-y-4">
@@ -1223,7 +1399,7 @@
                             <canvas id="themeTimelineChart"></canvas>
                         </div>
                         <p x-show="!themeTimeline.themes?.length" class="text-text-muted text-center py-8 text-sm">
-                            No theme data yet. Run analysis to see trends.
+                            No trend data yet. Trends appear after collected conversations have been analyzed.
                         </p>
                     </div>
                 </div>
@@ -1447,6 +1623,7 @@
                     await Promise.all([
                         this.loadGrowthSummary(),
                         this.loadTrendingData(),
+                        this.loadAnalysisStatus(),
                         this.loadSearchStats(),
                     ]);
                     this.checkBgCollection();
@@ -1594,6 +1771,93 @@
 
                 activeAudience() {
                     return this.audiences.find(a => a.id === this.activeAudienceId);
+                },
+
+                researchLoopSteps() {
+                    const followed = this.audiences.filter(a => a.active).length;
+                    return [
+                        {
+                            label: 'Define audience',
+                            done: this.audiences.length > 0,
+                            detail: this.audiences.length > 0
+                                ? `${this.audiences.length} saved audience${this.audiences.length === 1 ? '' : 's'}`
+                                : 'Pick a market, persona, or competitor space.',
+                        },
+                        {
+                            label: 'Follow sources',
+                            done: followed > 0,
+                            detail: followed > 0
+                                ? `${followed} audience${followed === 1 ? '' : 's'} included in collection`
+                                : 'Follow an audience to make it collectible.',
+                        },
+                        {
+                            label: 'Collect conversations',
+                            done: (this.postStats.total_posts || 0) > 0,
+                            detail: (this.postStats.total_posts || 0) > 0
+                                ? `${this.postStats.total_posts} Reddit posts stored`
+                                : 'Fetch posts and comments from followed subreddits.',
+                        },
+                        {
+                            label: 'Extract evidence',
+                            done: (this.analysisStatus.total_insights || 0) > 0,
+                            detail: (this.analysisStatus.total_insights || 0) > 0
+                                ? `${this.analysisStatus.total_insights} insights ready`
+                                : 'AI turns conversations into themes and quotes.',
+                        },
+                    ];
+                },
+
+                audienceSetupSteps() {
+                    return [
+                        {
+                            index: 1,
+                            label: 'Audience',
+                            done: this.activeAudienceSubreddits.length > 0,
+                            detail: this.activeAudienceSubreddits.length > 0
+                                ? `${this.activeAudienceSubreddits.length} subreddit${this.activeAudienceSubreddits.length === 1 ? '' : 's'} selected`
+                                : 'Add subreddits that match the market you want to research.',
+                        },
+                        {
+                            index: 2,
+                            label: 'Following',
+                            done: !!this.activeAudience()?.active,
+                            detail: this.activeAudience()?.active
+                                ? 'Included when collection runs.'
+                                : 'Follow this audience before collecting.',
+                        },
+                        {
+                            index: 3,
+                            label: 'Conversations',
+                            done: (this.postsData.total || 0) > 0,
+                            detail: (this.postsData.total || 0) > 0
+                                ? `${this.postsData.total} posts collected for this audience`
+                                : 'Collect recent posts and comments.',
+                        },
+                        {
+                            index: 4,
+                            label: 'Insights',
+                            done: (this.analysisStatus.total_insights || 0) > 0,
+                            detail: (this.analysisStatus.total_insights || 0) > 0
+                                ? `${this.analysisStatus.total_insights} evidence-backed insights`
+                                : 'Analysis runs after collection when an LLM is available.',
+                        },
+                    ];
+                },
+
+                audienceProgressSummary() {
+                    if (this.activeAudienceSubreddits.length === 0) {
+                        return 'Choose subreddits first. RedditWatch needs sources before it can collect conversations.';
+                    }
+                    if (!this.activeAudience()?.active) {
+                        return 'This audience is saved but not followed. Follow it to include it in collection.';
+                    }
+                    if ((this.postsData.total || 0) === 0) {
+                        return 'Ready to collect. Fetch Reddit conversations to start building evidence.';
+                    }
+                    if ((this.analysisStatus.total_insights || 0) === 0) {
+                        return 'Conversations are collected. Analysis will turn them into product research signals.';
+                    }
+                    return 'Insights are ready. Review themes, ask questions, and export a report.';
                 },
 
                 async loadAudiences() {
@@ -1932,6 +2196,52 @@
                     await this.addSubreddit();
                 },
 
+                async createStarterAudience() {
+                    const starterSubs = ['SaaS', 'startups', 'Entrepreneur', 'ProductManagement', 'marketing'];
+                    this.addingSubreddit = true;
+                    try {
+                        for (const name of starterSubs) {
+                            if (this.isMonitored(name)) continue;
+                            const res = await fetch('/api/subreddits', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name }),
+                            });
+                            if (!res.ok && res.status !== 400) {
+                                const data = await res.json().catch(() => ({}));
+                                throw new Error(data.detail || `Could not add r/${name}`);
+                            }
+                        }
+                        await this.loadSubreddits();
+                        const existing = this.audiences.find(a => a.name.toLowerCase() === 'saas starter');
+                        if (existing) {
+                            await this.selectAudience(existing.id);
+                            this.showToast('Starter audience already exists', 'Opened SaaS Starter', 'info');
+                            return;
+                        }
+                        const res = await fetch('/api/audiences', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: 'SaaS Starter',
+                                description: 'Founders, product teams, and marketers tracking SaaS customer pain points.',
+                                color: '#5b9bd5',
+                                active: true,
+                                subreddit_names: starterSubs,
+                            }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'Could not create starter audience');
+                        await this.loadAudiences();
+                        await this.selectAudience(data.id);
+                        this.showToast('Starter audience created', 'Collect conversations when ready', 'success');
+                    } catch (e) {
+                        this.showToast('Starter setup failed', e.message, 'error');
+                    } finally {
+                        this.addingSubreddit = false;
+                    }
+                },
+
                 async removeSubreddit(name) {
                     if (!confirm(`Remove r/${name} from monitoring?`)) return;
                     try {
@@ -2136,6 +2446,66 @@
                         this.showToast('Load failed', 'Could not load insights', 'error');
                         this.insightsList = [];
                     }
+                },
+
+                primaryFindingCards() {
+                    const counts = this.analysisStatus.insights_by_type || {};
+                    const cards = [
+                        {
+                            key: 'pain_point',
+                            label: 'Pain points',
+                            count: counts.pain_point || 0,
+                            color: 'text-insight-pain',
+                            detail: 'Frustrations, blockers, and repeated complaints.',
+                        },
+                        {
+                            key: 'solution_request',
+                            label: 'Solution demand',
+                            count: (counts.solution_request || 0) + (counts.advice_request || 0),
+                            color: 'text-insight-solution',
+                            detail: 'People asking for tools, workflows, or recommendations.',
+                        },
+                        {
+                            key: 'product_mention',
+                            label: 'Product mentions',
+                            count: counts.product_mention || 0,
+                            color: 'text-insight-product',
+                            detail: 'Competitors, alternatives, and sentiment around existing tools.',
+                        },
+                    ];
+                    return cards;
+                },
+
+                topTheme() {
+                    return (this.themes || []).find(t => t.count > 0) || null;
+                },
+
+                strongestQuote() {
+                    return (this.insightsList || []).find(i => i.quote) || null;
+                },
+
+                emptyInsightTitle() {
+                    if (this.activeAudienceSubreddits.length === 0) return 'No sources selected yet';
+                    if (!this.activeAudience()?.active) return 'Audience is not followed';
+                    if ((this.postsData.total || 0) === 0) return 'No conversations collected yet';
+                    if (this.analysisStatus.status === 'running' || this.analysisStatus.status === 'pending') return 'Analysis is running';
+                    return 'No insights extracted yet';
+                },
+
+                emptyInsightDetail() {
+                    if (this.activeAudienceSubreddits.length === 0) {
+                        return 'Add subreddits that represent the market, persona, competitors, or customer problem space you want to research.';
+                    }
+                    if (!this.activeAudience()?.active) {
+                        return 'Follow this audience so Collect includes its subreddits.';
+                    }
+                    if ((this.postsData.total || 0) === 0) {
+                        return 'Collect conversations from followed subreddits. Analysis will start automatically after collection when an LLM provider is available.';
+                    }
+                    if (this.analysisStatus.status === 'running' || this.analysisStatus.status === 'pending') {
+                        return 'RedditWatch is reading collected posts and comments. Insights will appear here as analysis finishes.';
+                    }
+                    return 'Try collecting newer posts, checking the LLM provider, or lowering the analysis score threshold in configuration.';
                 },
 
                 async selectTheme(themeKey) {

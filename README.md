@@ -3,9 +3,9 @@
 [![Tests](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml/badge.svg)](https://github.com/Aditya1001001/RedditWatch/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Market research from Reddit, on your terms.**
+**Evidence-backed market research from Reddit conversations.**
 
-A self-hosted, LLM-powered tool that discovers pain points, product opportunities, and market signals from Reddit discussions. No Reddit API key needed. No monthly fees. Your data stays on your machine.
+A self-hosted, LLM-powered research workspace for founders, product teams, marketers, and researchers who want to monitor Reddit audiences and turn public conversations into pain points, product opportunities, buying signals, and source-backed quotes. No Reddit API key needed. No monthly fees. Your data stays on your machine.
 
 > GummySearch shut down in December 2025 after Reddit killed their API access. RedditWatch uses public endpoints (old.reddit.com) — it can't be shut down the same way. Free forever, open source.
 
@@ -78,27 +78,28 @@ ollama pull llama3.1:8b
 
 ## How It Works
 
-### 1. Create An Audience
+### 1. Define An Audience
 
-Create an audience for the market or customer segment you want to research. Add subreddits directly or browse the curated catalog of 117 subreddits across 20 categories. Follow the audience when you want RedditWatch to collect it on scheduled or manual runs.
+Create an audience for the market, persona, competitor space, or customer segment you want to research. Add subreddits directly or browse the curated catalog. Follow the audience when you want RedditWatch to include it in scheduled or manual collection.
 
-### 2. Collect Posts
+### 2. Collect Conversations
 
 Click **Collect All**. RedditWatch collects posts and comments from followed audiences using public Reddit endpoints, with local rate limiting and fallbacks for empty or blocked responses.
 
-### 3. Analyze with LLM
+### 3. Extract Insights
 
-Go to the **Insights** tab and click **Analyze Posts**. The LLM reads each post and its comments, then extracts:
+After collection, analysis runs automatically when an LLM provider is available. The LLM reads each post and its comments, then extracts:
 - **Pain Points** — User frustrations with intensity scores (0-100)
 - **Solution Requests** — "I wish there was a tool that..."
 - **Product Mentions** — Tools/services discussed, with sentiment
 - **Opportunities** — Market gaps and unmet needs
 
-### 4. Explore & Export
+### 4. Review Evidence & Export
 
 - **Themes** — Pain points grouped by theme (e.g., "onboarding_friction"), ranked by frequency x intensity
 - **Semantic Search** — Find insights by meaning, not just keywords
-- **Analytics** — Insight distribution, top themes, intensity scatter plots, collection timeline
+- **Ask** — Ask natural-language questions about a selected audience using retrieved insights
+- **Evidence** — Review source quotes and open the underlying Reddit discussion
 - **Export** — CSV, JSON, Markdown, or generate a full research report
 
 ## Configuration
