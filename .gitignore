@@ -43,6 +43,7 @@ data/*.sqlite3-*
 data/*-journal
 data/chroma/
 data/exports/
+data/reset-backups/
 
 # Logs
 *.log

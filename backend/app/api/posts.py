@@ -44,6 +44,8 @@ class PostResponse(BaseModel):
     analyzed: bool = False
     analysis_status: Optional[str] = None
     analysis_error: Optional[str] = None
+    analysis_skip_reason: Optional[str] = None
+    signal_score: int = 0
     category: Optional[str] = None
     reddit_url: str
 
@@ -70,6 +72,7 @@ class PostStats(BaseModel):
     total_posts: int
     analyzed_posts: int
     unanalyzed_posts: int
+    skipped_posts: int
     posts_by_subreddit: dict
     posts_by_category: dict
     posts_by_date: dict
@@ -142,6 +145,8 @@ async def list_posts(
                 analyzed=p.analyzed,
                 analysis_status=getattr(p, "analysis_status", None),
                 analysis_error=getattr(p, "analysis_error", None),
+                analysis_skip_reason=getattr(p, "analysis_skip_reason", None),
+                signal_score=getattr(p, "signal_score", 0) or 0,
                 category=p.category,
                 reddit_url=p.reddit_url,
             )
@@ -163,6 +168,9 @@ async def get_post_stats(session: AsyncSession = Depends(get_session)):
     total = (await session.execute(select(func.count(Post.id)))).scalar() or 0
     analyzed = (await session.execute(
         select(func.count(Post.id)).where(Post.analyzed == True)
+    )).scalar() or 0
+    skipped = (await session.execute(
+        select(func.count(Post.id)).where(Post.analysis_status == "skipped")
     )).scalar() or 0
 
     # By subreddit
@@ -199,6 +207,7 @@ async def get_post_stats(session: AsyncSession = Depends(get_session)):
         total_posts=total,
         analyzed_posts=analyzed,
         unanalyzed_posts=total - analyzed,
+        skipped_posts=skipped,
         posts_by_subreddit=posts_by_subreddit,
         posts_by_category=posts_by_category,
         posts_by_date=posts_by_date,
@@ -271,6 +280,8 @@ async def get_post(
         analyzed=post.analyzed,
         analysis_status=getattr(post, "analysis_status", None),
         analysis_error=getattr(post, "analysis_error", None),
+        analysis_skip_reason=getattr(post, "analysis_skip_reason", None),
+        signal_score=getattr(post, "signal_score", 0) or 0,
         category=post.category,
         reddit_url=post.reddit_url,
         comments=[

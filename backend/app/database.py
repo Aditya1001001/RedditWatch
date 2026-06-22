@@ -96,6 +96,20 @@ async def init_db() -> None:
 
         try:
             await conn.execute(text(
+                "ALTER TABLE posts ADD COLUMN analysis_skip_reason TEXT"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            await conn.execute(text(
+                "ALTER TABLE posts ADD COLUMN signal_score INTEGER DEFAULT 0"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            await conn.execute(text(
                 "ALTER TABLE audiences ADD COLUMN active BOOLEAN DEFAULT 0"
             ))
         except Exception:
@@ -123,11 +137,16 @@ if __name__ == "__main__":
     command = sys.argv[1]
 
     if command == "init":
-        asyncio.run(init_db())
+        # When this file is executed with `python -m app.database`, the module
+        # is also loaded as `__main__`. Import through `app.database` so models
+        # register against the same Base used by init_db().
+        from app.database import init_db as _init_db
+        asyncio.run(_init_db())
     elif command == "drop":
         confirm = input("This will delete all data. Are you sure? (yes/no): ")
         if confirm.lower() == "yes":
-            asyncio.run(drop_db())
+            from app.database import drop_db as _drop_db
+            asyncio.run(_drop_db())
         else:
             print("Aborted")
     else:

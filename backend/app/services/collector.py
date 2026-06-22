@@ -19,6 +19,7 @@ from app.config import Config, get_config
 from app.database import async_session_maker
 from app.models import Comment, MonitoredSubreddit, Post, SubscriberSnapshot
 from app.models.audience import Audience, audience_subreddits
+from app.services.analyzer import assess_post_signal
 from app.services.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -298,11 +299,14 @@ class CollectorService:
         # First pass: save / update all posts, collect new ones
         new_posts: list[Post] = []
         for post in posts:
+            signal_score, _skip_reason = assess_post_signal(post)
+            post.signal_score = signal_score
             existing = await session.get(Post, post.id)
             if existing:
                 existing.score = post.score
                 existing.num_comments = post.num_comments
                 existing.upvote_ratio = post.upvote_ratio
+                existing.signal_score = signal_score
                 stats["posts_collected"] += 1
             else:
                 session.add(post)
