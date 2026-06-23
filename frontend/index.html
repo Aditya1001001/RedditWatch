@@ -920,16 +920,6 @@
                                 Collecting…
                             </span>
                         </button>
-                        <button @click="collectDeep()"
-                                :disabled="collecting || !activeAudience()?.active || activeAudienceSubreddits.length === 0"
-                                class="bg-surface-3 hover:bg-surface-4 active:scale-[0.98] disabled:opacity-40 text-text-secondary px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150">
-                            <span x-show="!collecting">Deep Collect</span>
-                            <span x-show="collecting" class="flex items-center gap-2">
-                                <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg>
-                                Collecting…
-                            </span>
-                        </button>
-                        <span class="text-border-light mx-0.5">|</span>
                         <button @click="openAudienceForm(activeAudience())"
                                 class="text-text-muted hover:text-text-primary text-xs font-medium px-3 py-1.5 rounded-md hover:bg-surface-3 transition-all duration-150">
                             Edit
@@ -938,6 +928,31 @@
                                 class="text-insight-pain/60 hover:text-insight-pain text-xs font-medium px-3 py-1.5 rounded-md hover:bg-insight-pain/10 transition-all duration-150">
                             Delete
                         </button>
+                        <div class="relative">
+                            <button @click="showAdvancedControls = !showAdvancedControls"
+                                    class="text-text-muted hover:text-text-primary text-xs font-medium px-3 py-1.5 rounded-md hover:bg-surface-3 transition-all duration-150">
+                                Advanced
+                            </button>
+                            <div x-show="showAdvancedControls"
+                                 @click.outside="showAdvancedControls = false"
+                                 x-transition
+                                 class="absolute right-0 top-8 z-20 w-56 border border-border rounded-lg bg-surface-1 shadow-lg p-2">
+                                <button @click="collectDeep(); showAdvancedControls = false"
+                                        :disabled="collecting || !activeAudience()?.active || activeAudienceSubreddits.length === 0"
+                                        class="w-full text-left px-3 py-2 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-2 disabled:opacity-40 transition-colors duration-150">
+                                    Deep collect
+                                </button>
+                                <button @click="showPosts = true; loadPosts(); showAdvancedControls = false"
+                                        class="w-full text-left px-3 py-2 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors duration-150">
+                                    Browse raw posts
+                                </button>
+                                <button x-show="searchIndexStatus.status === 'needs_reindex' || searchIndexStatus.error"
+                                        @click="reindexSearch(); showAdvancedControls = false"
+                                        class="w-full text-left px-3 py-2 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors duration-150">
+                                    Refresh search index
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <!-- Compact stats -->
@@ -1086,12 +1101,44 @@
                                     <p class="text-xs font-semibold text-accent">Q: <span x-text="item.question"></span></p>
                                 </div>
                                 <div class="px-5 py-4 text-[13px] text-text-secondary leading-[1.7] prose-answer" x-html="safeMarkdown(item.answer)"></div>
+                                <div x-show="item.sources && item.sources.length > 0"
+                                     class="px-5 pb-4">
+                                    <div class="border-t border-border pt-3">
+                                        <p class="text-[11px] uppercase tracking-wider text-text-muted mb-2">Sources used</p>
+                                        <div class="space-y-2">
+                                            <template x-for="source in item.sources" :key="source.insight_id">
+                                                <div class="bg-surface-2 border border-border rounded-lg px-3 py-2.5">
+                                                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-accent-subtle text-accent"
+                                                              x-text="getThemeTypeLabel(source.type)"></span>
+                                                        <span class="text-xs font-semibold text-text-primary" x-text="source.title"></span>
+                                                        <span x-show="source.subreddit" class="text-xs text-text-muted" x-text="'r/' + source.subreddit"></span>
+                                                    </div>
+                                                    <p x-show="source.quote"
+                                                       class="font-serif text-sm text-text-secondary italic leading-relaxed">
+                                                        "<span x-text="source.quote"></span>"
+                                                    </p>
+                                                    <div class="flex items-center justify-between gap-3 mt-2 text-xs">
+                                                        <span x-show="source.quote_author" class="text-text-muted" x-text="'— u/' + source.quote_author"></span>
+                                                        <a x-show="source.reddit_url"
+                                                           :href="source.reddit_url"
+                                                           target="_blank"
+                                                           rel="noopener"
+                                                           class="ml-auto text-accent hover:text-accent-light transition-colors duration-150">
+                                                            View source →
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </template>
                     </div>
 
                     <!-- Search index status -->
-                    <div x-show="searchIndexStatus.status === 'needs_reindex' || searchIndexStatus.error"
+                    <div x-show="(analysisStatus.total_insights || 0) > 0 && (searchIndexStatus.status === 'needs_reindex' || searchIndexStatus.error)"
                          class="flex items-center justify-between gap-3 border border-insight-solution/30 bg-insight-solution/10 rounded-lg px-4 py-3">
                         <p class="text-xs text-text-secondary">
                             <span class="font-semibold text-insight-solution">Search index needs refresh.</span>
@@ -1103,7 +1150,7 @@
                         </p>
                         <button @click="reindexSearch()"
                                 class="shrink-0 bg-surface-3 hover:bg-surface-4 text-text-secondary px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150">
-                            Reindex
+                            Refresh index
                         </button>
                     </div>
 
@@ -1286,7 +1333,8 @@
                             </template>
                             <p x-show="themes.filter(t => t.count >= 3).length === 0" class="text-xs text-text-muted">No topics yet — run analysis to extract signals</p>
                         </div>
-                        <button @click="consolidateThemes()" :disabled="consolidating || themes.length < 3"
+                        <button x-show="themes.length >= 3"
+                                @click="consolidateThemes()" :disabled="consolidating || themes.length < 3"
                                 class="text-xs text-text-muted hover:text-accent disabled:opacity-40 transition-colors duration-150">
                             Merge similar topics
                         </button>
@@ -1673,6 +1721,7 @@
                 showTopics: false,
                 showTrends: false,
                 showPosts: false,
+                showAdvancedControls: false,
 
                 // Signal type configuration for three-column layout
                 insightTypeConfig: [
@@ -1968,6 +2017,7 @@
                     this.showTopics = false;
                     this.showTrends = false;
                     this.showPosts = false;
+                    this.showAdvancedControls = false;
                     this.loadingAudience = true;
                     try {
                         await Promise.all([
@@ -2778,16 +2828,16 @@
                         });
                         if (res.ok) {
                             const data = await res.json();
-                            this.queryHistory.unshift({ question, answer: data.answer });
+                            this.queryHistory.unshift({ question, answer: data.answer, sources: data.sources || [] });
                             this.queryInput = '';
                         } else if (res.status === 503) {
-                            this.queryHistory.unshift({ question, answer: 'AI is not configured. Set up an LLM provider (Ollama, Claude, or OpenAI) to use this feature.' });
+                            this.queryHistory.unshift({ question, answer: 'AI is not configured. Set up an LLM provider (Ollama, Claude, or OpenAI) to use this feature.', sources: [] });
                         } else {
                             const data = await res.json();
-                            this.queryHistory.unshift({ question, answer: data.detail || 'Failed to get answer.' });
+                            this.queryHistory.unshift({ question, answer: data.detail || 'Failed to get answer.', sources: [] });
                         }
                     } catch (e) {
-                        this.queryHistory.unshift({ question, answer: 'Error: ' + e.message });
+                        this.queryHistory.unshift({ question, answer: 'Error: ' + e.message, sources: [] });
                     }
                     this.askLoading = false;
                 },

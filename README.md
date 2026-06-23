@@ -105,9 +105,22 @@ After collection, analysis runs automatically when an LLM provider is available.
 
 - **Themes** — Signals grouped by theme (e.g., "onboarding_friction"), ranked by frequency x signal strength
 - **Semantic Search** — Find signals by meaning, not just keywords
-- **Ask** — Ask natural-language questions about a selected audience using retrieved signals
+- **Ask** — Ask natural-language questions about a selected audience using retrieved signals, with source cards under grounded answers
 - **Evidence** — Review source quotes and open the underlying Reddit discussion
 - **Export** — CSV, JSON, Markdown, or generate a source-backed market signal report
+
+## Why Trust The Signals?
+
+RedditWatch is designed to keep market signals tied to source evidence:
+
+- **Verbatim quotes required** — Extracted quotes must come directly from the post or comments.
+- **Quote validation** — The analyzer checks extracted quotes against the source text and removes quotes it cannot verify.
+- **Self-promotion handling** — Posts that are mostly founder promotion are de-weighted or skipped unless the community response contains useful signal.
+- **Low-signal skips** — Deleted, thin, or low-response posts can be marked as skipped before spending LLM calls.
+- **Source links stay attached** — Signals, Ask answers, and reports preserve subreddit context, source quotes, and Reddit links.
+- **Local-first storage** — Collected conversations, signals, and search indexes live in your local runtime data.
+
+These signals are evidence for product and market thinking, not proof of demand by themselves.
 
 ## Demo Positioning
 
