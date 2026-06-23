@@ -7,7 +7,7 @@
 
 A self-hosted community intelligence workspace for PMs, founders, marketers, researchers, and builders who want to understand repeated pain, demand, advice-seeking, workarounds, and product mentions across public Reddit communities. Reddit search helps you find threads. RedditWatch helps you find the patterns hiding across them, with source quotes and Reddit links behind every signal.
 
-> GummySearch shut down in December 2025 after Reddit killed their API access. RedditWatch uses public endpoints (old.reddit.com) — it can't be shut down the same way. Free forever, open source.
+RedditWatch uses public Reddit endpoints and local storage, so it does not require Reddit API credentials or a hosted vendor account. Public Reddit surfaces can still change, but the app is designed to be easy to inspect, adapt, and run yourself.
 
 ![RedditWatch Dashboard](screenshots/v0.3/dashboard.png)
 
@@ -18,7 +18,7 @@ A self-hosted community intelligence workspace for PMs, founders, marketers, res
 
 ## Why RedditWatch?
 
-- **No Reddit API key required** — Uses public old.reddit.com endpoints. Immune to API policy changes.
+- **No Reddit API key required** — Uses public old.reddit.com endpoints and local storage.
 - **Free and open source** — Self-host it. No subscriptions, no vendor lock-in.
 - **Ranked, source-backed market signals** — Find repeated pain, demand, advice, and product signals from public Reddit communities.
 - **Works with free local models** — Defaults to Ollama (llama3.1:8b). Zero cost, fully private. Also supports Claude and OpenAI.
@@ -48,8 +48,8 @@ A self-hosted community intelligence workspace for PMs, founders, marketers, res
 ### Option 1: Docker (Recommended)
 
 ```bash
-git clone https://github.com/Aditya1001001/redditwatch-pro.git
-cd redditwatch-pro
+git clone https://github.com/Aditya1001001/RedditWatch.git
+cd RedditWatch
 cp .env.example .env
 docker compose up
 ```
@@ -62,11 +62,13 @@ RedditWatch defaults to local LLM analysis with Ollama. For Docker, include the 
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
 ```
 
+The Ollama compose override sets `OLLAMA_BASE_URL=http://ollama:11434` for the app container automatically.
+
 ### Option 2: Local Install
 
 ```bash
-git clone https://github.com/Aditya1001001/redditwatch-pro.git
-cd redditwatch-pro
+git clone https://github.com/Aditya1001001/RedditWatch.git
+cd RedditWatch
 ./scripts/setup.sh
 ./scripts/run.sh
 ```
@@ -218,6 +220,14 @@ To record a fresh first-run demo, archive local runtime state and recreate an em
 
 This only moves runtime files under `data/`. It does not delete the curated subreddit catalogs in `backend/app/data/`.
 
+To load a deterministic local demo audience without live Reddit collection or live LLM analysis:
+
+```bash
+./scripts/load-demo-data.sh
+```
+
+This creates a `SaaS Starter` audience with sample posts, comments, quote-backed signals, and a rebuilt local search index. The seeded data is for demos and screen recordings; use live collection when you want fresh public Reddit conversations.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Roadmap
@@ -232,7 +242,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 - [x] Security hardening, background tasks, testing, Docker
 - [x] Scheduled collection (APScheduler)
 - [x] Post signal scoring and low-signal skip reasons
-- [ ] Deterministic sample dataset for offline portfolio demos
+- [x] Deterministic sample dataset for offline portfolio demos
 - [ ] Full migration framework beyond lightweight SQLite upgrades
 
 ## License

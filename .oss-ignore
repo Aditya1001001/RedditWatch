@@ -2,7 +2,9 @@ backend/app/cloud/
 scripts/private/
 .oss-ignore
 .github/workflows/sync-oss.yml
+CLAUDE.md
 DEVLOG.md
+project-context.md
 PLANS.md
 MONETIZATION_ROADMAP.md
 MARKETING_GTM_PLAN.md

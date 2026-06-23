@@ -1,8 +1,11 @@
 """Tests for the analyzer service."""
 
 import pytest
+from unittest.mock import MagicMock
+
 from app.services.analyzer import (
     AnalysisOutput,
+    AnalyzerService,
     InsightData,
     assess_post_signal,
     validate_llm_output,
@@ -200,3 +203,26 @@ class TestPostSignalAssessment:
 
         assert score == 0
         assert reason == "deleted_or_removed"
+
+
+@pytest.mark.asyncio
+async def test_analyze_post_indexes_persisted_insight_id(
+    db_session, sample_post, sample_comments, mock_llm, monkeypatch
+):
+    """Newly extracted signals should be indexed with their real SQLite IDs."""
+    analyzer = AnalyzerService()
+    analyzer._llm = mock_llm
+
+    search_service = MagicMock()
+    monkeypatch.setattr(
+        "app.services.search.get_search_service",
+        lambda: search_service,
+    )
+
+    insights = await analyzer.analyze_post(db_session, sample_post)
+
+    assert len(insights) == 1
+    assert insights[0].id is not None
+    search_service.add_insights_batch.assert_called_once()
+    indexed_batch = search_service.add_insights_batch.call_args.args[0]
+    assert indexed_batch[0]["id"] == insights[0].id

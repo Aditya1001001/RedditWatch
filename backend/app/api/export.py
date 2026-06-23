@@ -529,10 +529,14 @@ async def generate_report(
 
     # Get stats
     from sqlalchemy import func
-    total_posts = await session.execute(select(func.count(Post.id)))
-    analyzed_posts = await session.execute(
-        select(func.count(Post.id)).where(Post.analyzed == True)
-    )
+    total_posts_q = select(func.count(Post.id))
+    analyzed_posts_q = select(func.count(Post.id)).where(Post.analyzed == True)
+    if sub_names is not None:
+        total_posts_q = total_posts_q.where(Post.subreddit.in_(sub_names))
+        analyzed_posts_q = analyzed_posts_q.where(Post.subreddit.in_(sub_names))
+
+    total_posts = await session.execute(total_posts_q)
+    analyzed_posts = await session.execute(analyzed_posts_q)
 
     lines = []
 
