@@ -15,7 +15,7 @@ async def test_app():
     """Create a test app with in-memory database."""
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
 
-    from app.models import comment, insight, post, subreddit, theme  # noqa: F401
+    from app.models import audience, comment, insight, post, subreddit, subscriber_snapshot, theme  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

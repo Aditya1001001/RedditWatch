@@ -25,7 +25,7 @@ async def db_engine():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
 
     # Import models to register them
-    from app.models import comment, insight, post, subreddit, theme  # noqa: F401
+    from app.models import audience, comment, insight, post, subreddit, subscriber_snapshot, theme  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

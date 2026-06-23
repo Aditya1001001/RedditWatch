@@ -543,7 +543,8 @@
                     </template>
                 </nav>
                 <div class="flex items-center gap-2">
-                    <button @click="collectAll()"
+                    <button x-show="hasCollectibleAudience()"
+                            @click="collectAll()"
                             :disabled="collecting"
                             class="bg-accent hover:bg-accent-dark active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-surface-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150">
                         <span x-show="!collecting">Collect All</span>
@@ -552,7 +553,8 @@
                             Collecting…
                         </span>
                     </button>
-                    <button @click="refreshHotConversations()"
+                    <button x-show="(postStats.total_posts || 0) > 0"
+                            @click="refreshHotConversations()"
                             :disabled="refreshing"
                             class="bg-surface-3 hover:bg-surface-4 active:scale-[0.98] disabled:opacity-40 text-text-secondary px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150">
                         <span x-show="!refreshing">Refresh</span>
@@ -572,7 +574,7 @@
                             stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
                 </svg>
                 <p class="text-sm text-text-primary">
-                    Collecting fresh data<span x-show="bgCollection.postsNew > 0">…
+                    Collecting fresh conversations<span x-show="bgCollection.postsNew > 0">…
                     <span class="tabular-nums font-medium" x-text="bgCollection.postsNew"></span> new posts so far</span><span x-show="bgCollection.postsNew === 0">…</span>
                 </p>
             </div>
@@ -910,7 +912,7 @@
                                 x-text="activeAudience()?.active ? 'Following' : 'Follow'">
                         </button>
                         <button @click="collectAll()"
-                                :disabled="collecting"
+                                :disabled="collecting || !activeAudience()?.active || activeAudienceSubreddits.length === 0"
                                 class="bg-accent hover:bg-accent-dark active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-surface-0 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150">
                             <span x-show="!collecting">Collect</span>
                             <span x-show="collecting" class="flex items-center gap-2">
@@ -919,7 +921,7 @@
                             </span>
                         </button>
                         <button @click="collectDeep()"
-                                :disabled="collecting"
+                                :disabled="collecting || !activeAudience()?.active || activeAudienceSubreddits.length === 0"
                                 class="bg-surface-3 hover:bg-surface-4 active:scale-[0.98] disabled:opacity-40 text-text-secondary px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150">
                             <span x-show="!collecting">Deep Collect</span>
                             <span x-show="collecting" class="flex items-center gap-2">
@@ -953,7 +955,7 @@
                             stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
                 </svg>
                 <p class="text-sm text-text-primary">
-                    Collecting fresh data<span x-show="bgCollection.postsNew > 0">…
+                    Collecting fresh conversations<span x-show="bgCollection.postsNew > 0">…
                     <span class="tabular-nums font-medium" x-text="bgCollection.postsNew"></span> new posts so far</span><span x-show="bgCollection.postsNew === 0">…</span>
                 </p>
             </div>
@@ -1844,6 +1846,10 @@
                     return this.audiences.find(a => a.id === this.activeAudienceId);
                 },
 
+                hasCollectibleAudience() {
+                    return this.audiences.some(a => a.active && (a.subreddit_names || []).length > 0);
+                },
+
                 researchLoopSteps() {
                     const followed = this.audiences.filter(a => a.active).length;
                     return [
@@ -2103,6 +2109,10 @@
                 },
 
                 async collectDeep() {
+                    if (!this.hasCollectibleAudience()) {
+                        this.showToast('Nothing to collect yet', 'Follow an audience with subreddits before collecting conversations.', 'info');
+                        return;
+                    }
                     this.collecting = true;
                     this.collectResult = null;
                     try {
@@ -2336,6 +2346,10 @@
                 },
 
                 async collectAll() {
+                    if (!this.hasCollectibleAudience()) {
+                        this.showToast('Nothing to collect yet', 'Follow an audience with subreddits before collecting conversations.', 'info');
+                        return;
+                    }
                     this.collecting = true;
                     this.collectResult = null;
                     try {

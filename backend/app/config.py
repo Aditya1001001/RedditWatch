@@ -197,16 +197,35 @@ def load_config(config_path: Optional[Path] = None) -> Config:
         "reddit": {
             "client_id": os.getenv("REDDIT_CLIENT_ID", ""),
             "client_secret": os.getenv("REDDIT_CLIENT_SECRET", ""),
+            "user_agent": os.getenv("REDDIT_USER_AGENT", ""),
+        },
+        "llm": {
+            "provider": os.getenv("LLM_PROVIDER", ""),
+            "ollama": {
+                "base_url": os.getenv("OLLAMA_BASE_URL", ""),
+                "model": os.getenv("OLLAMA_MODEL", ""),
+                "timeout": int(os.getenv("OLLAMA_TIMEOUT", "0") or 0),
+            },
+            "claude": {
+                "model": os.getenv("ANTHROPIC_MODEL", ""),
+            },
+            "openai": {
+                "base_url": os.getenv("OPENAI_BASE_URL", ""),
+                "model": os.getenv("OPENAI_MODEL", ""),
+            },
         }
     }
 
     # Merge env overrides (only non-empty values)
-    for section, values in env_overrides.items():
-        if section not in config_dict:
-            config_dict[section] = {}
-        for key, value in values.items():
-            if value:  # Only override if env var is set
-                config_dict[section][key] = value
+    def merge_non_empty(target: dict, overrides: dict) -> None:
+        for key, value in overrides.items():
+            if isinstance(value, dict):
+                target.setdefault(key, {})
+                merge_non_empty(target[key], value)
+            elif value:
+                target[key] = value
+
+    merge_non_empty(config_dict, env_overrides)
 
     return Config(**config_dict)
 

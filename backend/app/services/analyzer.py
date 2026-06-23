@@ -492,6 +492,7 @@ class AnalyzerService:
             # Auto-index new insights in ChromaDB
             if insights:
                 try:
+                    await session.flush()
                     from app.services.search import get_search_service
                     search = get_search_service()
                     batch = []
@@ -500,7 +501,7 @@ class AnalyzerService:
                         if ins.quote:
                             text += f' "{ins.quote}"'
                         batch.append({
-                            "id": ins.id if ins.id else hash(ins.title),
+                            "id": ins.id,
                             "text": text,
                             "type": ins.type,
                             "theme_key": ins.theme_key,
