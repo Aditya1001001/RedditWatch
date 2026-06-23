@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_session
 from app.models import Audience, Insight, MonitoredSubreddit, Post
@@ -196,6 +197,18 @@ class AskRequest(BaseModel):
     history: list[HistoryItem] = Field(default_factory=list, max_length=3)
 
 
+class AskSource(BaseModel):
+    insight_id: int
+    title: str
+    type: str
+    theme_key: str
+    subreddit: Optional[str] = None
+    quote: Optional[str] = None
+    quote_author: Optional[str] = None
+    reddit_url: Optional[str] = None
+    post_title: Optional[str] = None
+
+
 @router.post("/{audience_id}/ask")
 async def ask_about_audience(
     audience_id: int,
@@ -238,17 +251,6 @@ async def ask_about_audience(
     theme_result = await session.execute(theme_q)
     top_themes = [(row.theme_key, row.cnt) for row in theme_result]
 
-    # Sample high-intensity insights
-    sample_q = (
-        select(Insight.title, Insight.type)
-        .join(Post).where(Post.subreddit.in_(sub_names))
-        .where(Insight.intensity_score.isnot(None))
-        .order_by(Insight.intensity_score.desc())
-        .limit(5)
-    )
-    sample_result = await session.execute(sample_q)
-    samples = [(row.title, row.type) for row in sample_result]
-
     # Build type summary
     type_summary = ", ".join(
         f"{t.replace('_', ' ').title()} ({c})"
@@ -258,6 +260,7 @@ async def ask_about_audience(
 
     # RAG retrieval — semantic search filtered to audience subreddits
     retrieved_text = "(no relevant insights found)"
+    sources: list[AskSource] = []
     try:
         from app.services.search import get_search_service
         search_svc = get_search_service()
@@ -272,7 +275,9 @@ async def ask_about_audience(
             insight_map = {}
             if insight_ids:
                 insight_rows = await session.execute(
-                    select(Insight).where(Insight.id.in_(insight_ids))
+                    select(Insight)
+                    .options(selectinload(Insight.post))
+                    .where(Insight.id.in_(insight_ids))
                 )
                 insight_map = {i.id: i for i in insight_rows.scalars().all()}
 
@@ -283,13 +288,29 @@ async def ask_about_audience(
                 if not insight:
                     continue
                 sub = r["metadata"].get("subreddit", "unknown")
+                reddit_url = insight.reddit_url
                 line = f'({insight.type}, r/{sub}) "{insight.title}"'
                 if insight.description:
                     line += f"\n    {insight.description}"
                 if insight.quote:
                     author = f" — u/{insight.quote_author}" if insight.quote_author else ""
                     line += f'\n    Quote: "{insight.quote}"{author}'
+                if reddit_url:
+                    line += f"\n    Source: {reddit_url}"
                 lines.append(line)
+                sources.append(
+                    AskSource(
+                        insight_id=insight.id,
+                        title=insight.title,
+                        type=insight.type,
+                        theme_key=insight.theme_key,
+                        subreddit=sub,
+                        quote=insight.quote,
+                        quote_author=insight.quote_author,
+                        reddit_url=reddit_url,
+                        post_title=insight.post.title if insight.post else None,
+                    )
+                )
 
             if lines:
                 retrieved_text = "\n\n".join(lines)
@@ -324,6 +345,7 @@ RULES:
 - ONLY use information from the RETRIEVED INSIGHTS section below. If no relevant insights are provided, say "I don't have enough data on this topic to give a grounded answer" and suggest what the user could ask instead based on the DATA OVERVIEW.
 - When an insight has a quote, include it verbatim in quotation marks with the author (e.g. "quote here" — u/author). NEVER invent quotes or attribute statements to usernames not in the data.
 - Always name the specific subreddit where a pattern appears (e.g. "In r/startups, founders report...")
+- When relevant source URLs are present, do not invent links; use only the source URLs provided
 - Do NOT reference insight numbers, indices, or counts like "Insight 5" or "(Insights 3 and 7)" — just state the finding naturally
 - Give actionable recommendations, not just summaries"""
 
@@ -336,7 +358,11 @@ RULES:
             temperature=0.4,
             max_tokens=2048,
         )
-        return {"answer": response.content, "model": response.model}
+        return {
+            "answer": response.content,
+            "model": response.model,
+            "sources": [source.model_dump() for source in sources[:6]],
+        }
     except Exception as e:
         logger.error(f"LLM error in ask endpoint: {e}")
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {str(e)}")
