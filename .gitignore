@@ -119,6 +119,7 @@ scripts/private/*.csv
 
 # Local agent tooling (session-specific)
 AGENTS.md
+Agents.md
 agent.md
 CLAUDE.md
 .claude/
